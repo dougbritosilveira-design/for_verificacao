@@ -1,6 +1,26 @@
 from .models import PortalUserAccess
 
 
+def _first_last_name_or_username(user):
+    first_name = (getattr(user, 'first_name', '') or '').strip()
+    last_name = (getattr(user, 'last_name', '') or '').strip()
+    if first_name and last_name:
+        return f'{first_name} {last_name}'
+    if first_name:
+        return first_name
+    if last_name:
+        return last_name
+
+    full_name = user.get_full_name().strip()
+    if full_name:
+        parts = full_name.split()
+        if len(parts) >= 2:
+            return f'{parts[0]} {parts[-1]}'
+        return parts[0]
+
+    return user.username
+
+
 def portal_user_context(request):
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
@@ -16,7 +36,7 @@ def portal_user_context(request):
         }
 
     access = PortalUserAccess.for_user(user)
-    display_name = user.get_full_name().strip() or user.username
+    display_name = _first_last_name_or_username(user)
     registration = access.registration_display if access else user.username
     can_edit_forms = access.can_edit_forms_portal if access else user.is_superuser
     can_view_forms = access.can_view_forms_portal if access else user.is_superuser
