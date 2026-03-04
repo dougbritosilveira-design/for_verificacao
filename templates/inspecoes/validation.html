@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Validação{% endblock %}
+{% block extra_head %}
+<style>
+  #signature-pad { border:1px solid #bfb7a3; border-radius:8px; background:#fff; touch-action:none; max-width:100%; }
+  .sig-tools { margin: 8px 0 12px; display:flex; gap:8px; }
+  .criteria-box { border:1px solid #d9d1bf; border-radius:8px; padding:12px; margin: 12px 0; background:#faf8f2; }
+  .criteria-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .criteria-box.fail { border-color:#d67373; background:#fff1f1; }
+  .criteria-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .criteria-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+  .criteria-status { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+  .criteria-status.ok { background:#d8f0df; color:#1f5a2d; }
+  .criteria-status.fail { background:#ffdede; color:#8a1d1d; }
+  .criteria-status.pending { background:#fff0c5; color:#7c5a00; }
+</style>
+{% endblock %}
+{% block content %}
+<h2>3. Validação e assinatura</h2>
+<p>Ao validar, o sistema gera o PDF para download. O envio ao SAP fica disponível separadamente no detalhe do formulário.</p>
+<ul>
+  <li>Equipamento: {{ submission.equipment.tag }} - {{ submission.equipment.description }}</li>
+  <li>Local: {{ submission.location_snapshot }}</li>
+  <li>Status atual: {{ submission.get_status_display }}</li>
+  <li>Critério de aceitação: {{ submission.acceptance_limit_pct }}%</li>
+  <li>Incerteza expandida: {{ submission.expanded_uncertainty_pct|default:'-' }}%</li>
+</ul>
+<div class="criteria-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
+  <p>
+    <strong>Critério de aceitação (erro final)</strong>:
+    <span class="criteria-status {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
+      {{ submission.acceptance_status_label }}
+    </span>
+  </p>
+  <div class="criteria-grid">
+    <div><strong>Limite:</strong> erro final <= {{ submission.acceptance_limit_pct }}%</div>
+    <div><strong>Erro antes (%):</strong> {{ submission.acceptance_error_before_value|default:'-' }}</div>
+    <div><strong>Erro depois (%):</strong> {{ submission.acceptance_error_after_value|default:'-' }}</div>
+    <div><strong>Valor absoluto do erro final:</strong> {{ submission.acceptance_error_after_abs|default:'-' }}</div>
+  </div>
+  {% if not submission.acceptance_ok %}
+    <p style="margin-top:8px; color:#8a1d1d;">
+      {{ submission.acceptance_block_reason }}
+    </p>
+  {% endif %}
+</div>
+<form method="post" id="validation-form">
+  {% csrf_token %}
+  <p>{{ form.validator_name.label_tag }} {{ form.validator_name }}</p>
+  {{ form.signature_data }}
+  <p><strong>Assinatura</strong></p>
+  <canvas id="signature-pad" width="700" height="220"></canvas>
+  <div class="sig-tools">
+    <button type="button" id="clear-signature" class="secondary">Limpar assinatura</button>
+  </div>
+  <p>{{ form.confirm }} {{ form.confirm.label }}</p>
+  {% if form.errors %}<div style="color:#a12a2a;">{{ form.errors }}</div>{% endif %}
+  <button type="submit" {% if not submission.acceptance_ok %}disabled title="Erro final fora do critério de aceitação"{% endif %}>
+    Validar e baixar PDF
+  </button>
+</form>
+<script>
+(function() {
+  const canvas = document.getElementById('signature-pad');
+  const ctx = canvas.getContext('2d');
+  const hidden = document.getElementById('id_signature_data');
+  let drawing = false;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#222';
+
+  function pos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+  }
+  function start(e) { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+  function move(e) { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+  function end() { drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('touchend', end);
+
+  document.getElementById('clear-signature').addEventListener('click', function() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hidden.value = '';
+  });
+  document.getElementById('validation-form').addEventListener('submit', function() {
+    hidden.value = canvas.toDataURL('image/png');
+  });
+})();
+</script>
+{% endblock %}

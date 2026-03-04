@@ -1,0 +1,308 @@
+{% extends 'base.html' %}
+{% block title %}Formulário técnico{% endblock %}
+{% block content %}
+<h2>2. Formulário técnico</h2>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+<p><strong>Campos automáticos:</strong> TM, MD, IBM, Velocidade da correia (V), Comprimento da correia (L), B04, Ic e Erros (%).</p>
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  input.auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
+  input.erro-inicial-ok { background: #eef5ff !important; border-color: #5b84c9 !important; color: #173a73; font-weight: 600; }
+  input.erro-inicial-fail { background: #fff3f3 !important; border-color: #c97a7a !important; color: #7a2424; font-weight: 600; }
+  input.erro-inicial-pending { background: #f7f3ff !important; border-color: #a894d1 !important; color: #5e4a8b; }
+  input.erro-final-ok { background: #e9f7ee !important; border-color: #5aa572 !important; color: #184f2a; font-weight: 600; }
+  input.erro-final-fail { background: #fff0f0 !important; border-color: #d15d5d !important; color: #8a1d1d; font-weight: 600; }
+  input.erro-final-pending { background: #fff9e5 !important; border-color: #c7b77a !important; color: #7c5a00; }
+</style>
+
+<form method="post">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Tempo de 1 volta (s)</h3>
+  <div class="row">
+    <p>{{ form.t1.label_tag }} {{ form.t1 }}</p>
+    <p>{{ form.t2.label_tag }} {{ form.t2 }}</p>
+    <p>{{ form.t3.label_tag }} {{ form.t3 }}</p>
+    <p><label for="id_tm_display">TM - média do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+  </div>
+
+  <h3>Tempo entre as marcas (s)</h3>
+  <div class="row">
+    <p>{{ form.m1.label_tag }} {{ form.m1 }}</p>
+    <p>{{ form.m2.label_tag }} {{ form.m2 }}</p>
+    <p>{{ form.m3.label_tag }} {{ form.m3 }}</p>
+    <p><label for="id_md_display">MD - média dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p>{{ form.mark_distance.label_tag }} {{ form.mark_distance }}</p>
+  </div>
+
+  <h3>IMPULSE / BELT CIRCUIT (D06)</h3>
+  <div class="row">
+    <p>{{ form.pulses_per_turn_1.label_tag }} {{ form.pulses_per_turn_1 }}</p>
+    <p>{{ form.pulses_per_turn_2.label_tag }} {{ form.pulses_per_turn_2 }}</p>
+    <p>{{ form.pulses_per_turn_3.label_tag }} {{ form.pulses_per_turn_3 }}</p>
+    <p>{{ form.ibm.label_tag }} {{ form.ibm }}</p>
+  </div>
+
+  <h3>Parâmetros calculados (B05 / C02 / B04)</h3>
+  <div class="row">
+    <p>{{ form.belt_speed_v.label_tag }} {{ form.belt_speed_v }}</p>
+    <p>{{ form.belt_length.label_tag }} {{ form.belt_length }}</p>
+    <p>{{ form.speed_characteristic_b04.label_tag }} {{ form.speed_characteristic_b04 }}</p>
+  </div>
+
+  <h3>TW - Tara</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr));">
+    <p>{{ form.abw_1.label_tag }} {{ form.abw_1 }}</p>
+    <p>{{ form.abw_2.label_tag }} {{ form.abw_2 }}</p>
+    <p>{{ form.abw_3.label_tag }} {{ form.abw_3 }}</p>
+  </div>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr));">
+    <p>{{ form.tare_1.label_tag }} {{ form.tare_1 }}</p>
+    <p>{{ form.tare_2.label_tag }} {{ form.tare_2 }}</p>
+    <p>{{ form.tare_3.label_tag }} {{ form.tare_3 }}</p>
+  </div>
+
+  <h3>Carga / Check Weight</h3>
+  <div class="row">
+    <p>{{ form.applied_weight.label_tag }} {{ form.applied_weight }}</p>
+    <p>{{ form.bridge_length.label_tag }} {{ form.bridge_length }}</p>
+    <p>{{ form.check_weight.label_tag }} {{ form.check_weight }}</p>
+    <p>{{ form.kor.label_tag }} {{ form.kor }}</p>
+  </div>
+
+  <h3>Resultados da verificação e ajuste</h3>
+  <div class="row">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
+    <p>{{ form.calculated_flow_ic.label_tag }} {{ form.calculated_flow_ic }}</p>
+    <p>{{ form.error_before_pct.label_tag }} {{ form.error_before_pct }}</p>
+    <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
+  </div>
+
+  <h3>Dados do equipamento (vazão indicada)</h3>
+  <div class="row">
+    <p>{{ form.il_before_ti.label_tag }} {{ form.il_before_ti }}</p>
+    <p>{{ form.il_before_tf.label_tag }} {{ form.il_before_tf }}</p>
+    <p>{{ form.il_after_ti.label_tag }} {{ form.il_after_ti }}</p>
+    <p>{{ form.il_after_tf.label_tag }} {{ form.il_after_tf }}</p>
+  </div>
+
+  <h3>Identificação e observação</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e validar</button>
+  </div>
+</form>
+
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>TM (média T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
+<p>MD (média M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
+<p>IL antes: {{ submission.il_before|floatformat:2|default:'-' }}</p>
+<p>IL depois: {{ submission.il_after|floatformat:2|default:'-' }}</p>
+<p>Carregamento Q (P/D): {{ submission.loading_q|floatformat:2|default:'-' }}</p>
+<p>IBM automático (média dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
+<p>Velocidade V automática (B05 = Distância/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
+<p>Comprimento L automático (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
+<p>B04 automático (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
+<p>Ic automático (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
+<p>Erro antes automático (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
+<p>Erro depois automático (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
+<div id="accept-box"
+     class="accept-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
+  <p style="margin:0 0 4px;">
+    <strong>Critério de aceitação (erro final <= {{ submission.acceptance_limit_pct }}%)</strong>
+    <span id="accept-pill"
+          class="accept-pill {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
+      {{ submission.acceptance_status_label }}
+    </span>
+  </p>
+  <p id="accept-detail" style="margin:0;">
+    {% if submission.acceptance_is_evaluable %}
+      Erro final atual: {{ submission.acceptance_error_after_value|floatformat:2 }}%
+    {% else %}
+      Preencha os dados para calcular o erro final.
+    {% endif %}
+  </p>
+</div>
+
+<script>
+(function() {
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const raw = (el.value || '').replace(',', '.').trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  function setNum(id, value, decimals, useComma) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = useComma ? fixed.replace('.', ',') : fixed;
+  }
+  function avg(values) {
+    const nums = values.filter((v) => v != null);
+    if (!nums.length) return null;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
+  }
+  function safeDiv(a, b) {
+    if (a == null || b == null || b === 0) return null;
+    return a / b;
+  }
+  function calcError(il, ic) {
+    if (il == null || ic == null || ic === 0) return null;
+    return ((il / ic) - 1) * 100;
+  }
+  function acceptanceLimit() {
+    const fromField = getNum('id_acceptance_criterion_pct');
+    return fromField && fromField > 0 ? fromField : 1;
+  }
+  function updateAcceptance(erroDepois, limit) {
+    const box = document.getElementById('accept-box');
+    const pill = document.getElementById('accept-pill');
+    const detail = document.getElementById('accept-detail');
+    const erroFinalInput = document.getElementById('id_error_after_pct');
+    if (!box || !pill || !detail) return;
+
+    box.classList.remove('ok', 'fail', 'pending');
+    pill.classList.remove('ok', 'fail', 'pending');
+    if (erroFinalInput) {
+      erroFinalInput.classList.remove('erro-final-ok', 'erro-final-fail', 'erro-final-pending');
+    }
+
+    if (erroDepois == null) {
+      box.classList.add('pending');
+      pill.classList.add('pending');
+      pill.textContent = 'Pendente dados';
+      detail.textContent = 'Preencha os dados para calcular o erro final.';
+      if (erroFinalInput) {
+        erroFinalInput.classList.add('erro-final-pending');
+        erroFinalInput.title = 'Preencha os dados para calcular o erro final (%)';
+      }
+      return;
+    }
+
+    const aprovado = Math.abs(erroDepois) <= limit;
+    box.classList.add(aprovado ? 'ok' : 'fail');
+    pill.classList.add(aprovado ? 'ok' : 'fail');
+    pill.textContent = aprovado ? 'Aprovado' : 'Reprovado';
+    detail.textContent = `Erro final atual: ${erroDepois.toFixed(2)}% (${aprovado ? 'dentro' : 'fora'} do limite de ${limit}%).`;
+    if (erroFinalInput) {
+      erroFinalInput.classList.add(aprovado ? 'erro-final-ok' : 'erro-final-fail');
+      erroFinalInput.title = aprovado
+        ? `Erro final dentro do critério de aceitação (<= ${limit}%)`
+        : `Erro final fora do critério de aceitação (> ${limit}%)`;
+    }
+  }
+  function updateErrorBeforeField(erroAntes, limit) {
+    const erroAntesInput = document.getElementById('id_error_before_pct');
+    if (!erroAntesInput) return;
+    erroAntesInput.classList.remove('erro-inicial-ok', 'erro-inicial-fail', 'erro-inicial-pending');
+
+    if (erroAntes == null) {
+      erroAntesInput.classList.add('erro-inicial-pending');
+      erroAntesInput.title = 'Preencha os dados para calcular o erro inicial (%)';
+      return;
+    }
+
+    const aprovado = Math.abs(erroAntes) <= limit;
+    erroAntesInput.classList.add(aprovado ? 'erro-inicial-ok' : 'erro-inicial-fail');
+    erroAntesInput.title = aprovado
+      ? `Erro inicial dentro do critério de aceitação (<= ${limit}%)`
+      : `Erro inicial fora do critério de aceitação (> ${limit}%)`;
+  }
+  function recalc() {
+    const t1 = getNum('id_t1');
+    const t2 = getNum('id_t2');
+    const t3 = getNum('id_t3');
+    const m1 = getNum('id_m1');
+    const m2 = getNum('id_m2');
+    const m3 = getNum('id_m3');
+    const distancia = getNum('id_mark_distance');
+    const p1 = getNum('id_pulses_per_turn_1');
+    const p2 = getNum('id_pulses_per_turn_2');
+    const p3 = getNum('id_pulses_per_turn_3');
+    const pesoAplicado = getNum('id_applied_weight');
+    const comprimentoPonte = getNum('id_bridge_length');
+    const ilAntesTi = getNum('id_il_before_ti');
+    const ilAntesTf = getNum('id_il_before_tf');
+    const ilDepoisTi = getNum('id_il_after_ti');
+    const ilDepoisTf = getNum('id_il_after_tf');
+
+    const tm = avg([t1, t2, t3]);
+    const md = avg([m1, m2, m3]);
+    const ibm = avg([p1, p2, p3]);
+    const v = safeDiv(distancia, md);
+    const l = (tm != null && v != null) ? tm * v : null;
+    const b04 = safeDiv(ibm, l);
+    const q = safeDiv(pesoAplicado, comprimentoPonte);
+    const ic = (q != null && v != null) ? q * v * 3.6 : null;
+    const ilAntes = (ilAntesTi != null && ilAntesTf != null) ? (ilAntesTf - ilAntesTi) * 12 : null;
+    const ilDepois = (ilDepoisTi != null && ilDepoisTf != null) ? (ilDepoisTf - ilDepoisTi) * 12 : null;
+    const erroAntes = calcError(ilAntes, ic);
+    const erroDepois = calcError(ilDepois, ic);
+    const limit = acceptanceLimit();
+
+    setNum('id_tm_display', tm, 3, true);
+    setNum('id_md_display', md, 3, true);
+    setNum('id_ibm', ibm, 3);
+    setNum('id_belt_speed_v', v, 3);
+    setNum('id_belt_length', l, 3);
+    setNum('id_speed_characteristic_b04', b04, 6);
+    setNum('id_calculated_flow_ic', ic, 3);
+    setNum('id_error_before_pct', erroAntes, 3);
+    setNum('id_error_after_pct', erroDepois, 3);
+    updateErrorBeforeField(erroAntes, limit);
+    updateAcceptance(erroDepois, limit);
+  }
+
+  const form = document.querySelector('form');
+  if (!form) return;
+  form.addEventListener('input', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}

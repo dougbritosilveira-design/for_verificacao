@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load l10n %}
+{% block title %}Detalhe do formulário{% endblock %}
+{% block content %}
+<h2>Detalhe do formulário #{{ submission.id }}</h2>
+<p><strong>OM:</strong> {{ submission.om_number }}</p>
+<p><strong>Equipamento:</strong> {{ submission.equipment.tag }} - {{ submission.equipment.description }}</p>
+<p><strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<p><strong>Data da visita:</strong> {{ submission.execution_date }}</p>
+<p><strong>Formulário preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
+<p><strong>Status:</strong> {{ submission.get_status_display }}</p>
+<p><strong>Status SAP:</strong> {{ submission.get_sap_status_display }}</p>
+<p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
+<p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
+<p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|default:'-' }}</p>
+<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}%</p>
+<p><strong>Incerteza expandida (formulário):</strong> {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>E-mails de notificação:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
+{% if submission.sap_attachment_id %}<p><strong>ID anexo SAP:</strong> {{ submission.sap_attachment_id }}</p>{% endif %}
+{% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
+<p><strong>Executor:</strong> {{ submission.executor_name }}</p>
+<p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
+<p><strong>Validado em:</strong> {{ submission.validated_at|default:'-' }}</p>
+
+<p>
+  {% if portal_user_can_edit_forms and portal_can_view_forms %}
+    <a href="{% url 'inspecoes:form-edit' submission.pk %}">Editar</a> |
+    <a href="{% url 'inspecoes:form-validate' submission.pk %}">Validar</a> |
+  {% endif %}
+  <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
+  <a href="{% url 'inspecoes:history' %}">Voltar ao histórico</a>
+</p>
+
+{% if portal_user_can_edit_forms and portal_can_view_forms %}
+  {% if submission.status == 'approved' or submission.status == 'sent_to_sap' %}
+    <form method="post" action="{% url 'inspecoes:form-send-sap' submission.pk %}" style="margin-bottom:16px;">
+      {% csrf_token %}
+      <button type="submit">
+        {% if submission.sap_status == 'success' %}
+          Reenviar anexo para SAP
+        {% else %}
+          Enviar anexo para SAP
+        {% endif %}
+      </button>
+    </form>
+  {% else %}
+    <p><em>Valide o formulário para habilitar o envio ao SAP.</em></p>
+  {% endif %}
+{% elif not portal_user_can_edit_forms %}
+  <p><em>Usuário em modo somente leitura: envio para SAP desabilitado.</em></p>
+{% else %}
+  <p><em>Seu usuário não tem acesso à tela de formulários.</em></p>
+{% endif %}
+
+<hr>
+<h3>Medições (resumo)</h3>
+<ul>
+  <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
+  <li>M1/M2/M3: {{ submission.m1|floatformat:2|localize|default:'-' }} / {{ submission.m2|floatformat:2|localize|default:'-' }} / {{ submission.m3|floatformat:2|localize|default:'-' }} (MD: {{ submission.md|floatformat:2|localize|default:'-' }})</li>
+  <li>Distância entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
+  <li>Pulsos por volta / IBM: {{ submission.pulses_per_turn_1|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_2|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_3|floatformat:2|localize|default:'-' }} (IBM: {{ submission.ibm|floatformat:2|localize|default:'-' }})</li>
+  <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
+  <li>IL depois: {{ submission.il_after|floatformat:2|localize|default:'-' }}</li>
+  <li>Q (P/D): {{ submission.loading_q|floatformat:2|localize|default:'-' }}</li>
+  <li>V (velocidade da correia): {{ submission.belt_speed_v|floatformat:3|localize|default:'-' }}</li>
+  <li>L (comprimento da correia): {{ submission.belt_length|floatformat:2|localize|default:'-' }}</li>
+  <li>B04 (IBM/L): {{ submission.speed_characteristic_b04|floatformat:2|localize|default:'-' }}</li>
+  <li>Ic informado: {{ submission.calculated_flow_ic|floatformat:2|localize|default:'-' }}</li>
+  <li>Ic automático: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
+  <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
+  <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
+  <li>Setor 1: {{ submission.sector|default:'-' }}</li>
+  <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
+  <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
+  <li>Nome 1 / Matrícula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
+  <li>Nome 2 / Matrícula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
+  <li>Nome 3 / Matrícula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
+</ul>
+<p><strong>Observação:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
+{% endblock %}

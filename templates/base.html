@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Verificação{% endblock %}</title>
+  <style>
+    :root { --bg: #f4f4ef; --panel: #fffdf7; --line: #d9d1bf; --text: #1f1d17; --accent: #1c6e5f; }
+    body { margin: 0; font-family: Segoe UI, sans-serif; background: linear-gradient(180deg,#efe8d5,#f8f6ef); color: var(--text); }
+    header { padding: 14px 20px; background: #1f2f2a; color: #f7f4ea; }
+    .header-top { display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+    nav { margin-top: 8px; }
+    nav a { color: #d3f5de; margin-right: 16px; text-decoration: none; }
+    .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .user-box .logout-form { margin: 0; }
+    .user-box .logout-form button {
+      width: auto;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #98c1b3;
+      background: transparent;
+      color: #f7f4ea;
+      cursor: pointer;
+    }
+    .user-box .login-link { color: #d3f5de; text-decoration: none; }
+    .wrap { max-width: 1100px; margin: 20px auto; padding: 0 16px; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; box-shadow: 0 10px 20px rgba(0,0,0,.04); }
+    form p { display: grid; gap: 6px; margin: 0 0 10px; }
+    input, select, textarea, button { padding: 8px 10px; border-radius: 6px; border: 1px solid #bfb7a3; font: inherit; width: 100%; box-sizing: border-box; }
+    button { width: auto; background: var(--accent); color: white; border: none; cursor: pointer; }
+    button.secondary { background: #5d6f67; }
+    .row { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e7e0cf; padding: 8px; text-align: left; font-size: 14px; }
+    .messages { list-style: none; padding: 0; }
+    .messages li { padding: 10px; margin-bottom: 8px; border-radius: 6px; background: #eef7f3; border: 1px solid #b8ddcf; }
+    .status-chip { display:inline-block; padding: 2px 8px; border-radius:999px; background:#ece8dd; font-size:12px; color: #1f1d17; }
+    .badge { display:inline-block; padding: 3px 8px; border-radius: 999px; font-size:12px; font-weight:600; border:1px solid transparent; }
+    .badge.ok { background:#e8f6ed; color:#1f5f34; border-color:#8dc4a0; }
+    .badge.warn { background:#fff5db; color:#7f5e00; border-color:#d8bf72; }
+    .badge.fail { background:#ffe8e8; color:#8d1f1f; border-color:#d79090; }
+    .badge.pending { background:#efedf8; color:#5b4f8b; border-color:#b7acd9; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <div class="header-top">
+      <strong>Verificação de Balança Dinâmica</strong>
+      <div class="user-box">
+        {% if user.is_authenticated %}
+          <span>Usuário: <strong>{{ portal_user_name }}</strong></span>
+          <span>Matrícula: <strong>{{ portal_user_registration }}</strong></span>
+          <span class="status-chip">{{ portal_user_access_label }}</span>
+          <form method="post" action="{% url 'logout' %}" class="logout-form">
+            {% csrf_token %}
+            <button type="submit">Sair</button>
+          </form>
+        {% else %}
+          <a href="{% url 'login' %}" class="login-link">Entrar</a>
+        {% endif %}
+      </div>
+    </div>
+    <nav>
+      {% if user.is_authenticated and portal_can_view_forms and portal_user_can_edit_forms %}
+        <a href="{% url 'inspecoes:selection' %}">Novo formulário</a>
+      {% endif %}
+      {% if user.is_authenticated and portal_can_view_history %}
+        <a href="{% url 'inspecoes:history' %}">Histórico</a>
+      {% endif %}
+      {% if user.is_authenticated and portal_can_view_deadlines %}
+        <a href="{% url 'inspecoes:equipment-deadlines' %}">Prazos</a>
+      {% endif %}
+      <a href="/admin/">Admin</a>
+    </nav>
+  </header>
+  <main class="wrap">
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    <div class="panel">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</body>
+</html>

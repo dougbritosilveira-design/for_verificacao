@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<h2>Acesso ao portal</h2>
+<p>Entre com usuário e senha para acessar formulários, histórico e prazos.</p>
+<form method="post" style="max-width:420px;">
+  {% csrf_token %}
+  {{ form.as_p }}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:10px;">Usuário ou senha inválidos.</div>
+  {% endif %}
+  <button type="submit">Entrar</button>
+  <input type="hidden" name="next" value="{{ next }}">
+</form>
+{% endblock %}

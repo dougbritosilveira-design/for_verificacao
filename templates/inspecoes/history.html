@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Histórico{% endblock %}
+{% block content %}
+<h2>Histórico de formulários</h2>
+<form method="get" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end; margin-bottom:16px;">
+  <p><label>Status</label><select name="status"><option value="">Todos</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></p>
+  <p><label>TAG</label><input type="text" name="tag" value="{{ filters.tag }}"></p>
+  <p><label>OM</label><input type="text" name="om" value="{{ filters.om }}"></p>
+  <p><button type="submit">Filtrar</button></p>
+</form>
+<table>
+  <thead><tr><th>ID</th><th>Data da visita</th><th>Preenchido em</th><th>OM</th><th>Equipamento</th><th>Prazo do equipamento</th><th>Próxima visita</th><th>Status</th><th>SAP</th><th>Ações</th></tr></thead>
+  <tbody>
+    {% for s in submissions %}
+      <tr>
+        <td>{{ s.id }}</td><td>{{ s.execution_date }}</td><td>{{ s.created_at|date:"d/m/Y H:i" }}</td><td>{{ s.om_number }}</td><td>{{ s.equipment.tag }}</td>
+        <td><span class="badge {{ s.equipment.deadline_badge_class }}">{{ s.equipment.deadline_status_label }}</span></td>
+        <td>{{ s.equipment.next_visit_due_date|default:'-' }}</td>
+        <td>{{ s.get_status_display }}</td><td>{{ s.get_sap_status_display }}</td>
+        <td>
+          <a href="{% url 'inspecoes:detail' s.pk %}">Ver</a>
+          {% if portal_user_can_edit_forms and portal_can_view_forms %}
+            | <a href="{% url 'inspecoes:form-edit' s.pk %}">Editar</a> | <a href="{% url 'inspecoes:form-validate' s.pk %}">Validar</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="10">Nenhum formulário encontrado.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

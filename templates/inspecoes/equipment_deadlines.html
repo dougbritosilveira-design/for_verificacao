@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}Prazos dos equipamentos{% endblock %}
+{% block extra_head %}
+<style>
+  .deadlines-filters {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 16px;
+  }
+  .deadlines-filters p { margin: 0; }
+  .deadlines-filters .field-tag { grid-column: span 4; }
+  .deadlines-filters .field-status { grid-column: span 3; }
+  .deadlines-filters .field-active { grid-column: span 3; }
+  .deadlines-filters .field-submit { grid-column: span 2; }
+  .deadlines-filters .field-submit button { width: 100%; }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e7e0cf;
+    border-radius: 8px;
+    background: #fffdf7;
+  }
+  .table-wrap table { min-width: 1420px; margin: 0; }
+  .table-wrap th, .table-wrap td { vertical-align: top; line-height: 1.35; }
+
+  .col-tag { min-width: 110px; word-break: break-word; }
+  .col-desc { min-width: 240px; }
+  .col-local { min-width: 120px; }
+  .col-periodicidade { min-width: 95px; text-align: center; }
+  .col-criterio { min-width: 110px; text-align: center; }
+  .col-incerteza { min-width: 120px; text-align: center; }
+  .col-data { min-width: 120px; }
+  .col-status { min-width: 130px; }
+  .col-detalhe { min-width: 280px; word-break: break-word; }
+  .col-emails { min-width: 240px; word-break: break-word; }
+  .col-acoes { min-width: 130px; }
+
+  .acoes-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .table-note { font-size: 13px; color: #5f5a4f; margin: 0 0 8px; }
+
+  @media (max-width: 920px) {
+    .deadlines-filters .field-tag,
+    .deadlines-filters .field-status,
+    .deadlines-filters .field-active,
+    .deadlines-filters .field-submit { grid-column: 1 / -1; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<h2>Prazos dos equipamentos</h2>
+<p>Acompanhe quando cada equipamento precisa de nova verificação/ajuste e quais e-mails devem receber notificação.</p>
+
+<form method="get" class="deadlines-filters">
+  <p class="field-tag">
+    <label>TAG</label>
+    <input type="text" name="tag" value="{{ filters.tag }}">
+  </p>
+  <p class="field-status">
+    <label>Status do prazo</label>
+    <select name="deadline_status">
+      <option value="">Todos</option>
+      {% for value,label in deadline_status_choices %}
+        <option value="{{ value }}" {% if filters.deadline_status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </p>
+  <p class="field-active">
+    <label>Ativos</label>
+    <select name="active_only">
+      <option value="1" {% if filters.active_only == '1' %}selected{% endif %}>Somente ativos</option>
+      <option value="0" {% if filters.active_only == '0' %}selected{% endif %}>Todos</option>
+    </select>
+  </p>
+  <p class="field-submit"><button type="submit">Filtrar</button></p>
+</form>
+
+<p class="table-note">Se necessário, role horizontalmente para visualizar todas as colunas.</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th class="col-tag">TAG</th>
+      <th class="col-desc">Descrição</th>
+      <th class="col-local">Local</th>
+      <th class="col-periodicidade">Periodicidade (dias)</th>
+      <th class="col-criterio">Critério de aceitação (%)</th>
+      <th class="col-incerteza">Incerteza expandida (%)</th>
+      <th class="col-data">Última visita</th>
+      <th class="col-data">Próxima visita</th>
+      <th class="col-status">Status prazo</th>
+      <th class="col-detalhe">Detalhe</th>
+      <th class="col-emails">E-mails notificação</th>
+      <th class="col-acoes">Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in equipments %}
+      <tr>
+        <td class="col-tag">{{ e.tag }}</td>
+        <td class="col-desc">{{ e.description }}</td>
+        <td class="col-local">{{ e.location }}</td>
+        <td class="col-periodicidade">{{ e.revisit_interval_days|default:'-' }}</td>
+        <td class="col-criterio">{{ e.acceptance_criterion_pct|default:'-' }}</td>
+        <td class="col-incerteza">{{ e.expanded_uncertainty_pct|default:'-' }}</td>
+        <td class="col-data">{{ e.last_visit_date|default:'-' }}</td>
+        <td class="col-data">{{ e.next_visit_due_date|default:'-' }}</td>
+        <td class="col-status"><span class="badge {{ e.deadline_badge_class }}">{{ e.deadline_status_label }}</span></td>
+        <td class="col-detalhe">{{ e.deadline_status_detail }}</td>
+        <td class="col-emails">
+          {% if e.notification_recipients %}
+            {{ e.notification_recipients|join:', ' }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td class="col-acoes">
+          <div class="acoes-wrap">
+            {% if portal_user_can_edit_forms and portal_can_view_forms %}
+              <a href="{% url 'inspecoes:selection' %}?equipment={{ e.pk }}">Novo formulário</a>
+            {% endif %}
+            <a href="{% url 'inspecoes:history' %}?tag={{ e.tag }}">Histórico</a>
+          </div>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="12">Nenhum equipamento encontrado.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<p style="margin-top:16px;">
+  <strong>Configuração de notificação:</strong> cadastre os dias e e-mails no <a href="/admin/inspecoes/equipment/">Admin &gt; Equipment</a>.
+</p>
+{% endblock %}

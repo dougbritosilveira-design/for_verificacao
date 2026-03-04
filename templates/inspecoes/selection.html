@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Novo formulário{% endblock %}
+{% block content %}
+<h2>1. Seleção do equipamento</h2>
+<p>Informe equipamento, local e ordem de manutenção para iniciar o formulário.</p>
+<p><strong>Data da visita:</strong> usada no cálculo do próximo prazo do equipamento.</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">Criar formulário</button>
+</form>
+{{ equipment_locations|json_script:"equipment-locations" }}
+<script>
+(function () {
+  const equipmentField = document.getElementById('id_equipment');
+  const locationField = document.getElementById('id_location_snapshot');
+  const locationsData = document.getElementById('equipment-locations');
+  if (!equipmentField || !locationField || !locationsData) return;
+
+  let locations = {};
+  try {
+    locations = JSON.parse(locationsData.textContent || '{}');
+  } catch (error) {
+    locations = {};
+  }
+
+  function syncLocation() {
+    const selectedEquipmentId = equipmentField.value || '';
+    locationField.value = locations[selectedEquipmentId] || '';
+  }
+
+  equipmentField.addEventListener('change', syncLocation);
+  syncLocation();
+})();
+</script>
+{% endblock %}
