@@ -10,6 +10,7 @@ from typing import Tuple
 
 import requests
 from django.conf import settings
+from django.contrib.staticfiles import finders
 from django.utils import timezone
 
 from .models import FormSubmission
@@ -17,13 +18,52 @@ from .models import FormSubmission
 
 def _format_num(value, decimals=2):
     if value is None or value == '':
-        return ''
+        return '-'
     try:
         quant = Decimal('1').scaleb(-decimals)
         number = Decimal(str(value)).quantize(quant, rounding=ROUND_HALF_UP)
         return f'{number:.{decimals}f}'.replace('.', ',')
     except (TypeError, ValueError, InvalidOperation):
         return str(value)
+
+
+def _format_datetime(value):
+    if not value:
+        return '-'
+    try:
+        return timezone.localtime(value).strftime('%d/%m/%Y %H:%M')
+    except Exception:
+        return str(value)
+
+
+def _acceptance_label_for_value(value, limit):
+    if value is None or limit in (None, ''):
+        return 'Pendente'
+    try:
+        value_abs = abs(Decimal(str(value)))
+        limit_dec = Decimal(str(limit))
+    except (InvalidOperation, TypeError, ValueError):
+        return 'Pendente'
+    return 'Aprovado' if value_abs <= limit_dec else 'Reprovado'
+
+
+def _decode_logo_base64():
+    raw_logo = str(getattr(settings, 'HYDRO_LOGO_BASE64', '') or '').strip()
+    if not raw_logo:
+        return None
+
+    encoded = raw_logo
+    if ',' in raw_logo:
+        prefix, payload = raw_logo.split(',', 1)
+        if 'base64' in prefix.lower():
+            encoded = payload
+
+    try:
+        data = base64.b64decode(encoded, validate=True)
+    except (ValueError, binascii.Error):
+        return None
+
+    return data or None
 
 
 def _resolve_logo_path() -> Path | None:
@@ -36,7 +76,14 @@ def _resolve_logo_path() -> Path | None:
     candidates.extend(
         [
             base_dir / 'static' / 'branding' / 'hydro_logo.png',
+            base_dir / 'static' / 'branding' / 'hydro_logo.jpg',
+            base_dir / 'static' / 'branding' / 'hydro_logo.jpeg',
             base_dir / 'static' / 'branding' / 'hydro_logo_vertical_black.png',
+            base_dir / 'static' / 'img' / 'hydro_logo.png',
+            base_dir / 'staticfiles' / 'branding' / 'hydro_logo.png',
+            base_dir / 'staticfiles' / 'branding' / 'hydro_logo.jpg',
+            base_dir / 'staticfiles' / 'branding' / 'hydro_logo.jpeg',
+            base_dir / 'hydro_logo.png',
             Path(
                 r'C:\Users\a824147\Downloads\hydro-logo-vertical\Hydro logo vertical\hydro_logo_vertical_black.png'
             ),
@@ -49,19 +96,57 @@ def _resolve_logo_path() -> Path | None:
                 return candidate
         except OSError:
             continue
+
+    static_candidates = [
+        'branding/hydro_logo.png',
+        'branding/hydro_logo.jpg',
+        'branding/hydro_logo.jpeg',
+        'branding/hydro_logo_vertical_black.png',
+        'img/hydro_logo.png',
+    ]
+    for static_name in static_candidates:
+        found_path = finders.find(static_name)
+        if not found_path:
+            continue
+        if isinstance(found_path, (list, tuple)):
+            found_path = next((p for p in found_path if p), '')
+        if found_path:
+            return Path(found_path)
+
     return None
 
 
-def _draw_pdf_header(pdf, page_width, page_height):
-    margin_x = 40
-    top_y = page_height - 40
-    header_bottom = page_height - 105
+def _resolve_logo_image_reader(image_reader_cls):
+    if image_reader_cls is None:
+        return None
+
+    logo_data = _decode_logo_base64()
+    if logo_data:
+        try:
+            return image_reader_cls(io.BytesIO(logo_data))
+        except Exception:
+            pass
 
     logo_path = _resolve_logo_path()
     if logo_path:
         try:
+            return image_reader_cls(str(logo_path))
+        except Exception:
+            pass
+    return None
+
+
+def _draw_pdf_header(pdf, page_width, page_height, image_reader_cls=None):
+    margin_x = 40
+    top_y = page_height - 40
+    header_bottom = page_height - 105
+
+    logo_rendered = False
+    logo_reader = _resolve_logo_image_reader(image_reader_cls)
+    if logo_reader is not None:
+        try:
             pdf.drawImage(
-                str(logo_path),
+                logo_reader,
                 margin_x,
                 page_height - 90,
                 width=72,
@@ -69,10 +154,14 @@ def _draw_pdf_header(pdf, page_width, page_height):
                 preserveAspectRatio=True,
                 mask='auto',
             )
+            logo_rendered = True
         except Exception:
             pass
 
-    text_x = margin_x + 86
+    text_x = margin_x + (86 if logo_rendered else 0)
+    if not logo_rendered:
+        pdf.setFont('Helvetica-Bold', 18)
+        pdf.drawString(margin_x, page_height - 66, 'Hydro')
     pdf.setFont('Helvetica-Bold', 14)
     pdf.drawString(text_x, top_y - 4, 'Hydro MPSA')
     pdf.setFont('Helvetica', 10)
@@ -123,7 +212,7 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         from reportlab.pdfgen import canvas
     except Exception:
         text = (
-            f'FORMULÁRIO OM {submission.om_number}\n'
+            f'FORMULARIO OM {submission.om_number}\n'
             f'EQUIPAMENTO: {submission.equipment.tag}\n'
             f'LOCAL: {submission.location_snapshot}\n'
             f'VALIDADO POR: {submission.validator_name}\n'
@@ -133,8 +222,14 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
     buffer = io.BytesIO()
     page_width, page_height = A4
     pdf = canvas.Canvas(buffer, pagesize=A4)
-    y = _draw_pdf_header(pdf, page_width, page_height)
+    y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
     line_height = 16
+
+    acceptance_limit = submission.acceptance_limit_pct
+    error_before_value = submission.acceptance_error_before_value
+    error_after_value = submission.acceptance_error_after_value
+    error_before_status = _acceptance_label_for_value(error_before_value, acceptance_limit)
+    error_after_status = _acceptance_label_for_value(error_after_value, acceptance_limit)
 
     lines = [
         'FOR 08.05.003 - Verificação e ajuste de balança dinâmica (MVP)',
@@ -143,7 +238,7 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
         f'Local: {submission.location_snapshot}',
         f'Executor: {submission.executor_name}',
-        f'Critério de aceitação (%): {_format_num(submission.acceptance_criterion_pct, 2)}',
+        f'Critério de aceitação (%): {_format_num(acceptance_limit, 1)}',
         f'Incerteza expandida (%): {_format_num(submission.expanded_uncertainty_pct, 2)}',
         '',
         f'T1/T2/T3: {_format_num(submission.t1, 2)} / {_format_num(submission.t2, 2)} / {_format_num(submission.t3, 2)}',
@@ -157,9 +252,12 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         f'B04 (IBM/L): {_format_num(submission.speed_characteristic_b04, 2)}',
         f'Ic (Q x V x 3,6): {_format_num(submission.calculated_flow_ic, 2)}',
         f'IL antes: {_format_num(submission.il_before, 2)}',
-        f'Erro antes (%): {_format_num(submission.error_before_pct, 2)}',
+        f'Erro antes (%): {_format_num(error_before_value, 2)}',
+        f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
         f'IL depois: {_format_num(submission.il_after, 2)}',
-        f'Erro depois (%): {_format_num(submission.error_after_pct, 2)}',
+        f'Erro depois (%): {_format_num(error_after_value, 2)}',
+        f'Status erro depois: {error_after_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
+        f'Status final (erro depois): {submission.acceptance_status_label}',
         f'Setor 1: {submission.sector or ""}',
         f'Setor 2: {submission.sector_2 or ""}',
         f'Setor 3: {submission.sector_3 or ""}',
@@ -168,25 +266,24 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
         f'Observação: {submission.observation or ""}',
         '',
-        f'Validado por: {submission.validator_name}',
-        f'Validado em: {submission.validated_at}',
+        f'Validado por: {submission.validator_name or "-"}',
+        f'Validado em: {_format_datetime(submission.validated_at)}',
     ]
 
     pdf.setFont('Helvetica', 10)
     for line in lines:
         if y < 60:
             pdf.showPage()
-            y = _draw_pdf_header(pdf, page_width, page_height)
+            y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
             pdf.setFont('Helvetica', 10)
         pdf.drawString(40, y, line[:120])
         y -= line_height
 
-    # Bloco de assinatura do validador.
     signature_reader = _decode_signature_image(submission.validator_signature_data, ImageReader)
     signature_block_height = 108
     if y < 60 + signature_block_height:
         pdf.showPage()
-        y = _draw_pdf_header(pdf, page_width, page_height)
+        y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
 
     pdf.setFont('Helvetica-Bold', 10)
     pdf.drawString(40, y, 'Assinatura do validador:')

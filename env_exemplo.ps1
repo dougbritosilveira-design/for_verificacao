@@ -15,7 +15,10 @@ $env:SAP_API_TOKEN = "seu_token_bearer"
 $env:SAP_VERIFY_SSL = "true"
 # Opcional: caminho absoluto do logo para cabecalho do PDF
 # Exemplo: C:\Users\a824147\Downloads\hydro-logo-vertical\Hydro logo vertical\hydro_logo_vertical_black.png
+# Exemplo PythonAnywhere: /home/douglasa90/for_verificacao/static/branding/hydro_logo.png
 $env:HYDRO_LOGO_PATH = ""
+# Opcional: logo em base64 (data URI ou base64 puro) para usar se nao houver arquivo local
+$env:HYDRO_LOGO_BASE64 = ""
 
 # Prazo dos equipamentos
 $env:EQUIPMENT_DUE_SOON_DAYS = "7"   # Quantos dias antes considerar "proximo do vencimento"
