@@ -32,6 +32,7 @@ $env:EMAIL_HOST_PASSWORD = "senha_smtp"
 $env:EMAIL_USE_TLS = "true"
 $env:EMAIL_USE_SSL = "false"
 $env:DEFAULT_FROM_EMAIL = "nao-responda@seudominio.com"
+$env:PORTAL_NOTIFY_EMAIL_ENABLED = "false"  # true para enviar e-mails junto das notificacoes do portal
 
 Write-Host "Variaveis carregadas no PowerShell atual." -ForegroundColor Green
 Write-Host "Agora rode: python manage.py runserver" -ForegroundColor Cyan

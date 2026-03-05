@@ -133,7 +133,25 @@ class TechnicalForm(forms.ModelForm):
 
 
 class ValidationForm(forms.Form):
+    class DecisionChoices:
+        APPROVE = 'approve'
+        REWORK = 'rework'
+        CHOICES = (
+            (APPROVE, 'Aprovar formulário'),
+            (REWORK, 'Solicitar refação'),
+        )
+
     validator_name = forms.CharField(label='Responsável pela validação', max_length=120)
+    decision = forms.ChoiceField(
+        label='Decisão da validação',
+        choices=DecisionChoices.CHOICES,
+        initial=DecisionChoices.APPROVE,
+    )
+    feedback = forms.CharField(
+        label='Observação do validador',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Obrigatório quando solicitar refação.'}),
+    )
     signature_data = forms.CharField(widget=forms.HiddenInput())
     confirm = forms.BooleanField(label='Confirmo a validação do formulário')
 
@@ -142,3 +160,11 @@ class ValidationForm(forms.Form):
         if not value or not value.startswith('data:image/png;base64,'):
             raise forms.ValidationError('A assinatura é obrigatória.')
         return value
+
+    def clean(self):
+        cleaned = super().clean()
+        decision = cleaned.get('decision')
+        feedback = (cleaned.get('feedback') or '').strip()
+        if decision == self.DecisionChoices.REWORK and not feedback:
+            self.add_error('feedback', 'Informe o motivo da refação.')
+        return cleaned

@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Notificações{% endblock %}
+{% block content %}
+<h2>Notificações</h2>
+<form method="post" style="margin-bottom:16px;">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="mark_all_read">
+  <button type="submit" class="secondary">Marcar todas como lidas</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Tipo</th>
+      <th>Título</th>
+      <th>Mensagem</th>
+      <th>Status</th>
+      <th>Ação</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for n in notifications %}
+      <tr>
+        <td>{{ n.created_at|date:"d/m/Y H:i" }}</td>
+        <td>{{ n.get_category_display }}</td>
+        <td>{{ n.title }}</td>
+        <td style="max-width:520px; white-space:pre-line;">{{ n.message }}</td>
+        <td>
+          {% if n.is_read %}
+            <span class="status-chip">Lida</span>
+          {% else %}
+            <span class="badge warn">Não lida</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if n.submission %}
+            <a href="{% url 'inspecoes:detail' n.submission.pk %}">Abrir formulário</a>
+          {% elif n.equipment %}
+            <a href="{% url 'inspecoes:history' %}?tag={{ n.equipment.tag }}">Ver histórico</a>
+          {% endif %}
+          {% if not n.is_read %}
+            <form method="post" style="margin-top:6px;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="mark_read">
+              <input type="hidden" name="notification_id" value="{{ n.pk }}">
+              <button type="submit" class="secondary">Marcar lida</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="6">Nenhuma notificação encontrada.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -13,4 +13,5 @@ urlpatterns = [
     path('formularios/<int:pk>/', views.detail_view, name='detail'),
     path('historico/', views.history_view, name='history'),
     path('equipamentos/prazos/', views.equipment_deadlines_view, name='equipment-deadlines'),
+    path('notificacoes/', views.notifications_view, name='notifications'),
 ]

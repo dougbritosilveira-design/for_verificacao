@@ -8,6 +8,13 @@
 <p><strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><strong>Data da visita:</strong> {{ submission.execution_date }}</p>
 <p><strong>Formulário preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
+<p><strong>Criado por:</strong>
+  {% if submission.created_by %}
+    {{ submission.created_by.get_full_name|default:submission.created_by.username }}
+  {% else %}
+    -
+  {% endif %}
+</p>
 <p><strong>Status:</strong> {{ submission.get_status_display }}</p>
 <p><strong>Status SAP:</strong> {{ submission.get_sap_status_display }}</p>
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
@@ -20,18 +27,23 @@
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
 <p><strong>Executor:</strong> {{ submission.executor_name }}</p>
 <p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
-<p><strong>Validado em:</strong> {{ submission.validated_at|default:'-' }}</p>
+<p><strong>Validado em:</strong> {{ submission.validated_at|date:"d/m/Y H:i"|default:'-' }}</p>
+{% if submission.validation_feedback %}
+  <p><strong>Observação da validação:</strong> {{ submission.validation_feedback }}</p>
+{% endif %}
 
 <p>
-  {% if portal_user_can_edit_forms and portal_can_view_forms %}
+  {% if portal_user_can_edit_forms and portal_can_view_forms and submission.status != 'approved' and submission.status != 'sent_to_sap' %}
     <a href="{% url 'inspecoes:form-edit' submission.pk %}">Editar</a> |
+  {% endif %}
+  {% if portal_user_can_validate_forms and portal_can_view_forms %}
     <a href="{% url 'inspecoes:form-validate' submission.pk %}">Validar</a> |
   {% endif %}
   <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
   <a href="{% url 'inspecoes:history' %}">Voltar ao histórico</a>
 </p>
 
-{% if portal_user_can_edit_forms and portal_can_view_forms %}
+{% if portal_user_can_send_sap and portal_can_view_forms %}
   {% if submission.status == 'approved' or submission.status == 'sent_to_sap' %}
     <form method="post" action="{% url 'inspecoes:form-send-sap' submission.pk %}" style="margin-bottom:16px;">
       {% csrf_token %}
@@ -46,10 +58,6 @@
   {% else %}
     <p><em>Valide o formulário para habilitar o envio ao SAP.</em></p>
   {% endif %}
-{% elif not portal_user_can_edit_forms %}
-  <p><em>Usuário em modo somente leitura: envio para SAP desabilitado.</em></p>
-{% else %}
-  <p><em>Seu usuário não tem acesso à tela de formulários.</em></p>
 {% endif %}
 
 <hr>
@@ -62,7 +70,7 @@
   <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
   <li>IL depois: {{ submission.il_after|floatformat:2|localize|default:'-' }}</li>
   <li>Q (P/D): {{ submission.loading_q|floatformat:2|localize|default:'-' }}</li>
-  <li>V (velocidade da correia): {{ submission.belt_speed_v|floatformat:3|localize|default:'-' }}</li>
+  <li>V (velocidade da correia): {{ submission.belt_speed_v|floatformat:4|localize|default:'-' }}</li>
   <li>L (comprimento da correia): {{ submission.belt_length|floatformat:2|localize|default:'-' }}</li>
   <li>B04 (IBM/L): {{ submission.speed_characteristic_b04|floatformat:2|localize|default:'-' }}</li>
   <li>Ic informado: {{ submission.calculated_flow_ic|floatformat:2|localize|default:'-' }}</li>

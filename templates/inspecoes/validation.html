@@ -17,7 +17,7 @@
 {% endblock %}
 {% block content %}
 <h2>3. Validação e assinatura</h2>
-<p>Ao validar, o sistema gera o PDF para download. O envio ao SAP fica disponível separadamente no detalhe do formulário.</p>
+<p>Ao aprovar, o sistema gera o PDF para download. O envio ao SAP fica disponível separadamente no detalhe do formulário.</p>
 <ul>
   <li>Equipamento: {{ submission.equipment.tag }} - {{ submission.equipment.description }}</li>
   <li>Local: {{ submission.location_snapshot }}</li>
@@ -47,6 +47,8 @@
 <form method="post" id="validation-form">
   {% csrf_token %}
   <p>{{ form.validator_name.label_tag }} {{ form.validator_name }}</p>
+  <p>{{ form.decision.label_tag }} {{ form.decision }}</p>
+  <p>{{ form.feedback.label_tag }} {{ form.feedback }}</p>
   {{ form.signature_data }}
   <p><strong>Assinatura</strong></p>
   <canvas id="signature-pad" width="700" height="220"></canvas>
@@ -55,9 +57,7 @@
   </div>
   <p>{{ form.confirm }} {{ form.confirm.label }}</p>
   {% if form.errors %}<div style="color:#a12a2a;">{{ form.errors }}</div>{% endif %}
-  <button type="submit" {% if not submission.acceptance_ok %}disabled title="Erro final fora do critério de aceitação"{% endif %}>
-    Validar e baixar PDF
-  </button>
+  <button type="submit">Salvar validação</button>
 </form>
 <script>
 (function() {

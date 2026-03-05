@@ -117,7 +117,7 @@
         </td>
         <td class="col-acoes">
           <div class="acoes-wrap">
-            {% if portal_user_can_edit_forms and portal_can_view_forms %}
+            {% if portal_user_can_create_forms and portal_can_view_forms %}
               <a href="{% url 'inspecoes:selection' %}?equipment={{ e.pk }}">Novo formulário</a>
             {% endif %}
             <a href="{% url 'inspecoes:history' %}?tag={{ e.tag }}">Histórico</a>
@@ -131,7 +131,9 @@
 </table>
 </div>
 
-<p style="margin-top:16px;">
-  <strong>Configuração de notificação:</strong> cadastre os dias e e-mails no <a href="/admin/inspecoes/equipment/">Admin &gt; Equipment</a>.
-</p>
+{% if portal_user_can_manage_admin %}
+  <p style="margin-top:16px;">
+    <strong>Configuração de notificação:</strong> cadastre os dias e e-mails no <a href="/admin/inspecoes/equipment/">Admin &gt; Equipment</a>.
+  </p>
+{% endif %}
 {% endblock %}

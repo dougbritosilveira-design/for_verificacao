@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
-from django.db.models import Q
+from django.contrib.auth import get_user_model
 
-from .models import Equipment, FormSubmission, PortalUserAccess
+from .models import Equipment, FormSubmission, PortalNotification, PortalUserAccess
 
 
 @admin.register(Equipment)
@@ -53,42 +53,27 @@ class EquipmentAdmin(admin.ModelAdmin):
 
 @admin.register(FormSubmission)
 class FormSubmissionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'equipment', 'om_number', 'status', 'sap_status', 'created_at')
+    list_display = (
+        'id',
+        'equipment',
+        'om_number',
+        'created_by',
+        'status',
+        'sap_status',
+        'created_at',
+    )
     list_filter = ('status', 'sap_status', 'created_at')
-    search_fields = ('om_number', 'equipment__tag', 'equipment__description')
+    search_fields = ('om_number', 'equipment__tag', 'equipment__description', 'executor_name')
 
 
-class AccessProfileFilter(admin.SimpleListFilter):
-    title = 'Perfil de acesso'
-    parameter_name = 'perfil_acesso'
-
-    def lookups(self, request, model_admin):
-        return [
-            ('editor', 'Editor'),
-            ('readonly', 'Somente leitura'),
-            ('no_access', 'Sem acesso'),
-        ]
-
-    def queryset(self, request, queryset):
-        value = self.value()
-        if value == 'editor':
-            return queryset.filter(Q(can_edit_forms=True) | Q(can_edit=True) | Q(user__is_superuser=True))
-        if value == 'readonly':
-            return queryset.filter(
-                Q(can_edit_forms=False),
-                Q(can_edit=False),
-                Q(user__is_superuser=False),
-            ).filter(
-                Q(can_view_forms=True) | Q(can_view_history=True) | Q(can_view_deadlines=True)
-            )
-        if value == 'no_access':
-            return queryset.filter(
-                can_view_forms=False,
-                can_view_history=False,
-                can_view_deadlines=False,
-                user__is_superuser=False,
-            )
-        return queryset
+@admin.register(PortalNotification)
+class PortalNotificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'category', 'title', 'is_read', 'created_at', 'email_sent_at')
+    list_filter = ('category', 'is_read', 'created_at')
+    search_fields = ('title', 'message', 'user__username', 'user__first_name', 'user__last_name')
+    autocomplete_fields = ('user', 'submission', 'equipment')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'updated_at', 'email_sent_at')
 
 
 @admin.register(PortalUserAccess)
@@ -97,33 +82,30 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
         'username_admin',
         'full_name_admin',
         'registration_display_admin',
-        'can_view_forms',
-        'can_view_history',
-        'can_view_deadlines',
-        'access_label_admin',
+        'role',
+        'can_create_admin',
+        'can_validate_admin',
+        'can_manage_admin',
         'updated_at',
     )
     search_fields = ('user__username', 'user__first_name', 'user__last_name', 'registration')
-    list_filter = (
-        AccessProfileFilter,
-        'can_view_forms',
-        'can_view_history',
-        'can_view_deadlines',
-        'updated_at',
-    )
+    list_filter = ('role', 'updated_at')
     ordering = ('user__username',)
     list_per_page = 50
     autocomplete_fields = ('user',)
-    actions = ('mark_as_editor', 'mark_as_readonly')
+    actions = (
+        'set_role_technician',
+        'set_role_validator',
+        'set_role_viewer',
+        'set_role_master',
+    )
     fields = (
         'user',
         'registration',
-        'can_view_forms',
-        'can_view_history',
-        'can_view_deadlines',
-        'can_edit_forms',
-        'can_edit',
+        'role',
+        'legacy_flags_info',
     )
+    readonly_fields = ('legacy_flags_info',)
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('user')
@@ -141,38 +123,55 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
     def registration_display_admin(self, obj):
         return obj.registration_display
 
-    @admin.display(description='Perfil')
-    def access_label_admin(self, obj):
-        return obj.access_label
+    @admin.display(description='Pode criar/editar')
+    def can_create_admin(self, obj):
+        return 'Sim' if obj.can_create_forms_portal else 'Não'
 
-    @admin.action(description='Definir como Editor (ação em massa)')
-    def mark_as_editor(self, request, queryset):
-        updated = queryset.exclude(can_edit_forms=True, can_edit=True).update(
-            can_edit_forms=True,
-            can_edit=True,
-        )
-        self.message_user(
-            request,
-            f'{updated} usuário(s) atualizado(s) para Editor.',
-            level=messages.SUCCESS,
+    @admin.display(description='Pode validar/SAP')
+    def can_validate_admin(self, obj):
+        return 'Sim' if (obj.can_validate_forms_portal or obj.can_send_sap_portal) else 'Não'
+
+    @admin.display(description='Master/Admin')
+    def can_manage_admin(self, obj):
+        return 'Sim' if obj.can_manage_admin_portal else 'Não'
+
+    @admin.display(description='Flags legadas')
+    def legacy_flags_info(self, obj):
+        return (
+            'Flags legadas permanecem no banco apenas para compatibilidade: '
+            f'can_view_forms={obj.can_view_forms}, '
+            f'can_view_history={obj.can_view_history}, '
+            f'can_view_deadlines={obj.can_view_deadlines}, '
+            f'can_edit_forms={obj.can_edit_forms}, '
+            f'can_edit={obj.can_edit}.'
         )
 
-    @admin.action(description='Definir como Somente leitura (ação em massa)')
-    def mark_as_readonly(self, request, queryset):
-        editable_queryset = queryset.exclude(user__is_superuser=True)
-        updated = editable_queryset.exclude(can_edit_forms=False, can_edit=False).update(
-            can_edit_forms=False,
-            can_edit=False,
-        )
-        skipped_superusers = queryset.filter(user__is_superuser=True).count()
-        self.message_user(
-            request,
-            f'{updated} usuário(s) atualizado(s) para Somente leitura.',
-            level=messages.SUCCESS,
-        )
-        if skipped_superusers:
-            self.message_user(
-                request,
-                f'{skipped_superusers} superusuário(s) não foram alterados.',
-                level=messages.WARNING,
+    def _bulk_set_role(self, request, queryset, role, label):
+        updated = queryset.exclude(role=role).update(role=role)
+        if role == PortalUserAccess.Role.MASTER:
+            user_ids = list(queryset.values_list('user_id', flat=True))
+            get_user_model().objects.filter(pk__in=user_ids).update(
+                is_staff=True,
+                is_superuser=True,
             )
+        self.message_user(
+            request,
+            f'{updated} usuário(s) atualizado(s) para perfil {label}.',
+            level=messages.SUCCESS,
+        )
+
+    @admin.action(description='Definir perfil: Técnico')
+    def set_role_technician(self, request, queryset):
+        self._bulk_set_role(request, queryset, PortalUserAccess.Role.TECHNICIAN, 'Técnico')
+
+    @admin.action(description='Definir perfil: Validador')
+    def set_role_validator(self, request, queryset):
+        self._bulk_set_role(request, queryset, PortalUserAccess.Role.VALIDATOR, 'Validador')
+
+    @admin.action(description='Definir perfil: Visualizador')
+    def set_role_viewer(self, request, queryset):
+        self._bulk_set_role(request, queryset, PortalUserAccess.Role.VIEWER, 'Visualizador')
+
+    @admin.action(description='Definir perfil: Master')
+    def set_role_master(self, request, queryset):
+        self._bulk_set_role(request, queryset, PortalUserAccess.Role.MASTER, 'Master')

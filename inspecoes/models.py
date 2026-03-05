@@ -5,13 +5,20 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.functional import cached_property
 from django.utils import timezone
+from django.utils.functional import cached_property
 
 
 class PortalUserAccess(models.Model):
+    class Role(models.TextChoices):
+        TECHNICIAN = 'technician', 'Técnico'
+        VALIDATOR = 'validator', 'Validador'
+        VIEWER = 'viewer', 'Visualizador'
+        MASTER = 'master', 'Master'
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -24,30 +31,37 @@ class PortalUserAccess(models.Model):
         blank=True,
         help_text='Se vazio, usa o username do usuário.',
     )
+    role = models.CharField(
+        'Perfil',
+        max_length=20,
+        choices=Role.choices,
+        default=Role.VIEWER,
+        help_text='Perfil operacional no portal: Técnico, Validador, Visualizador ou Master.',
+    )
     can_view_forms = models.BooleanField(
-        'Acessar tela FormulÃ¡rios',
+        'Acessar tela Formulários (legado)',
         default=True,
-        help_text='Permite acessar formulÃ¡rios (detalhe, PDF e fluxo de formulÃ¡rio).',
+        help_text='Compatibilidade com versões anteriores.',
     )
     can_view_history = models.BooleanField(
-        'Acessar tela HistÃ³rico',
+        'Acessar tela Histórico (legado)',
         default=True,
-        help_text='Permite acessar a tela de histÃ³rico de formulÃ¡rios.',
+        help_text='Compatibilidade com versões anteriores.',
     )
     can_view_deadlines = models.BooleanField(
-        'Acessar tela Prazos',
+        'Acessar tela Prazos (legado)',
         default=True,
-        help_text='Permite acessar a tela de prazos dos equipamentos.',
+        help_text='Compatibilidade com versões anteriores.',
     )
     can_edit_forms = models.BooleanField(
-        'Editar formulÃ¡rios',
+        'Editar formulários (legado)',
         default=False,
-        help_text='Permite criar, editar, validar formulÃ¡rios e enviar para SAP.',
+        help_text='Compatibilidade com versões anteriores.',
     )
     can_edit = models.BooleanField(
         'Pode editar (legado)',
         default=False,
-        help_text='Compatibilidade com versÃµes anteriores.',
+        help_text='Compatibilidade com versões anteriores.',
     )
     updated_at = models.DateTimeField('Atualizado em', auto_now=True)
 
@@ -64,38 +78,83 @@ class PortalUserAccess(models.Model):
         return self.registration or self.user.username
 
     @property
+    def is_master_portal(self):
+        return self.role == self.Role.MASTER
+
+    @property
     def can_view_forms_portal(self):
-        return self.user.is_superuser or self.can_view_forms
+        if self.is_master_portal:
+            return True
+        if self.role in {self.Role.TECHNICIAN, self.Role.VALIDATOR, self.Role.VIEWER}:
+            return True
+        return self.can_view_forms
 
     @property
     def can_view_history_portal(self):
-        return self.user.is_superuser or self.can_view_history
+        if self.is_master_portal:
+            return True
+        if self.role in {self.Role.TECHNICIAN, self.Role.VALIDATOR, self.Role.VIEWER}:
+            return True
+        return self.can_view_history
 
     @property
     def can_view_deadlines_portal(self):
-        return self.user.is_superuser or self.can_view_deadlines
+        if self.is_master_portal:
+            return True
+        if self.role in {self.Role.TECHNICIAN, self.Role.VALIDATOR, self.Role.VIEWER}:
+            return True
+        return self.can_view_deadlines
+
+    @property
+    def can_create_forms_portal(self):
+        return self.is_master_portal or self.role == self.Role.TECHNICIAN or self.can_edit_forms or self.can_edit
 
     @property
     def can_edit_forms_portal(self):
-        return self.user.is_superuser or self.can_edit_forms or self.can_edit
+        return self.can_create_forms_portal
+
+    @property
+    def can_validate_forms_portal(self):
+        return self.is_master_portal or self.role == self.Role.VALIDATOR
+
+    @property
+    def can_send_sap_portal(self):
+        return self.is_master_portal or self.role == self.Role.VALIDATOR
+
+    @property
+    def can_view_notifications_portal(self):
+        return self.is_master_portal or self.role in {
+            self.Role.TECHNICIAN,
+            self.Role.VALIDATOR,
+            self.Role.VIEWER,
+        }
+
+    @property
+    def can_receive_deadline_notifications_portal(self):
+        return self.is_master_portal or self.role == self.Role.TECHNICIAN
+
+    @property
+    def can_manage_admin_portal(self):
+        return self.is_master_portal
 
     @property
     def can_edit_portal(self):
-        return self.can_edit_forms_portal
+        return self.can_edit_forms_portal or self.can_validate_forms_portal
 
     @property
     def access_label(self):
-        if self.can_edit_portal:
-            return 'Editor'
-        if self.can_view_forms_portal or self.can_view_history_portal or self.can_view_deadlines_portal:
-            return 'Somente leitura'
-        return 'Sem acesso'
+        if self.is_master_portal:
+            return self.Role.MASTER.label
+        return dict(self.Role.choices).get(self.role, 'Sem acesso')
 
     @classmethod
     def for_user(cls, user):
         if not user or not user.is_authenticated:
             return None
-        defaults = {'registration': user.username}
+        defaults = {
+            'registration': user.username,
+            'role': cls.Role.MASTER if user.is_superuser else cls.Role.VIEWER,
+        }
         access, _ = cls.objects.get_or_create(user=user, defaults=defaults)
         return access
 
@@ -103,6 +162,21 @@ class PortalUserAccess(models.Model):
         if not self.registration and self.user_id:
             self.registration = self.user.username
         super().save(*args, **kwargs)
+        self._sync_master_to_superuser()
+
+    def _sync_master_to_superuser(self):
+        if not self.user_id:
+            return
+        if self.role != self.Role.MASTER:
+            return
+        user_model = type(self.user)
+        user_model.objects.filter(pk=self.user_id).exclude(
+            is_superuser=True,
+            is_staff=True,
+        ).update(
+            is_superuser=True,
+            is_staff=True,
+        )
 
 
 class Equipment(models.Model):
@@ -260,6 +334,7 @@ class FormSubmission(models.Model):
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
         PENDING_VALIDATION = 'pending_validation', 'Pendente validação'
+        REWORK_REQUIRED = 'rework_required', 'Refação solicitada'
         APPROVED = 'approved', 'Aprovado'
         SENT_TO_SAP = 'sent_to_sap', 'Enviado SAP'
 
@@ -269,6 +344,14 @@ class FormSubmission(models.Model):
         FAILED = 'failed', 'Falhou'
 
     equipment = models.ForeignKey(Equipment, on_delete=models.PROTECT, related_name='submissions')
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_submissions',
+        verbose_name='Criado por',
+    )
     location_snapshot = models.CharField(max_length=255)
     om_number = models.CharField('Nº OM', max_length=50)
     execution_date = models.DateField(default=timezone.localdate)
@@ -338,6 +421,7 @@ class FormSubmission(models.Model):
 
     validator_name = models.CharField(max_length=120, blank=True)
     validator_signature_data = models.TextField(blank=True)
+    validation_feedback = models.TextField(blank=True)
     validated_at = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.DRAFT)
@@ -486,7 +570,6 @@ class FormSubmission(models.Model):
         )
 
     def save(self, *args, **kwargs):
-        # Regras automáticas baseadas no procedimento PRO 08.03.014 / FOR 08.05.003.
         if self.equipment_id:
             if self.acceptance_criterion_pct is None:
                 self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
@@ -502,10 +585,70 @@ class FormSubmission(models.Model):
         super().save(*args, **kwargs)
 
 
+class PortalNotification(models.Model):
+    class Category(models.TextChoices):
+        FORM_PENDING_VALIDATION = 'form_pending_validation', 'Formulário pendente validação'
+        FORM_APPROVED = 'form_approved', 'Formulário aprovado'
+        FORM_REWORK = 'form_rework', 'Formulário para refação'
+        DEADLINE_ALERT = 'deadline_alert', 'Alerta de prazo'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='portal_notifications',
+        verbose_name='Usuário',
+    )
+    category = models.CharField('Categoria', max_length=40, choices=Category.choices)
+    title = models.CharField('Título', max_length=200)
+    message = models.TextField('Mensagem')
+    submission = models.ForeignKey(
+        FormSubmission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notifications',
+        verbose_name='Formulário',
+    )
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notifications',
+        verbose_name='Equipamento',
+    )
+    dedupe_key = models.CharField(
+        'Chave de deduplicação',
+        max_length=180,
+        blank=True,
+        default='',
+    )
+    is_read = models.BooleanField('Lida', default=False)
+    email_sent_at = models.DateTimeField('E-mail enviado em', null=True, blank=True)
+    created_at = models.DateTimeField('Criada em', auto_now_add=True)
+    updated_at = models.DateTimeField('Atualizada em', auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'dedupe_key'],
+                condition=~Q(dedupe_key=''),
+                name='unique_notification_dedupe_per_user',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.title}'
+
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def ensure_portal_access_for_new_user(sender, instance, created, **kwargs):
     if created:
         PortalUserAccess.objects.get_or_create(
             user=instance,
-            defaults={'registration': instance.username},
+            defaults={
+                'registration': instance.username,
+                'role': PortalUserAccess.Role.MASTER if instance.is_superuser else PortalUserAccess.Role.VIEWER,
+            },
         )
