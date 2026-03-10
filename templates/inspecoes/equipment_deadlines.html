@@ -102,8 +102,8 @@
         <td class="col-desc">{{ e.description }}</td>
         <td class="col-local">{{ e.location }}</td>
         <td class="col-periodicidade">{{ e.revisit_interval_days|default:'-' }}</td>
-        <td class="col-criterio">{{ e.acceptance_criterion_pct|default:'-' }}</td>
-        <td class="col-incerteza">{{ e.expanded_uncertainty_pct|default:'-' }}</td>
+        <td class="col-criterio">{{ e.acceptance_criterion_pct|floatformat:2|default:'-' }}</td>
+        <td class="col-incerteza">{{ e.expanded_uncertainty_pct|floatformat:3|default:'-' }}</td>
         <td class="col-data">{{ e.last_visit_date|default:'-' }}</td>
         <td class="col-data">{{ e.next_visit_due_date|default:'-' }}</td>
         <td class="col-status"><span class="badge {{ e.deadline_badge_class }}">{{ e.deadline_status_label }}</span></td>

@@ -1,6 +1,6 @@
 import re
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 from django.conf import settings
 from django.core.validators import MinValueValidator
@@ -330,6 +330,9 @@ class Equipment(models.Model):
 
 class FormSubmission(models.Model):
     DEFAULT_ACCEPTANCE_LIMIT_PCT = Decimal('1.0')
+    DEFAULT_UNCERTAINTY_TOTALIZER_RESOLUTION = Decimal('0.001')
+    DEFAULT_UNCERTAINTY_MEASUREMENT_DURATION_MIN = Decimal('5')
+    DEFAULT_UNCERTAINTY_COVERAGE_FACTOR = Decimal('2')
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -365,6 +368,13 @@ class FormSubmission(models.Model):
     expanded_uncertainty_pct = models.DecimalField(
         'Incerteza expandida (%)',
         max_digits=6,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
+    expanded_uncertainty_calc_pct = models.DecimalField(
+        'Incerteza expandida calculada (%)',
+        max_digits=12,
         decimal_places=3,
         null=True,
         blank=True,
@@ -447,6 +457,26 @@ class FormSubmission(models.Model):
             return None
         return sum(valid) / Decimal(len(valid))
 
+    @staticmethod
+    def _to_decimal(value):
+        if value is None:
+            return None
+        if isinstance(value, Decimal):
+            return value
+        try:
+            return Decimal(str(value))
+        except Exception:
+            return None
+
+    @classmethod
+    def _sqrt(cls, value):
+        decimal_value = cls._to_decimal(value)
+        if decimal_value is None or decimal_value < 0:
+            return None
+        with localcontext() as context:
+            context.prec = 28
+            return decimal_value.sqrt()
+
     @property
     def tm(self):
         return self._avg(self.t1, self.t2, self.t3)
@@ -520,6 +550,125 @@ class FormSubmission(models.Model):
         return self._error_percent(self.il_after, self.calculated_flow_ic_auto)
 
     @property
+    def uncertainty_totalizer_resolution_r(self):
+        return self.DEFAULT_UNCERTAINTY_TOTALIZER_RESOLUTION
+
+    @property
+    def uncertainty_measurement_duration_min(self):
+        return self.DEFAULT_UNCERTAINTY_MEASUREMENT_DURATION_MIN
+
+    @property
+    def uncertainty_coverage_factor_k(self):
+        return self.DEFAULT_UNCERTAINTY_COVERAGE_FACTOR
+
+    @property
+    def u_t_mean_auto(self):
+        values = [v for v in [self.m1, self.m2, self.m3] if v is not None]
+        count = len(values)
+        if count < 2:
+            return None
+        mean = sum(values) / Decimal(count)
+        sum_square = sum((value - mean) * (value - mean) for value in values)
+        variance = sum_square / Decimal(count - 1)
+        std_sample = self._sqrt(variance)
+        sqrt_count = self._sqrt(Decimal(count))
+        if std_sample is None or sqrt_count in (None, 0):
+            return None
+        return std_sample / sqrt_count
+
+    @property
+    def u_ic_auto(self):
+        ic_value = self.calculated_flow_ic_auto
+        t_mean = self.md
+        u_t = self.u_t_mean_auto
+        if ic_value is None or t_mean in (None, 0) or u_t is None:
+            return None
+        return abs(ic_value) * (u_t / t_mean)
+
+    @property
+    def u_il_auto(self):
+        duration = self.uncertainty_measurement_duration_min
+        resolution = self.uncertainty_totalizer_resolution_r
+        sqrt_twelve = self._sqrt(Decimal('12'))
+        sqrt_two = self._sqrt(Decimal('2'))
+        if duration in (None, 0) or resolution is None or sqrt_twelve in (None, 0) or sqrt_two is None:
+            return None
+        u_t = resolution / sqrt_twelve
+        u_delta_t = sqrt_two * u_t
+        factor = Decimal('60') / duration
+        return abs(factor * u_delta_t)
+
+    def _expanded_uncertainty_for_il(self, il_value):
+        ic_value = self.calculated_flow_ic_auto
+        u_il = self.u_il_auto
+        u_ic = self.u_ic_auto
+        coverage_factor = self.uncertainty_coverage_factor_k
+        if il_value is None or ic_value in (None, 0) or u_il is None or u_ic is None or coverage_factor is None:
+            return None
+        ic_decimal = self._to_decimal(ic_value)
+        il_decimal = self._to_decimal(il_value)
+        if ic_decimal in (None, 0) or il_decimal is None:
+            return None
+        term_1 = (Decimal('100') / ic_decimal) * u_il
+        term_2 = (Decimal('100') * il_decimal / (ic_decimal * ic_decimal)) * u_ic
+        combined_uncertainty = self._sqrt((term_1 * term_1) + (term_2 * term_2))
+        if combined_uncertainty is None:
+            return None
+        return abs(coverage_factor * combined_uncertainty)
+
+    @property
+    def expanded_uncertainty_before_pct_auto(self):
+        return self._expanded_uncertainty_for_il(self.il_before)
+
+    @property
+    def expanded_uncertainty_after_pct_auto(self):
+        return self._expanded_uncertainty_for_il(self.il_after)
+
+    @property
+    def expanded_uncertainty_calc_pct_auto(self):
+        return self.expanded_uncertainty_after_pct_auto
+
+    @property
+    def expanded_uncertainty_calc_value(self):
+        if self.expanded_uncertainty_calc_pct is not None:
+            return self.expanded_uncertainty_calc_pct
+        return self.expanded_uncertainty_calc_pct_auto
+
+    @property
+    def expanded_uncertainty_is_evaluable(self):
+        return self.expanded_uncertainty_calc_value is not None and self.expanded_uncertainty_pct is not None
+
+    @property
+    def expanded_uncertainty_ok(self):
+        if not self.expanded_uncertainty_is_evaluable:
+            return False
+        return self.expanded_uncertainty_calc_value <= self.expanded_uncertainty_pct
+
+    @property
+    def expanded_uncertainty_status_label(self):
+        if self.expanded_uncertainty_calc_value is None:
+            return 'Pendente dados'
+        if self.expanded_uncertainty_pct is None:
+            return 'Sem referencia cadastrada'
+        return 'Aprovado' if self.expanded_uncertainty_ok else 'Reprovado'
+
+    @property
+    def expanded_uncertainty_status_detail(self):
+        if self.expanded_uncertainty_calc_value is None:
+            return 'Preencha as medicoes para calcular a incerteza expandida.'
+        if self.expanded_uncertainty_pct is None:
+            return 'Cadastre a incerteza expandida de referencia no equipamento para comparar.'
+        if self.expanded_uncertainty_ok:
+            return (
+                f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.3f}%) '
+                f'dentro do limite cadastrado ({self.expanded_uncertainty_pct:.3f}%).'
+            )
+        return (
+            f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.3f}%) '
+            f'acima do limite cadastrado ({self.expanded_uncertainty_pct:.3f}%).'
+        )
+
+    @property
     def acceptance_limit_pct(self):
         if self.acceptance_criterion_pct is not None:
             return self.acceptance_criterion_pct
@@ -566,7 +715,7 @@ class FormSubmission(models.Model):
             return ''
         return (
             f'Validação final bloqueada: erro final fora do critério de aceitação '
-            f'(<= {self.acceptance_limit_pct}%). Valor atual: {self.acceptance_error_after_value:.3f}%.'
+            f'(<= {self.acceptance_limit_pct:.2f}%). Valor atual: {self.acceptance_error_after_value:.2f}%.'
         )
 
     def save(self, *args, **kwargs):
@@ -582,6 +731,7 @@ class FormSubmission(models.Model):
         self.calculated_flow_ic = self.calculated_flow_ic_auto
         self.error_before_pct = self.error_before_pct_auto
         self.error_after_pct = self.error_after_pct_auto
+        self.expanded_uncertainty_calc_pct = self.expanded_uncertainty_calc_pct_auto
         super().save(*args, **kwargs)
 
 

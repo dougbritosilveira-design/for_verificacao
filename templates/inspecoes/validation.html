@@ -22,8 +22,10 @@
   <li>Equipamento: {{ submission.equipment.tag }} - {{ submission.equipment.description }}</li>
   <li>Local: {{ submission.location_snapshot }}</li>
   <li>Status atual: {{ submission.get_status_display }}</li>
-  <li>Critério de aceitação: {{ submission.acceptance_limit_pct }}%</li>
-  <li>Incerteza expandida: {{ submission.expanded_uncertainty_pct|default:'-' }}%</li>
+  <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:2 }}%</li>
+  <li>Incerteza expandida cadastrada: {{ submission.expanded_uncertainty_pct|floatformat:3|default:'-' }}%</li>
+  <li>Incerteza expandida calculada: {{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}%</li>
+  <li>Status da incerteza expandida: {{ submission.expanded_uncertainty_status_label }}</li>
 </ul>
 <div class="criteria-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p>
@@ -33,10 +35,10 @@
     </span>
   </p>
   <div class="criteria-grid">
-    <div><strong>Limite:</strong> erro final <= {{ submission.acceptance_limit_pct }}%</div>
-    <div><strong>Erro antes (%):</strong> {{ submission.acceptance_error_before_value|default:'-' }}</div>
-    <div><strong>Erro depois (%):</strong> {{ submission.acceptance_error_after_value|default:'-' }}</div>
-    <div><strong>Valor absoluto do erro final:</strong> {{ submission.acceptance_error_after_abs|default:'-' }}</div>
+    <div><strong>Limite:</strong> erro final <= {{ submission.acceptance_limit_pct|floatformat:2 }}%</div>
+    <div><strong>Erro antes (%):</strong> {{ submission.acceptance_error_before_value|floatformat:2|default:'-' }}</div>
+    <div><strong>Erro depois (%):</strong> {{ submission.acceptance_error_after_value|floatformat:2|default:'-' }}</div>
+    <div><strong>Valor absoluto do erro final:</strong> {{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}</div>
   </div>
   {% if not submission.acceptance_ok %}
     <p style="margin-top:8px; color:#8a1d1d;">

@@ -20,8 +20,15 @@
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
 <p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|default:'-' }}</p>
-<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}%</p>
-<p><strong>Incerteza expandida (formulário):</strong> {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>Incerteza expandida cadastrada:</strong> {{ submission.expanded_uncertainty_pct|floatformat:3|localize|default:'-' }}%</p>
+<p><strong>Incerteza expandida calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}%</p>
+<p><strong>Status da incerteza expandida:</strong>
+  <span class="badge {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
+    {{ submission.expanded_uncertainty_status_label }}
+  </span>
+  ({{ submission.expanded_uncertainty_status_detail }})
+</p>
 <p><strong>E-mails de notificação:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
 {% if submission.sap_attachment_id %}<p><strong>ID anexo SAP:</strong> {{ submission.sap_attachment_id }}</p>{% endif %}
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
@@ -77,6 +84,9 @@
   <li>Ic automático: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
   <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
   <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
+  <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:3|localize|default:'-' }}</li>
+  <li>U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:3|localize|default:'-' }}</li>
+  <li>U(e) calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}</li>
   <li>Setor 1: {{ submission.sector|default:'-' }}</li>
   <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
   <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>

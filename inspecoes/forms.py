@@ -50,7 +50,7 @@ class TechnicalForm(forms.ModelForm):
             'abw_1', 'abw_2', 'abw_3', 'tare_1', 'tare_2', 'tare_3',
             'applied_weight', 'bridge_length', 'belt_length', 'belt_speed_v',
             'il_before_ti', 'il_before_tf', 'il_after_ti', 'il_after_tf',
-            'check_weight', 'kor', 'acceptance_criterion_pct', 'expanded_uncertainty_pct',
+            'check_weight', 'kor', 'acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct',
             'calculated_flow_ic', 'error_before_pct', 'error_after_pct',
             'sector', 'sector_2', 'sector_3',
             'validator_registration',
@@ -89,7 +89,8 @@ class TechnicalForm(forms.ModelForm):
             'check_weight': 'CW (%)',
             'kor': 'KOR (%)',
             'acceptance_criterion_pct': 'Critério de aceitação (%)',
-            'expanded_uncertainty_pct': 'Incerteza expandida (%)',
+            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada (%)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada (%)',
             'calculated_flow_ic': 'Vazão calculada Ic (ton/h)',
             'error_before_pct': 'Erro antes (%)',
             'error_after_pct': 'Erro depois (%)',
@@ -111,6 +112,7 @@ class TechnicalForm(forms.ModelForm):
         for field in self.fields.values():
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
 
         for name in [
             'ibm',
@@ -122,6 +124,7 @@ class TechnicalForm(forms.ModelForm):
             'error_after_pct',
             'acceptance_criterion_pct',
             'expanded_uncertainty_pct',
+            'expanded_uncertainty_calc_pct',
         ]:
             self.fields[name].disabled = True
             self.fields[name].widget.attrs.update(
@@ -130,6 +133,9 @@ class TechnicalForm(forms.ModelForm):
                     'title': 'Campo calculado automaticamente pelo sistema.',
                 }
             )
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update(
+            {'title': 'Campo vindo do cadastro do equipamento.'}
+        )
 
 
 class ValidationForm(forms.Form):
