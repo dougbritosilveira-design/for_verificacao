@@ -1,18 +1,23 @@
-from django import forms
+﻿from django import forms
 
-from .models import Equipment, FormSubmission
+from .models import Equipment, FormSubmission, InspectionFormType
 
 
 class SelectionForm(forms.ModelForm):
     equipment = forms.ModelChoiceField(
-        queryset=Equipment.objects.filter(active=True),
+        queryset=Equipment.objects.filter(active=True).order_by('tag'),
         label='Equipamento',
         empty_label='Selecione o equipamento',
+    )
+    form_type = forms.ModelChoiceField(
+        queryset=InspectionFormType.objects.none(),
+        label='Formulário',
+        empty_label='Selecione o formulário',
     )
 
     class Meta:
         model = FormSubmission
-        fields = ['equipment', 'location_snapshot', 'om_number', 'execution_date', 'executor_name']
+        fields = ['equipment', 'form_type', 'location_snapshot', 'om_number', 'execution_date', 'executor_name']
         widgets = {'execution_date': forms.DateInput(attrs={'type': 'date'})}
         labels = {
             'location_snapshot': 'Local',
@@ -23,6 +28,7 @@ class SelectionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['equipment'].queryset = Equipment.objects.filter(active=True).order_by('tag')
         self.fields['location_snapshot'].widget.attrs.update(
             {
                 'readonly': 'readonly',
@@ -31,11 +37,46 @@ class SelectionForm(forms.ModelForm):
             }
         )
 
+        selected_equipment = self._resolve_selected_equipment()
+        if selected_equipment:
+            allowed_form_types = selected_equipment.available_form_types
+            self.fields['form_type'].queryset = allowed_form_types
+            if not self.is_bound and not self.initial.get('form_type'):
+                first_form_type = allowed_form_types.first()
+                if first_form_type:
+                    self.initial['form_type'] = first_form_type.pk
+        else:
+            self.fields['form_type'].queryset = InspectionFormType.objects.none()
+            self.fields['form_type'].empty_label = 'Selecione o equipamento primeiro'
+
+    def _resolve_selected_equipment(self):
+        equipment_id = None
+        if self.is_bound:
+            equipment_id = self.data.get('equipment')
+        elif self.initial.get('equipment'):
+            initial_equipment = self.initial.get('equipment')
+            equipment_id = initial_equipment.pk if hasattr(initial_equipment, 'pk') else initial_equipment
+        elif self.instance and self.instance.pk and self.instance.equipment_id:
+            equipment_id = self.instance.equipment_id
+
+        if not equipment_id:
+            return None
+        try:
+            return Equipment.objects.get(pk=equipment_id, active=True)
+        except Equipment.DoesNotExist:
+            return None
+
     def clean(self):
         cleaned_data = super().clean()
         equipment = cleaned_data.get('equipment')
+        form_type = cleaned_data.get('form_type')
         if equipment:
             cleaned_data['location_snapshot'] = equipment.location
+            allowed_form_types = equipment.available_form_types
+            if not allowed_form_types.exists():
+                self.add_error('equipment', 'Este equipamento não possui formulários cadastrados. Configure no Admin.')
+            if form_type and not allowed_form_types.filter(pk=form_type.pk).exists():
+                self.add_error('form_type', 'O formulário selecionado não está habilitado para este equipamento.')
         return cleaned_data
 
 

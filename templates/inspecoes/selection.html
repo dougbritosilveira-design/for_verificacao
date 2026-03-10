@@ -2,7 +2,7 @@
 {% block title %}Novo formulário{% endblock %}
 {% block content %}
 <h2>1. Seleção do equipamento</h2>
-<p>Informe equipamento, local e ordem de manutenção para iniciar o formulário.</p>
+<p>Informe equipamento, formulário, local e ordem de manutenção para iniciar o formulário.</p>
 <p><strong>Data da visita:</strong> usada no cálculo do próximo prazo do equipamento.</p>
 <form method="post">
   {% csrf_token %}
@@ -10,18 +10,27 @@
   <button type="submit">Criar formulário</button>
 </form>
 {{ equipment_locations|json_script:"equipment-locations" }}
+{{ equipment_form_types|json_script:"equipment-form-types" }}
 <script>
 (function () {
   const equipmentField = document.getElementById('id_equipment');
+  const formTypeField = document.getElementById('id_form_type');
   const locationField = document.getElementById('id_location_snapshot');
   const locationsData = document.getElementById('equipment-locations');
-  if (!equipmentField || !locationField || !locationsData) return;
+  const formTypesData = document.getElementById('equipment-form-types');
+  if (!equipmentField || !formTypeField || !locationField || !locationsData || !formTypesData) return;
 
   let locations = {};
+  let formTypesByEquipment = {};
   try {
     locations = JSON.parse(locationsData.textContent || '{}');
   } catch (error) {
     locations = {};
+  }
+  try {
+    formTypesByEquipment = JSON.parse(formTypesData.textContent || '{}');
+  } catch (error) {
+    formTypesByEquipment = {};
   }
 
   function syncLocation() {
@@ -29,8 +38,46 @@
     locationField.value = locations[selectedEquipmentId] || '';
   }
 
-  equipmentField.addEventListener('change', syncLocation);
+  function syncFormTypes() {
+    const selectedEquipmentId = equipmentField.value || '';
+    const availableFormTypes = formTypesByEquipment[selectedEquipmentId] || [];
+    const currentValue = formTypeField.value;
+    formTypeField.innerHTML = '';
+
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    if (!selectedEquipmentId) {
+      placeholderOption.textContent = 'Selecione o equipamento primeiro';
+    } else if (!availableFormTypes.length) {
+      placeholderOption.textContent = 'Sem formulário cadastrado para este equipamento';
+    } else {
+      placeholderOption.textContent = 'Selecione o formulário';
+    }
+    formTypeField.appendChild(placeholderOption);
+
+    availableFormTypes.forEach((formType) => {
+      const option = document.createElement('option');
+      option.value = String(formType.id);
+      option.textContent = formType.label;
+      formTypeField.appendChild(option);
+    });
+
+    if (currentValue && availableFormTypes.some((formType) => String(formType.id) === String(currentValue))) {
+      formTypeField.value = String(currentValue);
+    } else if (availableFormTypes.length === 1) {
+      formTypeField.value = String(availableFormTypes[0].id);
+    } else {
+      formTypeField.value = '';
+    }
+    formTypeField.disabled = !selectedEquipmentId || !availableFormTypes.length;
+  }
+
+  equipmentField.addEventListener('change', function () {
+    syncLocation();
+    syncFormTypes();
+  });
   syncLocation();
+  syncFormTypes();
 })();
 </script>
 {% endblock %}

@@ -200,9 +200,11 @@ def _decode_signature_image(signature_data, image_reader_cls):
 
 
 def build_submission_pdf_filename(submission: FormSubmission) -> str:
+    form_code = submission.form_type.code if submission.form_type_id and submission.form_type else 'FOR 08.05.003'
+    form_code = re.sub(r'[^A-Za-z0-9._-]+', '-', str(form_code)).strip('-') or 'formulario'
     om = re.sub(r'[^A-Za-z0-9._-]+', '-', str(submission.om_number or '')).strip('-') or 'sem-om'
     tag = re.sub(r'[^A-Za-z0-9._-]+', '-', str(submission.equipment.tag or '')).strip('-') or 'sem-tag'
-    return f'FOR_08.05.003_OM_{om}_{tag}.pdf'
+    return f'{form_code}_OM_{om}_{tag}.pdf'
 
 
 def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
@@ -232,9 +234,15 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
     error_after_status = _acceptance_label_for_value(error_after_value, acceptance_limit)
     uncertainty_calc = submission.expanded_uncertainty_calc_value
     uncertainty_status = submission.expanded_uncertainty_status_label
+    form_code = submission.form_type.code if submission.form_type_id and submission.form_type else 'FOR 08.05.003'
+    form_title = (
+        submission.form_type.title
+        if submission.form_type_id and submission.form_type
+        else 'Verificacao e ajuste de balanca dinamica (MVP)'
+    )
 
     lines = [
-        'FOR 08.05.003 - Verificação e ajuste de balança dinâmica (MVP)',
+        f'{form_code} - {form_title}',
         f'Data da visita: {submission.execution_date}',
         f'OM: {submission.om_number}',
         f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
@@ -332,10 +340,12 @@ def upload_pdf_to_sap(submission: FormSubmission, pdf_bytes: bytes) -> Tuple[boo
             'application/pdf',
         )
     }
+    form_code = submission.form_type.code if submission.form_type_id and submission.form_type else 'FOR 08.05.003'
+    form_code_payload = re.sub(r'\s+', '_', str(form_code).strip())
     data = {
         'maintenance_order': submission.om_number,
         'equipment_tag': submission.equipment.tag,
-        'form_code': 'FOR_08.05.003',
+        'form_code': form_code_payload,
         'validated_by': submission.validator_name,
         'validated_at': submission.validated_at.isoformat() if submission.validated_at else '',
     }

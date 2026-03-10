@@ -134,12 +134,15 @@ def selection_view(request):
     if not _can_create_forms(request.user):
         return _deny_create_access(request)
 
-    equipment_qs = Equipment.objects.filter(active=True).order_by('tag')
+    equipment_qs = Equipment.objects.filter(active=True).prefetch_related('inspection_form_types').order_by('tag')
     equipment_locations = {str(e.pk): e.location for e in equipment_qs}
+    equipment_form_types = {
+        str(e.pk): [{'id': str(form.pk), 'label': form.full_label} for form in e.available_form_types]
+        for e in equipment_qs
+    }
 
     if request.method == 'POST':
         form = SelectionForm(request.POST)
-        form.fields['equipment'].queryset = equipment_qs
         if form.is_valid():
             submission = form.save(commit=False)
             submission.created_by = request.user
@@ -152,8 +155,7 @@ def selection_view(request):
             messages.success(request, 'Formulário criado. Preencha os dados técnicos.')
             return redirect('inspecoes:form-edit', pk=submission.pk)
     else:
-        form = SelectionForm()
-        form.fields['equipment'].queryset = equipment_qs
+        initial = {}
         equipment_id = request.GET.get('equipment')
         if equipment_id:
             try:
@@ -161,14 +163,19 @@ def selection_view(request):
             except Equipment.DoesNotExist:
                 equipment = None
             if equipment:
-                form.fields['equipment'].initial = equipment.pk
-                form.fields['location_snapshot'].initial = equipment.location
+                initial['equipment'] = equipment.pk
+                initial['location_snapshot'] = equipment.location
+                first_form_type = equipment.available_form_types.first()
+                if first_form_type:
+                    initial['form_type'] = first_form_type.pk
+        form = SelectionForm(initial=initial)
     return render(
         request,
         'inspecoes/selection.html',
         {
             'form': form,
             'equipment_locations': equipment_locations,
+            'equipment_form_types': equipment_form_types,
         },
     )
 
@@ -180,7 +187,7 @@ def form_edit_view(request, pk):
     if not _can_edit_forms(request.user):
         return _deny_edit_access(request)
 
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by'), pk=pk)
+    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
     if submission.status == FormSubmission.Status.PENDING_VALIDATION:
         messages.warning(request, 'Formulario ja enviado para validacao. Edicao bloqueada.')
         return redirect('inspecoes:detail', pk=submission.pk)
@@ -219,7 +226,7 @@ def form_validate_view(request, pk):
     if not _can_validate_forms(request.user):
         return _deny_validate_access(request)
 
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by'), pk=pk)
+    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
     if submission.status in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.info(request, 'Formulário já validado.')
         return redirect('inspecoes:detail', pk=submission.pk)
@@ -295,7 +302,7 @@ def form_download_pdf_view(request, pk):
     if not (_can_view(request.user, 'forms') or _can_view(request.user, 'history')):
         return _deny_screen_access(request, 'Detalhe/PDF do formulário')
 
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment'), pk=pk)
+    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
     if submission.status not in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.warning(request, 'Valide o formulário antes de baixar o PDF final.')
         if _can_validate_forms(request.user):
@@ -311,7 +318,7 @@ def form_send_sap_view(request, pk):
     if not _can_send_sap(request.user):
         return _deny_send_sap_access(request)
 
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment'), pk=pk)
+    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
     if request.method != 'POST':
         return redirect('inspecoes:detail', pk=submission.pk)
 
@@ -338,7 +345,7 @@ def history_view(request):
     if not _can_view(request.user, 'history'):
         return _deny_screen_access(request, 'Histórico')
 
-    qs = FormSubmission.objects.select_related('equipment').all()
+    qs = FormSubmission.objects.select_related('equipment', 'form_type').all()
     status = request.GET.get('status')
     tag = request.GET.get('tag')
     om = request.GET.get('om')
@@ -439,5 +446,5 @@ def notifications_view(request):
 def detail_view(request, pk):
     if not (_can_view(request.user, 'forms') or _can_view(request.user, 'history')):
         return _deny_screen_access(request, 'Detalhe do formulário')
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by'), pk=pk)
+    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
     return render(request, 'inspecoes/detail.html', {'submission': submission})

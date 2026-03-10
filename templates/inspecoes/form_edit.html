@@ -2,7 +2,7 @@
 {% block title %}Formulário técnico{% endblock %}
 {% block content %}
 <h2>2. Formulário técnico</h2>
-<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
 <p><strong>Campos automáticos:</strong> TM, MD, IBM, Velocidade da correia (V), Comprimento da correia (L), B04, Ic e Erros (%).</p>
 <style>

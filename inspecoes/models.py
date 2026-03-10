@@ -179,10 +179,48 @@ class PortalUserAccess(models.Model):
         )
 
 
+class InspectionFormType(models.Model):
+    code = models.CharField('Codigo', max_length=60, unique=True)
+    title = models.CharField('Titulo', max_length=255)
+    description = models.TextField('Descricao', blank=True)
+    active = models.BooleanField('Ativo', default=True)
+
+    class Meta:
+        ordering = ['code']
+        verbose_name = 'Tipo de formulario'
+        verbose_name_plural = 'Tipos de formulario'
+
+    def __str__(self):
+        return self.full_label
+
+    @property
+    def full_label(self):
+        return f'{self.code} - {self.title}'
+
+    @classmethod
+    def default_code(cls):
+        return 'FOR 08.05.003'
+
+    @classmethod
+    def default_title(cls):
+        return 'Verificacao e ajuste de balanca dinamica (MVP)'
+
+    @classmethod
+    def default_label(cls):
+        return f'{cls.default_code()} - {cls.default_title()}'
+
+
 class Equipment(models.Model):
     tag = models.CharField('TAG', max_length=80, unique=True)
     description = models.CharField('Descrição', max_length=255)
     location = models.CharField('Local', max_length=255)
+    inspection_form_types = models.ManyToManyField(
+        InspectionFormType,
+        blank=True,
+        related_name='equipments',
+        verbose_name='Formularios habilitados',
+        help_text='Selecione os formularios que podem ser aplicados neste equipamento.',
+    )
     revisit_interval_days = models.PositiveIntegerField(
         'Periodicidade da nova visita (dias)',
         null=True,
@@ -219,6 +257,10 @@ class Equipment(models.Model):
 
     def __str__(self):
         return f'{self.tag} - {self.description}'
+
+    @property
+    def available_form_types(self):
+        return self.inspection_form_types.filter(active=True).order_by('code')
 
     @property
     def deadline_warning_days(self):
@@ -347,6 +389,14 @@ class FormSubmission(models.Model):
         FAILED = 'failed', 'Falhou'
 
     equipment = models.ForeignKey(Equipment, on_delete=models.PROTECT, related_name='submissions')
+    form_type = models.ForeignKey(
+        InspectionFormType,
+        on_delete=models.PROTECT,
+        related_name='submissions',
+        verbose_name='Formulario',
+        null=True,
+        blank=True,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -448,7 +498,13 @@ class FormSubmission(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'OM {self.om_number} - {self.equipment.tag}'
+        return f'OM {self.om_number} - {self.equipment.tag} - {self.form_type_label}'
+
+    @property
+    def form_type_label(self):
+        if self.form_type_id and self.form_type:
+            return self.form_type.full_label
+        return InspectionFormType.default_label()
 
     @staticmethod
     def _avg(*values):
@@ -720,6 +776,8 @@ class FormSubmission(models.Model):
 
     def save(self, *args, **kwargs):
         if self.equipment_id:
+            if self.form_type_id is None:
+                self.form_type = self.equipment.available_form_types.first()
             if self.acceptance_criterion_pct is None:
                 self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
             if self.expanded_uncertainty_pct is None:

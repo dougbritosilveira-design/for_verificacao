@@ -1,7 +1,15 @@
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 
-from .models import Equipment, FormSubmission, PortalNotification, PortalUserAccess
+from .models import Equipment, FormSubmission, InspectionFormType, PortalNotification, PortalUserAccess
+
+
+@admin.register(InspectionFormType)
+class InspectionFormTypeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'title', 'active')
+    search_fields = ('code', 'title', 'description')
+    list_filter = ('active',)
+    ordering = ('code',)
 
 
 @admin.register(Equipment)
@@ -10,6 +18,7 @@ class EquipmentAdmin(admin.ModelAdmin):
         'tag',
         'description',
         'location',
+        'enabled_form_types_admin',
         'revisit_interval_days',
         'acceptance_criterion_pct',
         'expanded_uncertainty_pct',
@@ -20,10 +29,12 @@ class EquipmentAdmin(admin.ModelAdmin):
     search_fields = ('tag', 'description', 'location')
     list_filter = ('active',)
     readonly_fields = ('deadline_info_admin',)
+    filter_horizontal = ('inspection_form_types',)
     fields = (
         'tag',
         'description',
         'location',
+        'inspection_form_types',
         'active',
         'revisit_interval_days',
         'acceptance_criterion_pct',
@@ -40,6 +51,11 @@ class EquipmentAdmin(admin.ModelAdmin):
     def next_visit_due_date_admin(self, obj):
         return obj.next_visit_due_date or '-'
 
+    @admin.display(description='Formulários habilitados')
+    def enabled_form_types_admin(self, obj):
+        labels = [form_type.code for form_type in obj.available_form_types]
+        return ', '.join(labels) if labels else '-'
+
     @admin.display(description='Resumo do prazo')
     def deadline_info_admin(self, obj):
         if not obj.pk:
@@ -55,6 +71,7 @@ class EquipmentAdmin(admin.ModelAdmin):
 class FormSubmissionAdmin(admin.ModelAdmin):
     list_display = (
         'id',
+        'form_type',
         'equipment',
         'om_number',
         'created_by',
@@ -62,7 +79,7 @@ class FormSubmissionAdmin(admin.ModelAdmin):
         'sap_status',
         'created_at',
     )
-    list_filter = ('status', 'sap_status', 'created_at')
+    list_filter = ('form_type', 'status', 'sap_status', 'created_at')
     search_fields = ('om_number', 'equipment__tag', 'equipment__description', 'executor_name')
 
 

@@ -4,6 +4,7 @@
 {% block content %}
 <h2>Detalhe do formulário #{{ submission.id }}</h2>
 <p><strong>OM:</strong> {{ submission.om_number }}</p>
+<p><strong>Formulário:</strong> {{ submission.form_type_label }}</p>
 <p><strong>Equipamento:</strong> {{ submission.equipment.tag }} - {{ submission.equipment.description }}</p>
 <p><strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><strong>Data da visita:</strong> {{ submission.execution_date }}</p>
