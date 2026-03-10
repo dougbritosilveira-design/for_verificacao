@@ -1,10 +1,10 @@
 ﻿{% extends 'base.html' %}
-{% block title %}FormulÃ¡rio tÃ©cnico{% endblock %}
+{% block title %}Formulário técnico{% endblock %}
 {% block content %}
-<h2>2. FormulÃ¡rio tÃ©cnico</h2>
-<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>FormulÃ¡rio:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<h2>2. Formulário técnico</h2>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
-<p><strong>Campos automÃ¡ticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou DistÃ¢ncia entre marcas serÃ¡ campo manual.</p>
+<p><strong>Campos automáticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou Distância entre marcas será campo manual.</p>
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
   .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
@@ -46,7 +46,7 @@
     <p>{{ form.t1.label_tag }} {{ form.t1 }}</p>
     <p>{{ form.t2.label_tag }} {{ form.t2 }}</p>
     <p>{{ form.t3.label_tag }} {{ form.t3 }}</p>
-    <p><label for="id_tm_display">TM - mÃ©dia do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p><label for="id_tm_display">TM - média do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
   </div>
 
   <h3>Tempo entre as marcas (s)</h3>
@@ -54,15 +54,10 @@
     <p>{{ form.m1.label_tag }} {{ form.m1 }}</p>
     <p>{{ form.m2.label_tag }} {{ form.m2 }}</p>
     <p>{{ form.m3.label_tag }} {{ form.m3 }}</p>
-    <p><label for="id_md_display">MD - mÃ©dia dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p><label for="id_md_display">MD - média dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
   </div>
-  <div class="row" style="grid-template-columns:minmax(260px,1fr);">
-    <p style="display:flex; align-items:center; gap:8px;">
-      {{ form.belt_replaced }}
-      <label for="{{ form.belt_replaced.id_for_label }}">Houve troca de correia?</label>
-    </p>
-  </div>
-  <div class="row">
+  <div class="row" style="grid-template-columns:repeat(2,minmax(240px,1fr));">
+    <p>{{ form.belt_replaced.label_tag }} {{ form.belt_replaced }}</p>
     <p>{{ form.mark_distance.label_tag }} {{ form.mark_distance }}</p>
   </div>
 
@@ -74,7 +69,7 @@
     <p>{{ form.ibm.label_tag }} {{ form.ibm }}</p>
   </div>
 
-  <h3>ParÃ¢metros calculados (B05 / C02 / B04)</h3>
+  <h3>Parâmetros calculados (B05 / C02 / B04)</h3>
   <div class="row">
     <p>{{ form.belt_speed_v.label_tag }} {{ form.belt_speed_v }}</p>
     <p>{{ form.belt_length.label_tag }} {{ form.belt_length }}</p>
@@ -101,7 +96,7 @@
     <p>{{ form.kor.label_tag }} {{ form.kor }}</p>
   </div>
 
-  <h3>Resultados da verificaÃ§Ã£o e ajuste</h3>
+  <h3>Resultados da verificação e ajuste</h3>
   <div class="row">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
     <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
@@ -113,7 +108,7 @@
   <div id="uncert-box"
        class="accept-box {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
     <p style="margin:0 0 4px;">
-      <strong>ComparaÃ§Ã£o da incerteza expandida</strong>
+      <strong>Comparação da incerteza expandida</strong>
       <span id="uncert-pill"
             class="accept-pill {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
         {{ submission.expanded_uncertainty_status_label }}
@@ -124,7 +119,7 @@
     </p>
   </div>
 
-  <h3>Dados do equipamento (vazÃ£o indicada)</h3>
+  <h3>Dados do equipamento (vazão indicada)</h3>
   <div class="row">
     <p>{{ form.il_before_ti.label_tag }} {{ form.il_before_ti }}</p>
     <p>{{ form.il_before_tf.label_tag }} {{ form.il_before_tf }}</p>
@@ -132,7 +127,7 @@
     <p>{{ form.il_after_tf.label_tag }} {{ form.il_after_tf }}</p>
   </div>
 
-  <h3>IdentificaÃ§Ã£o e observaÃ§Ã£o</h3>
+  <h3>Identificação e observação</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
     <div>
       <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
@@ -154,31 +149,31 @@
 
   <div style="margin-top:12px; display:flex; gap:10px;">
     <button type="submit">Salvar</button>
-    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validaÃ§Ã£o</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
   </div>
 </form>
 
 <hr>
 <h3>Resumo calculado (MVP)</h3>
-<p>TM (mÃ©dia T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
-<p>MD (mÃ©dia M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
+<p>TM (média T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
+<p>MD (média M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
 <p>IL antes: {{ submission.il_before|floatformat:2|default:'-' }}</p>
 <p>IL depois: {{ submission.il_after|floatformat:2|default:'-' }}</p>
 <p>Carregamento Q (P/D): {{ submission.loading_q|floatformat:2|default:'-' }}</p>
-<p>IBM automÃ¡tico (mÃ©dia dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
-<p>Velocidade V automÃ¡tica (B05 = DistÃ¢ncia/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
-<p>Comprimento L automÃ¡tico (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
-<p>B04 automÃ¡tico (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
-<p>Ic automÃ¡tico (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
-<p>Erro antes automÃ¡tico (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
-<p>Erro depois automÃ¡tico (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
+<p>IBM automático (média dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
+<p>Velocidade V automática (B05 = Distância/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
+<p>Comprimento L automático (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
+<p>B04 automático (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
+<p>Ic automático (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
+<p>Erro antes automático (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
+<p>Erro depois automático (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}</p>
 <div id="accept-box"
      class="accept-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p style="margin:0 0 4px;">
-    <strong>CritÃ©rio final (|erro final| + U(e) <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
+    <strong>Critério final (|erro final| + U(e) <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
     <span id="accept-pill"
           class="accept-pill {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
       {{ submission.acceptance_status_label }}
@@ -203,7 +198,9 @@
   const beltSpeedInput = document.getElementById('id_belt_speed_v');
 
   function isBeltReplaced() {
-    return !!(beltReplacedInput && beltReplacedInput.checked);
+    if (!beltReplacedInput) return false;
+    const value = String(beltReplacedInput.value || '').toLowerCase();
+    return value === 'true' || value === '1' || value === 'sim';
   }
 
   function syncBeltMode() {
@@ -479,4 +476,5 @@
 })();
 </script>
 {% endblock %}
+
 

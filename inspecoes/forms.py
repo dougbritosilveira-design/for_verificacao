@@ -81,6 +81,14 @@ class SelectionForm(forms.ModelForm):
 
 
 class TechnicalForm(forms.ModelForm):
+    belt_replaced = forms.TypedChoiceField(
+        label='Houve troca de correia?',
+        choices=((False, 'Não'), (True, 'Sim')),
+        coerce=lambda value: str(value).lower() in {'true', '1', 'sim'},
+        empty_value=False,
+        widget=forms.Select(),
+    )
+
     class Meta:
         model = FormSubmission
         fields = [
@@ -153,6 +161,8 @@ class TechnicalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if not self.is_bound:
+            self.initial['belt_replaced'] = bool(getattr(self.instance, 'belt_replaced', False))
         for field in self.fields.values():
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
