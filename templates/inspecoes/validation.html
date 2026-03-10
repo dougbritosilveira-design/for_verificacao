@@ -22,24 +22,28 @@
   <li>Formulário: {{ submission.form_type_label }}</li>
   <li>Equipamento: {{ submission.equipment.tag }} - {{ submission.equipment.description }}</li>
   <li>Local: {{ submission.location_snapshot }}</li>
+  <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   <li>Status atual: {{ submission.get_status_display }}</li>
-  <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:2 }}%</li>
-  <li>Incerteza expandida cadastrada: {{ submission.expanded_uncertainty_pct|floatformat:3|default:'-' }}%</li>
-  <li>Incerteza expandida calculada: {{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}%</li>
+  <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:1 }}%</li>
+  <li>Incerteza expandida cadastrada: {{ submission.expanded_uncertainty_pct|floatformat:2|default:'-' }}%</li>
+  <li>Incerteza expandida calculada: {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}%</li>
   <li>Status da incerteza expandida: {{ submission.expanded_uncertainty_status_label }}</li>
 </ul>
 <div class="criteria-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p>
-    <strong>Critério de aceitação (erro final)</strong>:
+    <strong>Critério final (|erro final| + U(e))</strong>:
     <span class="criteria-status {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
       {{ submission.acceptance_status_label }}
     </span>
   </p>
   <div class="criteria-grid">
-    <div><strong>Limite:</strong> erro final <= {{ submission.acceptance_limit_pct|floatformat:2 }}%</div>
+    <div><strong>Limite:</strong> soma final <= {{ submission.acceptance_limit_pct|floatformat:1 }}%</div>
     <div><strong>Erro antes (%):</strong> {{ submission.acceptance_error_before_value|floatformat:2|default:'-' }}</div>
     <div><strong>Erro depois (%):</strong> {{ submission.acceptance_error_after_value|floatformat:2|default:'-' }}</div>
-    <div><strong>Valor absoluto do erro final:</strong> {{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}</div>
+    <div><strong>Valor absoluto do erro final:</strong> {{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}%</div>
+    <div><strong>Status do erro final:</strong> {{ submission.instrument_error_status_label }}</div>
+    <div><strong>Incerteza calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}%</div>
+    <div><strong>Soma final |erro| + U(e):</strong> {{ submission.acceptance_combined_value|floatformat:2|default:'-' }}%</div>
   </div>
   {% if not submission.acceptance_ok %}
     <p style="margin-top:8px; color:#8a1d1d;">

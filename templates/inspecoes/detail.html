@@ -21,14 +21,21 @@
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
 <p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|default:'-' }}</p>
-<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}%</p>
-<p><strong>Incerteza expandida cadastrada:</strong> {{ submission.expanded_uncertainty_pct|floatformat:3|localize|default:'-' }}%</p>
-<p><strong>Incerteza expandida calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}%</p>
+<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}%</p>
+<p><strong>Incerteza expandida cadastrada:</strong> {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>Incerteza expandida calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}%</p>
 <p><strong>Status da incerteza expandida:</strong>
   <span class="badge {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
     {{ submission.expanded_uncertainty_status_label }}
   </span>
   ({{ submission.expanded_uncertainty_status_detail }})
+</p>
+<p><strong>Status do erro final (|erro| <= critério):</strong> {{ submission.instrument_error_status_label }}</p>
+<p><strong>Soma final |erro| + U(e):</strong> {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>Status final:</strong>
+  <span class="badge {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
+    {{ submission.acceptance_status_label }}
+  </span>
 </p>
 <p><strong>E-mails de notificação:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
 {% if submission.sap_attachment_id %}<p><strong>ID anexo SAP:</strong> {{ submission.sap_attachment_id }}</p>{% endif %}
@@ -75,6 +82,7 @@
 <ul>
   <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
   <li>M1/M2/M3: {{ submission.m1|floatformat:2|localize|default:'-' }} / {{ submission.m2|floatformat:2|localize|default:'-' }} / {{ submission.m3|floatformat:2|localize|default:'-' }} (MD: {{ submission.md|floatformat:2|localize|default:'-' }})</li>
+  <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   <li>Distância entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
   <li>Pulsos por volta / IBM: {{ submission.pulses_per_turn_1|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_2|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_3|floatformat:2|localize|default:'-' }} (IBM: {{ submission.ibm|floatformat:2|localize|default:'-' }})</li>
   <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
@@ -87,9 +95,10 @@
   <li>Ic automático: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
   <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
   <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
-  <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:3|localize|default:'-' }}</li>
-  <li>U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:3|localize|default:'-' }}</li>
-  <li>U(e) calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}</li>
+  <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|localize|default:'-' }}</li>
+  <li>U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|localize|default:'-' }}</li>
+  <li>U(e) calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}</li>
+  <li>Soma final |erro| + U(e) (%): {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}</li>
   <li>Setor 1: {{ submission.sector|default:'-' }}</li>
   <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
   <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>

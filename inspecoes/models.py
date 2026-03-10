@@ -436,6 +436,7 @@ class FormSubmission(models.Model):
     m1 = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     m2 = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     m3 = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    belt_replaced = models.BooleanField('Houve troca de correia?', default=False)
     mark_distance = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
 
     pulses_per_turn_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -565,9 +566,25 @@ class FormSubmission(models.Model):
 
     @property
     def belt_speed_v_auto(self):
+        if self.belt_replaced:
+            if self.mark_distance is None or self.md in (None, 0):
+                return None
+            return self.mark_distance / self.md
+
+        if self.belt_speed_v is not None:
+            return self.belt_speed_v
+
         if self.mark_distance is None or self.md in (None, 0):
             return None
         return self.mark_distance / self.md
+
+    @property
+    def mark_distance_auto(self):
+        if self.belt_replaced:
+            return self.mark_distance
+        if self.belt_speed_v is None or self.md in (None, 0):
+            return None
+        return self.belt_speed_v * self.md
 
     @property
     def belt_length_auto(self):
@@ -746,13 +763,36 @@ class FormSubmission(models.Model):
         return None if value is None else abs(value)
 
     @property
+    def instrument_error_ok(self):
+        value = self.acceptance_error_after_abs
+        return value is not None and value <= self.acceptance_limit_pct
+
+    @property
+    def instrument_error_status_label(self):
+        if self.acceptance_error_after_abs is None:
+            return 'Pendente dados'
+        return 'Aprovado' if self.instrument_error_ok else 'Reprovado'
+
+    @property
+    def acceptance_combined_value(self):
+        error_abs = self.acceptance_error_after_abs
+        uncertainty = self.expanded_uncertainty_calc_value
+        if error_abs is None or uncertainty is None:
+            return None
+        return error_abs + abs(uncertainty)
+
+    @property
     def acceptance_is_evaluable(self):
-        return self.acceptance_error_after_value is not None
+        return self.acceptance_combined_value is not None
 
     @property
     def acceptance_ok(self):
-        value = self.acceptance_error_after_abs
-        return value is not None and value <= self.acceptance_limit_pct
+        combined = self.acceptance_combined_value
+        if combined is None:
+            return False
+        if self.expanded_uncertainty_pct is not None and not self.expanded_uncertainty_ok:
+            return False
+        return combined <= self.acceptance_limit_pct
 
     @property
     def acceptance_status_label(self):
@@ -762,16 +802,27 @@ class FormSubmission(models.Model):
 
     @property
     def acceptance_block_reason(self):
-        if not self.acceptance_is_evaluable:
+        if self.acceptance_error_after_abs is None:
             return (
                 'Critério de aceitação não pode ser avaliado. '
                 'Preencha os dados necessários para calcular o erro final (%).'
             )
+        if self.expanded_uncertainty_calc_value is None:
+            return (
+                'Validação final bloqueada: incerteza expandida calculada indisponível. '
+                'Preencha as medições para calcular U(e).'
+            )
+        if self.expanded_uncertainty_pct is not None and not self.expanded_uncertainty_ok:
+            return (
+                'Validação final bloqueada: incerteza expandida calculada acima da referência cadastrada '
+                f'({self.expanded_uncertainty_calc_value:.2f}% > {self.expanded_uncertainty_pct:.2f}%).'
+            )
         if self.acceptance_ok:
             return ''
+        combined = self.acceptance_combined_value
         return (
-            f'Validação final bloqueada: erro final fora do critério de aceitação '
-            f'(<= {self.acceptance_limit_pct:.2f}%). Valor atual: {self.acceptance_error_after_value:.2f}%.'
+            'Validação final bloqueada: soma |erro final| + U(e) acima do critério de aceitação '
+            f'(<= {self.acceptance_limit_pct:.2f}%). Valor atual: {combined:.2f}%.'
         )
 
     def save(self, *args, **kwargs):
@@ -783,6 +834,7 @@ class FormSubmission(models.Model):
             if self.expanded_uncertainty_pct is None:
                 self.expanded_uncertainty_pct = self.equipment.expanded_uncertainty_pct
         self.ibm = self.ibm_auto
+        self.mark_distance = self.mark_distance_auto
         self.belt_speed_v = self.belt_speed_v_auto
         self.belt_length = self.belt_length_auto
         self.speed_characteristic_b04 = self.speed_characteristic_b04_auto

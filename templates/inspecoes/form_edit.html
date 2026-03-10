@@ -1,10 +1,10 @@
-{% extends 'base.html' %}
-{% block title %}Formulário técnico{% endblock %}
+﻿{% extends 'base.html' %}
+{% block title %}FormulÃ¡rio tÃ©cnico{% endblock %}
 {% block content %}
-<h2>2. Formulário técnico</h2>
-<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<h2>2. FormulÃ¡rio tÃ©cnico</h2>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>FormulÃ¡rio:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
-<p><strong>Campos automáticos:</strong> TM, MD, IBM, Velocidade da correia (V), Comprimento da correia (L), B04, Ic e Erros (%).</p>
+<p><strong>Campos automÃ¡ticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou DistÃ¢ncia entre marcas serÃ¡ campo manual.</p>
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
   .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
@@ -46,7 +46,7 @@
     <p>{{ form.t1.label_tag }} {{ form.t1 }}</p>
     <p>{{ form.t2.label_tag }} {{ form.t2 }}</p>
     <p>{{ form.t3.label_tag }} {{ form.t3 }}</p>
-    <p><label for="id_tm_display">TM - média do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p><label for="id_tm_display">TM - mÃ©dia do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
   </div>
 
   <h3>Tempo entre as marcas (s)</h3>
@@ -54,7 +54,15 @@
     <p>{{ form.m1.label_tag }} {{ form.m1 }}</p>
     <p>{{ form.m2.label_tag }} {{ form.m2 }}</p>
     <p>{{ form.m3.label_tag }} {{ form.m3 }}</p>
-    <p><label for="id_md_display">MD - média dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p><label for="id_md_display">MD - mÃ©dia dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+  </div>
+  <div class="row" style="grid-template-columns:minmax(260px,1fr);">
+    <p style="display:flex; align-items:center; gap:8px;">
+      {{ form.belt_replaced }}
+      <label for="{{ form.belt_replaced.id_for_label }}">Houve troca de correia?</label>
+    </p>
+  </div>
+  <div class="row">
     <p>{{ form.mark_distance.label_tag }} {{ form.mark_distance }}</p>
   </div>
 
@@ -66,7 +74,7 @@
     <p>{{ form.ibm.label_tag }} {{ form.ibm }}</p>
   </div>
 
-  <h3>Parâmetros calculados (B05 / C02 / B04)</h3>
+  <h3>ParÃ¢metros calculados (B05 / C02 / B04)</h3>
   <div class="row">
     <p>{{ form.belt_speed_v.label_tag }} {{ form.belt_speed_v }}</p>
     <p>{{ form.belt_length.label_tag }} {{ form.belt_length }}</p>
@@ -93,7 +101,7 @@
     <p>{{ form.kor.label_tag }} {{ form.kor }}</p>
   </div>
 
-  <h3>Resultados da verificação e ajuste</h3>
+  <h3>Resultados da verificaÃ§Ã£o e ajuste</h3>
   <div class="row">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
     <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
@@ -105,7 +113,7 @@
   <div id="uncert-box"
        class="accept-box {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
     <p style="margin:0 0 4px;">
-      <strong>Comparação da incerteza expandida</strong>
+      <strong>ComparaÃ§Ã£o da incerteza expandida</strong>
       <span id="uncert-pill"
             class="accept-pill {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
         {{ submission.expanded_uncertainty_status_label }}
@@ -116,7 +124,7 @@
     </p>
   </div>
 
-  <h3>Dados do equipamento (vazão indicada)</h3>
+  <h3>Dados do equipamento (vazÃ£o indicada)</h3>
   <div class="row">
     <p>{{ form.il_before_ti.label_tag }} {{ form.il_before_ti }}</p>
     <p>{{ form.il_before_tf.label_tag }} {{ form.il_before_tf }}</p>
@@ -124,7 +132,7 @@
     <p>{{ form.il_after_tf.label_tag }} {{ form.il_after_tf }}</p>
   </div>
 
-  <h3>Identificação e observação</h3>
+  <h3>IdentificaÃ§Ã£o e observaÃ§Ã£o</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
     <div>
       <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
@@ -146,31 +154,31 @@
 
   <div style="margin-top:12px; display:flex; gap:10px;">
     <button type="submit">Salvar</button>
-    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validaÃ§Ã£o</button>
   </div>
 </form>
 
 <hr>
 <h3>Resumo calculado (MVP)</h3>
-<p>TM (média T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
-<p>MD (média M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
+<p>TM (mÃ©dia T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
+<p>MD (mÃ©dia M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
 <p>IL antes: {{ submission.il_before|floatformat:2|default:'-' }}</p>
 <p>IL depois: {{ submission.il_after|floatformat:2|default:'-' }}</p>
 <p>Carregamento Q (P/D): {{ submission.loading_q|floatformat:2|default:'-' }}</p>
-<p>IBM automático (média dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
-<p>Velocidade V automática (B05 = Distância/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
-<p>Comprimento L automático (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
-<p>B04 automático (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
-<p>Ic automático (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
-<p>Erro antes automático (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
-<p>Erro depois automático (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
+<p>IBM automÃ¡tico (mÃ©dia dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
+<p>Velocidade V automÃ¡tica (B05 = DistÃ¢ncia/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
+<p>Comprimento L automÃ¡tico (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
+<p>B04 automÃ¡tico (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
+<p>Ic automÃ¡tico (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
+<p>Erro antes automÃ¡tico (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
+<p>Erro depois automÃ¡tico (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}</p>
 <div id="accept-box"
      class="accept-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p style="margin:0 0 4px;">
-    <strong>Critério de aceitação (erro final <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
+    <strong>CritÃ©rio final (|erro final| + U(e) <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
     <span id="accept-pill"
           class="accept-pill {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
       {{ submission.acceptance_status_label }}
@@ -178,15 +186,46 @@
   </p>
   <p id="accept-detail" style="margin:0;">
     {% if submission.acceptance_is_evaluable %}
-      Erro final atual: {{ submission.acceptance_error_after_value|floatformat:2 }}%
+      Soma atual: {{ submission.acceptance_combined_value|floatformat:2 }}%
     {% else %}
-      Preencha os dados para calcular o erro final.
+      Preencha os dados para calcular erro final e incerteza.
     {% endif %}
   </p>
 </div>
 
 <script>
 (function() {
+  const form = document.querySelector('form');
+  if (!form) return;
+
+  const beltReplacedInput = document.getElementById('id_belt_replaced');
+  const markDistanceInput = document.getElementById('id_mark_distance');
+  const beltSpeedInput = document.getElementById('id_belt_speed_v');
+
+  function isBeltReplaced() {
+    return !!(beltReplacedInput && beltReplacedInput.checked);
+  }
+
+  function syncBeltMode() {
+    const replaced = isBeltReplaced();
+
+    if (markDistanceInput) {
+      markDistanceInput.readOnly = !replaced;
+      markDistanceInput.classList.toggle('auto-locked', !replaced);
+      markDistanceInput.title = replaced
+        ? 'Informe a distância entre marcas medida em campo.'
+        : 'Campo calculado automaticamente a partir de V x MD.';
+    }
+
+    if (beltSpeedInput) {
+      beltSpeedInput.readOnly = replaced;
+      beltSpeedInput.classList.toggle('auto-locked', replaced);
+      beltSpeedInput.title = replaced
+        ? 'Campo calculado automaticamente a partir de Distância/MD.'
+        : 'Informe a velocidade lida no painel do instrumento.';
+    }
+  }
+
   function getNum(id) {
     const el = document.getElementById(id);
     if (!el) return null;
@@ -195,6 +234,7 @@
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;
   }
+
   function setNum(id, value, decimals, useComma) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -205,19 +245,23 @@
     const fixed = value.toFixed(decimals);
     el.value = useComma ? fixed.replace('.', ',') : fixed;
   }
+
   function avg(values) {
     const nums = values.filter((v) => v != null);
     if (!nums.length) return null;
     return nums.reduce((a, b) => a + b, 0) / nums.length;
   }
+
   function safeDiv(a, b) {
     if (a == null || b == null || b === 0) return null;
     return a / b;
   }
+
   function calcError(il, ic) {
     if (il == null || ic == null || ic === 0) return null;
     return ((il / ic) - 1) * 100;
   }
+
   function stdevSample(values) {
     const nums = values.filter((v) => v != null);
     if (nums.length < 2) return null;
@@ -225,6 +269,7 @@
     const sumSq = nums.reduce((acc, value) => acc + Math.pow(value - mean, 2), 0);
     return Math.sqrt(sumSq / (nums.length - 1));
   }
+
   function calcUncertainty(il, ic, md, mValues) {
     if (il == null || ic == null || ic === 0 || md == null || md === 0) return null;
     const resolutionR = 0.001;
@@ -244,11 +289,13 @@
     const uc = Math.sqrt((term1 * term1) + (term2 * term2));
     return Math.abs(kFactor * uc);
   }
+
   function acceptanceLimit() {
     const fromField = getNum('id_acceptance_criterion_pct');
     return fromField && fromField > 0 ? fromField : 1;
   }
-  function updateAcceptance(erroDepois, limit) {
+
+  function updateAcceptance(erroDepoisAbs, uncertaintyCalc, uncertaintyRef, limit) {
     const box = document.getElementById('accept-box');
     const pill = document.getElementById('accept-pill');
     const detail = document.getElementById('accept-detail');
@@ -261,7 +308,7 @@
       erroFinalInput.classList.remove('erro-final-ok', 'erro-final-fail', 'erro-final-pending');
     }
 
-    if (erroDepois == null) {
+    if (erroDepoisAbs == null) {
       box.classList.add('pending');
       pill.classList.add('pending');
       pill.textContent = 'Pendente dados';
@@ -273,18 +320,36 @@
       return;
     }
 
-    const aprovado = Math.abs(erroDepois) <= limit;
-    box.classList.add(aprovado ? 'ok' : 'fail');
-    pill.classList.add(aprovado ? 'ok' : 'fail');
-    pill.textContent = aprovado ? 'Aprovado' : 'Reprovado';
-    detail.textContent = `Erro final atual: ${erroDepois.toFixed(2)}% (${aprovado ? 'dentro' : 'fora'} do limite de ${limit.toFixed(1)}%).`;
+    const instrumentOk = erroDepoisAbs <= limit;
     if (erroFinalInput) {
-      erroFinalInput.classList.add(aprovado ? 'erro-final-ok' : 'erro-final-fail');
-      erroFinalInput.title = aprovado
-        ? `Erro final dentro do critério de aceitação (<= ${limit.toFixed(1)}%)`
-        : `Erro final fora do critério de aceitação (> ${limit.toFixed(1)}%)`;
+      erroFinalInput.classList.add(instrumentOk ? 'erro-final-ok' : 'erro-final-fail');
+      erroFinalInput.title = instrumentOk
+        ? `Erro final dentro do critério (<= ${limit.toFixed(1)}%)`
+        : `Erro final fora do critério (> ${limit.toFixed(1)}%)`;
     }
+
+    if (uncertaintyCalc == null) {
+      box.classList.add('pending');
+      pill.classList.add('pending');
+      pill.textContent = 'Pendente dados';
+      detail.textContent = `|Erro final|: ${erroDepoisAbs.toFixed(2)}% (${instrumentOk ? 'Aprovado' : 'Reprovado'}). Falta calcular U(e).`;
+      return;
+    }
+
+    const uncertaintyRefOk = uncertaintyRef == null ? true : uncertaintyCalc <= uncertaintyRef;
+    const combined = erroDepoisAbs + Math.abs(uncertaintyCalc);
+    const finalOk = combined <= limit && uncertaintyRefOk;
+
+    box.classList.add(finalOk ? 'ok' : 'fail');
+    pill.classList.add(finalOk ? 'ok' : 'fail');
+    pill.textContent = finalOk ? 'Aprovado' : 'Reprovado';
+
+    const uncertaintyStatus = uncertaintyRef == null
+      ? 'Sem referência'
+      : (uncertaintyRefOk ? 'Aprovado' : 'Reprovado');
+    detail.textContent = `|Erro final|: ${erroDepoisAbs.toFixed(2)}% (${instrumentOk ? 'Aprovado' : 'Reprovado'}) | U(e): ${uncertaintyCalc.toFixed(2)}% (${uncertaintyStatus}) | Soma: ${combined.toFixed(2)}% (limite ${limit.toFixed(1)}%).`;
   }
+
   function updateErrorBeforeField(erroAntes, limit) {
     const erroAntesInput = document.getElementById('id_error_before_pct');
     if (!erroAntesInput) return;
@@ -299,9 +364,10 @@
     const aprovado = Math.abs(erroAntes) <= limit;
     erroAntesInput.classList.add(aprovado ? 'erro-inicial-ok' : 'erro-inicial-fail');
     erroAntesInput.title = aprovado
-      ? `Erro inicial dentro do critério de aceitação (<= ${limit.toFixed(1)}%)`
-      : `Erro inicial fora do critério de aceitação (> ${limit.toFixed(1)}%)`;
+      ? `Erro inicial dentro do critério (<= ${limit.toFixed(1)}%)`
+      : `Erro inicial fora do critério (> ${limit.toFixed(1)}%)`;
   }
+
   function updateUncertainty(uncertaintyCalc, uncertaintyRef) {
     const box = document.getElementById('uncert-box');
     const pill = document.getElementById('uncert-pill');
@@ -333,6 +399,7 @@
     pill.textContent = aprovado ? 'Aprovado' : 'Reprovado';
     detail.textContent = `Calculada: ${uncertaintyCalc.toFixed(2)}% | Cadastrada: ${uncertaintyRef.toFixed(2)}% (${aprovado ? 'dentro' : 'acima'} do limite).`;
   }
+
   function recalc() {
     const t1 = getNum('id_t1');
     const t2 = getNum('id_t2');
@@ -340,7 +407,8 @@
     const m1 = getNum('id_m1');
     const m2 = getNum('id_m2');
     const m3 = getNum('id_m3');
-    const distancia = getNum('id_mark_distance');
+    const distanciaManual = getNum('id_mark_distance');
+    const velocidadeManual = getNum('id_belt_speed_v');
     const p1 = getNum('id_pulses_per_turn_1');
     const p2 = getNum('id_pulses_per_turn_2');
     const p3 = getNum('id_pulses_per_turn_3');
@@ -350,29 +418,41 @@
     const ilAntesTf = getNum('id_il_before_tf');
     const ilDepoisTi = getNum('id_il_after_ti');
     const ilDepoisTf = getNum('id_il_after_tf');
+    const beltWasReplaced = isBeltReplaced();
 
     const tm = avg([t1, t2, t3]);
     const md = avg([m1, m2, m3]);
     const ibm = avg([p1, p2, p3]);
-    const v = safeDiv(distancia, md);
-    const l = (tm != null && v != null) ? tm * v : null;
+
+    let distancia = null;
+    let velocidade = null;
+    if (beltWasReplaced) {
+      distancia = distanciaManual;
+      velocidade = safeDiv(distancia, md);
+    } else {
+      velocidade = velocidadeManual;
+      distancia = (velocidade != null && md != null) ? velocidade * md : null;
+    }
+
+    const l = (tm != null && velocidade != null) ? tm * velocidade : null;
     const b04 = safeDiv(ibm, l);
     const q = safeDiv(pesoAplicado, comprimentoPonte);
-    const ic = (q != null && v != null) ? q * v * 3.6 : null;
+    const ic = (q != null && velocidade != null) ? q * velocidade * 3.6 : null;
     const ilAntes = (ilAntesTi != null && ilAntesTf != null) ? (ilAntesTf - ilAntesTi) * 12 : null;
     const ilDepois = (ilDepoisTi != null && ilDepoisTf != null) ? (ilDepoisTf - ilDepoisTi) * 12 : null;
     const erroAntes = calcError(ilAntes, ic);
     const erroDepois = calcError(ilDepois, ic);
-    const uncertaintyAfter = calcUncertainty(ilDepois, ic, md, [m1, m2, m3]);
-    const uncertaintyCalc = uncertaintyAfter;
+    const erroDepoisAbs = erroDepois == null ? null : Math.abs(erroDepois);
+    const uncertaintyCalc = calcUncertainty(ilDepois, ic, md, [m1, m2, m3]);
     const uncertaintyRef = getNum('id_expanded_uncertainty_pct');
     const limit = acceptanceLimit();
 
     setNum('id_tm_display', tm, 3, true);
     setNum('id_md_display', md, 3, true);
     setNum('id_acceptance_criterion_pct', limit, 1);
+    setNum('id_mark_distance', distancia, 3);
     setNum('id_ibm', ibm, 3);
-    setNum('id_belt_speed_v', v, 3);
+    setNum('id_belt_speed_v', velocidade, 3);
     setNum('id_belt_length', l, 3);
     setNum('id_speed_characteristic_b04', b04, 6);
     setNum('id_calculated_flow_ic', ic, 3);
@@ -380,15 +460,23 @@
     setNum('id_error_after_pct', erroDepois, 3);
     setNum('id_expanded_uncertainty_pct', uncertaintyRef, 2);
     setNum('id_expanded_uncertainty_calc_pct', uncertaintyCalc, 2);
+
     updateErrorBeforeField(erroAntes, limit);
-    updateAcceptance(erroDepois, limit);
+    updateAcceptance(erroDepoisAbs, uncertaintyCalc, uncertaintyRef, limit);
     updateUncertainty(uncertaintyCalc, uncertaintyRef);
   }
 
-  const form = document.querySelector('form');
-  if (!form) return;
   form.addEventListener('input', recalc);
+  if (beltReplacedInput) {
+    beltReplacedInput.addEventListener('change', function() {
+      syncBeltMode();
+      recalc();
+    });
+  }
+
+  syncBeltMode();
   recalc();
 })();
 </script>
 {% endblock %}
+

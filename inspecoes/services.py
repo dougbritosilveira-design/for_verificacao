@@ -230,10 +230,13 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
     acceptance_limit = submission.acceptance_limit_pct
     error_before_value = submission.acceptance_error_before_value
     error_after_value = submission.acceptance_error_after_value
+    error_after_abs = submission.acceptance_error_after_abs
     error_before_status = _acceptance_label_for_value(error_before_value, acceptance_limit)
     error_after_status = _acceptance_label_for_value(error_after_value, acceptance_limit)
     uncertainty_calc = submission.expanded_uncertainty_calc_value
     uncertainty_status = submission.expanded_uncertainty_status_label
+    combined_value = submission.acceptance_combined_value
+    combined_status = submission.acceptance_status_label
     form_code = submission.form_type.code if submission.form_type_id and submission.form_type else 'FOR 08.05.003'
     form_title = (
         submission.form_type.title
@@ -247,10 +250,11 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         f'OM: {submission.om_number}',
         f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
         f'Local: {submission.location_snapshot}',
+        f'Houve troca de correia: {"Sim" if submission.belt_replaced else "Nao"}',
         f'Executor: {submission.executor_name}',
-        f'Critério de aceitação (%): {_format_num(acceptance_limit, 2)}',
-        f'Incerteza expandida cadastrada (%): {_format_num(submission.expanded_uncertainty_pct, 3)}',
-        f'Incerteza expandida calculada (%): {_format_num(uncertainty_calc, 3)}',
+        f'Critério de aceitação (%): {_format_num(acceptance_limit, 1)}',
+        f'Incerteza expandida cadastrada (%): {_format_num(submission.expanded_uncertainty_pct, 2)}',
+        f'Incerteza expandida calculada (%): {_format_num(uncertainty_calc, 2)}',
         f'Status da incerteza expandida: {uncertainty_status}',
         '',
         f'T1/T2/T3: {_format_num(submission.t1, 2)} / {_format_num(submission.t2, 2)} / {_format_num(submission.t3, 2)}',
@@ -265,11 +269,13 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         f'Ic (Q x V x 3,6): {_format_num(submission.calculated_flow_ic, 2)}',
         f'IL antes: {_format_num(submission.il_before, 2)}',
         f'Erro antes (%): {_format_num(error_before_value, 2)}',
-        f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 2)}%)',
+        f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
         f'IL depois: {_format_num(submission.il_after, 2)}',
         f'Erro depois (%): {_format_num(error_after_value, 2)}',
-        f'Status erro depois: {error_after_status} (limite <= {_format_num(acceptance_limit, 2)}%)',
-        f'Status final (erro depois): {submission.acceptance_status_label}',
+        f'|Erro final| (%): {_format_num(error_after_abs, 2)}',
+        f'Status erro depois: {error_after_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
+        f'Soma final |erro| + U(e) (%): {_format_num(combined_value, 2)}',
+        f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
         f'Setor 1: {submission.sector or ""}',
         f'Setor 2: {submission.sector_2 or ""}',
         f'Setor 3: {submission.sector_3 or ""}',

@@ -86,7 +86,7 @@ class TechnicalForm(forms.ModelForm):
         fields = [
             'om_number',
             't1', 't2', 't3',
-            'm1', 'm2', 'm3', 'mark_distance',
+            'm1', 'm2', 'm3', 'belt_replaced', 'mark_distance',
             'pulses_per_turn_1', 'pulses_per_turn_2', 'pulses_per_turn_3', 'ibm',
             'speed_characteristic_b04',
             'abw_1', 'abw_2', 'abw_3', 'tare_1', 'tare_2', 'tare_3',
@@ -109,6 +109,7 @@ class TechnicalForm(forms.ModelForm):
             'm1': 'M1 (s)',
             'm2': 'M2 (s)',
             'm3': 'M3 (s)',
+            'belt_replaced': 'Houve troca de correia?',
             'mark_distance': 'Distância entre marcas (m)',
             'pulses_per_turn_1': 'Pulsos por volta 1 (I/volta)',
             'pulses_per_turn_2': 'Pulsos por volta 2 (I/volta)',
@@ -161,7 +162,6 @@ class TechnicalForm(forms.ModelForm):
 
         for name in [
             'ibm',
-            'belt_speed_v',
             'belt_length',
             'speed_characteristic_b04',
             'calculated_flow_ic',
