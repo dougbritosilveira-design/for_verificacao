@@ -36,6 +36,11 @@
     </div>
   {% endif %}
 
+  <h3>Dados iniciais</h3>
+  <div class="row">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+  </div>
+
   <h3>Tempo de 1 volta (s)</h3>
   <div class="row">
     <p>{{ form.t1.label_tag }} {{ form.t1 }}</p>
@@ -159,13 +164,13 @@
 <p>Ic automático (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
 <p>Erro antes automático (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Erro depois automático (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
-<p>Incerteza expandida U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:3|default:'-' }}</p>
-<p>Incerteza expandida U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:3|default:'-' }}</p>
-<p>Incerteza expandida calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}</p>
+<p>Incerteza expandida U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|default:'-' }}</p>
+<p>Incerteza expandida U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|default:'-' }}</p>
+<p>Incerteza expandida calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}</p>
 <div id="accept-box"
      class="accept-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p style="margin:0 0 4px;">
-    <strong>Critério de aceitação (erro final <= {{ submission.acceptance_limit_pct|floatformat:2 }}%)</strong>
+    <strong>Critério de aceitação (erro final <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
     <span id="accept-pill"
           class="accept-pill {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
       {{ submission.acceptance_status_label }}
@@ -272,12 +277,12 @@
     box.classList.add(aprovado ? 'ok' : 'fail');
     pill.classList.add(aprovado ? 'ok' : 'fail');
     pill.textContent = aprovado ? 'Aprovado' : 'Reprovado';
-    detail.textContent = `Erro final atual: ${erroDepois.toFixed(2)}% (${aprovado ? 'dentro' : 'fora'} do limite de ${limit.toFixed(2)}%).`;
+    detail.textContent = `Erro final atual: ${erroDepois.toFixed(2)}% (${aprovado ? 'dentro' : 'fora'} do limite de ${limit.toFixed(1)}%).`;
     if (erroFinalInput) {
       erroFinalInput.classList.add(aprovado ? 'erro-final-ok' : 'erro-final-fail');
       erroFinalInput.title = aprovado
-        ? `Erro final dentro do critério de aceitação (<= ${limit.toFixed(2)}%)`
-        : `Erro final fora do critério de aceitação (> ${limit.toFixed(2)}%)`;
+        ? `Erro final dentro do critério de aceitação (<= ${limit.toFixed(1)}%)`
+        : `Erro final fora do critério de aceitação (> ${limit.toFixed(1)}%)`;
     }
   }
   function updateErrorBeforeField(erroAntes, limit) {
@@ -294,8 +299,8 @@
     const aprovado = Math.abs(erroAntes) <= limit;
     erroAntesInput.classList.add(aprovado ? 'erro-inicial-ok' : 'erro-inicial-fail');
     erroAntesInput.title = aprovado
-      ? `Erro inicial dentro do critério de aceitação (<= ${limit.toFixed(2)}%)`
-      : `Erro inicial fora do critério de aceitação (> ${limit.toFixed(2)}%)`;
+      ? `Erro inicial dentro do critério de aceitação (<= ${limit.toFixed(1)}%)`
+      : `Erro inicial fora do critério de aceitação (> ${limit.toFixed(1)}%)`;
   }
   function updateUncertainty(uncertaintyCalc, uncertaintyRef) {
     const box = document.getElementById('uncert-box');
@@ -318,7 +323,7 @@
       box.classList.add('pending');
       pill.classList.add('pending');
       pill.textContent = 'Sem referência cadastrada';
-      detail.textContent = `Incerteza calculada: ${uncertaintyCalc.toFixed(3)}%. Cadastre a referência do equipamento para comparar.`;
+      detail.textContent = `Incerteza calculada: ${uncertaintyCalc.toFixed(2)}%. Cadastre a referência do equipamento para comparar.`;
       return;
     }
 
@@ -326,7 +331,7 @@
     box.classList.add(aprovado ? 'ok' : 'fail');
     pill.classList.add(aprovado ? 'ok' : 'fail');
     pill.textContent = aprovado ? 'Aprovado' : 'Reprovado';
-    detail.textContent = `Calculada: ${uncertaintyCalc.toFixed(3)}% | Cadastrada: ${uncertaintyRef.toFixed(3)}% (${aprovado ? 'dentro' : 'acima'} do limite).`;
+    detail.textContent = `Calculada: ${uncertaintyCalc.toFixed(2)}% | Cadastrada: ${uncertaintyRef.toFixed(2)}% (${aprovado ? 'dentro' : 'acima'} do limite).`;
   }
   function recalc() {
     const t1 = getNum('id_t1');
@@ -365,7 +370,7 @@
 
     setNum('id_tm_display', tm, 3, true);
     setNum('id_md_display', md, 3, true);
-    setNum('id_acceptance_criterion_pct', limit, 2);
+    setNum('id_acceptance_criterion_pct', limit, 1);
     setNum('id_ibm', ibm, 3);
     setNum('id_belt_speed_v', v, 3);
     setNum('id_belt_length', l, 3);
@@ -373,7 +378,8 @@
     setNum('id_calculated_flow_ic', ic, 3);
     setNum('id_error_before_pct', erroAntes, 3);
     setNum('id_error_after_pct', erroDepois, 3);
-    setNum('id_expanded_uncertainty_calc_pct', uncertaintyCalc, 3);
+    setNum('id_expanded_uncertainty_pct', uncertaintyRef, 2);
+    setNum('id_expanded_uncertainty_calc_pct', uncertaintyCalc, 2);
     updateErrorBeforeField(erroAntes, limit);
     updateAcceptance(erroDepois, limit);
     updateUncertainty(uncertaintyCalc, uncertaintyRef);

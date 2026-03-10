@@ -181,6 +181,9 @@ def form_edit_view(request, pk):
         return _deny_edit_access(request)
 
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by'), pk=pk)
+    if submission.status == FormSubmission.Status.PENDING_VALIDATION:
+        messages.warning(request, 'Formulario ja enviado para validacao. Edicao bloqueada.')
+        return redirect('inspecoes:detail', pk=submission.pk)
     if submission.status in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.warning(request, 'Formulário já validado. Edição bloqueada.')
         return redirect('inspecoes:detail', pk=submission.pk)
@@ -190,7 +193,7 @@ def form_edit_view(request, pk):
         if form.is_valid():
             previous_status = submission.status
             submission = form.save(commit=False)
-            if submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
+            if 'go_validate' in request.POST and submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
                 submission.status = FormSubmission.Status.PENDING_VALIDATION
             submission.save()
 

@@ -19,8 +19,10 @@
         <td>{{ s.get_status_display }}</td><td>{{ s.get_sap_status_display }}</td>
         <td>
           <a href="{% url 'inspecoes:detail' s.pk %}">Ver</a>
-          {% if portal_user_can_edit_forms and portal_can_view_forms and s.status != 'approved' and s.status != 'sent_to_sap' %}
-            | <a href="{% url 'inspecoes:form-edit' s.pk %}">Editar</a>
+          {% if portal_user_can_edit_forms and portal_can_view_forms %}
+            {% if s.status == 'draft' or s.status == 'rework_required' %}
+              | <a href="{% url 'inspecoes:form-edit' s.pk %}">Editar</a>
+            {% endif %}
           {% endif %}
           {% if portal_user_can_validate_forms and portal_can_view_forms %}
             | <a href="{% url 'inspecoes:form-validate' s.pk %}">Validar</a>

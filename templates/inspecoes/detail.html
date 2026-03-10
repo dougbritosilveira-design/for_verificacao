@@ -40,8 +40,10 @@
 {% endif %}
 
 <p>
-  {% if portal_user_can_edit_forms and portal_can_view_forms and submission.status != 'approved' and submission.status != 'sent_to_sap' %}
-    <a href="{% url 'inspecoes:form-edit' submission.pk %}">Editar</a> |
+  {% if portal_user_can_edit_forms and portal_can_view_forms %}
+    {% if submission.status == 'draft' or submission.status == 'rework_required' %}
+      <a href="{% url 'inspecoes:form-edit' submission.pk %}">Editar</a> |
+    {% endif %}
   {% endif %}
   {% if portal_user_can_validate_forms and portal_can_view_forms %}
     <a href="{% url 'inspecoes:form-validate' submission.pk %}">Validar</a> |

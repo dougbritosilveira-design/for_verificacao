@@ -43,6 +43,7 @@ class TechnicalForm(forms.ModelForm):
     class Meta:
         model = FormSubmission
         fields = [
+            'om_number',
             't1', 't2', 't3',
             'm1', 'm2', 'm3', 'mark_distance',
             'pulses_per_turn_1', 'pulses_per_turn_2', 'pulses_per_turn_3', 'ibm',
@@ -60,6 +61,7 @@ class TechnicalForm(forms.ModelForm):
             'observation',
         ]
         labels = {
+            'om_number': 'Nº OM',
             't1': 'T1 (s)',
             't2': 'T2 (s)',
             't3': 'T3 (s)',
@@ -112,7 +114,9 @@ class TechnicalForm(forms.ModelForm):
         for field in self.fields.values():
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
-        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.1'})
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.01'})
 
         for name in [
             'ibm',
