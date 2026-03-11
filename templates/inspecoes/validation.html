@@ -22,6 +22,7 @@
   <li>Formulário: {{ submission.form_type_label }}</li>
   <li>Equipamento: {{ submission.equipment.tag }} - {{ submission.equipment.description }}</li>
   <li>Local: {{ submission.location_snapshot }}</li>
+  <li>Data da visita: {{ submission.execution_date|date:"d/m/Y" }}</li>
   <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   <li>Status atual: {{ submission.get_status_display }}</li>
   <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:1 }}%</li>

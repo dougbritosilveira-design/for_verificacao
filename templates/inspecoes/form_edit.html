@@ -2,7 +2,7 @@
 {% block title %}Formulário técnico{% endblock %}
 {% block content %}
 <h2>2. Formulário técnico</h2>
-<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
 <p><strong>Campos automáticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou Distância entre marcas será campo manual.</p>
 <style>
@@ -36,9 +36,10 @@
     </div>
   {% endif %}
 
-  <h3>Dados iniciais</h3>
+<h3>Dados iniciais</h3>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
   </div>
 
   <h3>Tempo de 1 volta (s)</h3>

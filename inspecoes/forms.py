@@ -93,6 +93,7 @@ class TechnicalForm(forms.ModelForm):
         model = FormSubmission
         fields = [
             'om_number',
+            'execution_date',
             't1', 't2', 't3',
             'm1', 'm2', 'm3', 'belt_replaced', 'mark_distance',
             'pulses_per_turn_1', 'pulses_per_turn_2', 'pulses_per_turn_3', 'ibm',
@@ -111,6 +112,7 @@ class TechnicalForm(forms.ModelForm):
         ]
         labels = {
             'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
             't1': 'T1 (s)',
             't2': 'T2 (s)',
             't3': 'T3 (s)',
@@ -157,7 +159,10 @@ class TechnicalForm(forms.ModelForm):
             'technician_3_registration': 'Matrícula 3',
             'observation': 'Observação',
         }
-        widgets = {'observation': forms.Textarea(attrs={'rows': 4})}
+        widgets = {
+            'execution_date': forms.DateInput(attrs={'type': 'date'}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
