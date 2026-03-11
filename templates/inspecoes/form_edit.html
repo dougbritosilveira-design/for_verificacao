@@ -56,7 +56,7 @@
     <p>{{ form.m3.label_tag }} {{ form.m3 }}</p>
     <p><label for="id_md_display">MD - média dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
   </div>
-  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,340px));justify-content:start;gap:12px;">
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.belt_replaced.label_tag }} {{ form.belt_replaced }}</p>
     <p>{{ form.mark_distance.label_tag }} {{ form.mark_distance }}</p>
   </div>
