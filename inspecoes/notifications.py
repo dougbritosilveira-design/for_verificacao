@@ -137,9 +137,9 @@ def notify_technician_validation_result(
         )
     else:
         category = PortalNotification.Category.FORM_REWORK
-        title = f'Refação solicitada - OM {submission.om_number}'
+        title = f'Formulário reprovado - Refazer visita - OM {submission.om_number}'
         message = (
-            f'O formulário #{submission.id} precisa ser refeito.\n'
+            f'O formulário #{submission.id} foi reprovado e precisa de nova visita.\n'
             f'Equipamento: {submission.equipment.tag}\n'
             f'Validador: {submission.validator_name or "-"}\n'
             f'Motivo: {feedback or "Sem observação."}\n'
