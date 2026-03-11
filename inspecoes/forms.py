@@ -204,7 +204,7 @@ class ValidationForm(forms.Form):
         REWORK = 'rework'
         CHOICES = (
             (APPROVE, 'Aprovar formulário'),
-            (REWORK, 'Solicitar refação'),
+            (REWORK, 'Reprovado - Refazer'),
         )
 
     validator_name = forms.CharField(label='Responsável pela validação', max_length=120)
