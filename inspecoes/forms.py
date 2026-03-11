@@ -214,7 +214,7 @@ class ValidationForm(forms.Form):
         initial=DecisionChoices.APPROVE,
     )
     feedback = forms.CharField(
-        label='Observação do validador',
+        label='Observação do avaliador',
         required=False,
         widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Obrigatório quando solicitar refação.'}),
     )

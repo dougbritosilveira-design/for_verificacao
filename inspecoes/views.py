@@ -289,7 +289,7 @@ def form_validate_view(request, pk):
                 ]
             )
             notify_technician_validation_result(submission, approved=False, validator_user=request.user, feedback=feedback)
-            messages.warning(request, 'Refação solicitada para o técnico responsável.')
+            messages.warning(request, 'Formulário reprovado e devolvido para edição do técnico responsável.')
             return redirect('inspecoes:detail', pk=submission.pk)
     else:
         initial_name = request.user.get_full_name().strip() or request.user.username

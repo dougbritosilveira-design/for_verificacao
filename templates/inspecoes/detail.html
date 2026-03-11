@@ -44,7 +44,7 @@
 <p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
 <p><strong>Validado em:</strong> {{ submission.validated_at|date:"d/m/Y H:i"|default:'-' }}</p>
 {% if submission.validation_feedback %}
-  <p><strong>Observação da validação:</strong> {{ submission.validation_feedback }}</p>
+  <p><strong>Observação do avaliador:</strong> {{ submission.validation_feedback }}</p>
 {% endif %}
 
 <p>

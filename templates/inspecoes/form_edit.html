@@ -4,6 +4,21 @@
 <h2>2. Formulário técnico</h2>
 <p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;">
+      <strong>Reprovado - Refazer</strong>
+    </p>
+    <p style="margin:0;">
+      <strong>Observação do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observação.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
 <p><strong>Campos automáticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou Distância entre marcas será campo manual.</p>
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
