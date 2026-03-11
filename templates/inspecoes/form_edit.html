@@ -105,20 +105,6 @@
     <p>{{ form.error_before_pct.label_tag }} {{ form.error_before_pct }}</p>
     <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
   </div>
-  <div id="uncert-box"
-       class="accept-box {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
-    <p style="margin:0 0 4px;">
-      <strong>Comparação da incerteza expandida</strong>
-      <span id="uncert-pill"
-            class="accept-pill {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
-        {{ submission.expanded_uncertainty_status_label }}
-      </span>
-    </p>
-    <p id="uncert-detail" style="margin:0;">
-      {{ submission.expanded_uncertainty_status_detail }}
-    </p>
-  </div>
-
   <h3>Dados do equipamento (vazão indicada)</h3>
   <div class="row">
     <p>{{ form.il_before_ti.label_tag }} {{ form.il_before_ti }}</p>
@@ -170,6 +156,19 @@
 <p>Incerteza expandida U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}</p>
+<div id="uncert-box"
+     class="accept-box {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
+  <p style="margin:0 0 4px;">
+    <strong>Comparação da incerteza expandida</strong>
+    <span id="uncert-pill"
+          class="accept-pill {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
+      {{ submission.expanded_uncertainty_status_label }}
+    </span>
+  </p>
+  <p id="uncert-detail" style="margin:0;">
+    {{ submission.expanded_uncertainty_status_detail }}
+  </p>
+</div>
 <div id="accept-box"
      class="accept-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p style="margin:0 0 4px;">
