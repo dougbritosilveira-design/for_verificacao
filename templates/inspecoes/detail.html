@@ -23,7 +23,7 @@
 <p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|default:'-' }}</p>
 <p><strong>Critério de aceitação (formulário):</strong>
   {% if submission.is_level_form %}
-    {{ submission.acceptance_criterion_pct|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
+    {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% else %}
     {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% endif %}
@@ -107,12 +107,15 @@
   <ul>
     <li>Fase final considerada: {{ submission.level_final_phase_label }}</li>
     <li>Erro médio absoluto antes: {{ submission.level_before_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>U(e) antes: {{ submission.level_uncertainty_expanded_before_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Soma antes |erro| + U(e): {{ submission.level_before_combined_value|floatformat:3|localize|default:'-' }} m</li>
+    <li>Status antes: {% if submission.level_before_combined_ok is None %}Pendente dados{% elif submission.level_before_combined_ok %}Aprovado{% else %}Reprovado{% endif %}</li>
+    <li>Erro médio absoluto depois: {{ submission.level_after_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>U(e) depois: {{ submission.level_uncertainty_expanded_after_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Soma depois |erro| + U(e): {{ submission.level_after_combined_value|floatformat:3|localize|default:'-' }} m</li>
+    <li>Status depois: {% if submission.level_after_combined_ok is None %}Pendente dados{% elif submission.level_after_combined_ok %}Aprovado{% else %}Reprovado{% endif %}</li>
     <li>Erro médio absoluto final: {{ submission.level_final_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
-    <li>U(e) calculada: {{ submission.level_uncertainty_expanded_m|floatformat:3|localize|default:'-' }} m</li>
-    <li>TUR (critério/U(e)): {{ submission.level_tur_value|floatformat:2|localize|default:'-' }}</li>
-    <li>Resolução da trena: {{ submission.level_resolution_tape_value_m|floatformat:4|localize|default:'-' }} m</li>
-    <li>Resolução do transmissor: {{ submission.level_resolution_instrument_value_m|floatformat:4|localize|default:'-' }} m</li>
-    <li>Fator k: {{ submission.level_coverage_factor_value|floatformat:3|localize|default:'-' }}</li>
+    <li>U(e) calculada final: {{ submission.level_uncertainty_expanded_m|floatformat:3|localize|default:'-' }} m</li>
     <li>Setor 1: {{ submission.sector|default:'-' }}</li>
     <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
     <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>

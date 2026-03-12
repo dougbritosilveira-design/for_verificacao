@@ -287,12 +287,12 @@ class LevelTechnicalForm(forms.ModelForm):
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
 
-        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.001'})
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
         self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.001'})
         self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
-        self.fields['level_resolution_tape_m'].widget.attrs.update({'step': '0.0001'})
-        self.fields['level_resolution_instrument_m'].widget.attrs.update({'step': '0.0001'})
-        self.fields['level_coverage_factor_k'].widget.attrs.update({'step': '0.001'})
+        self.fields['level_resolution_tape_m'].widget = forms.HiddenInput()
+        self.fields['level_resolution_instrument_m'].widget = forms.HiddenInput()
+        self.fields['level_coverage_factor_k'].widget = forms.HiddenInput()
 
         for name in ['acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct']:
             self.fields[name].disabled = True

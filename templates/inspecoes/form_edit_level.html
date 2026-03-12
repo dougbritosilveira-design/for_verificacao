@@ -1,4 +1,4 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load l10n %}
 {% block title %}Formulário técnico{% endblock %}
 {% block content %}
@@ -17,8 +17,7 @@
     </p>
   </div>
 {% endif %}
-<p><strong>Campos automáticos:</strong> erro médio absoluto, U(e), TUR e critério final de aceitação.</p>
-<p><strong>Fluxo:</strong> se "antes do ajuste" ficar dentro do critério, a seção "após ajuste" é opcional.</p>
+<p><strong>Campos automáticos:</strong> erro médio absoluto, U(e), critério de aceitação e critério final.</p>
 
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
@@ -48,6 +47,10 @@
       {% endfor %}
     </div>
   {% endif %}
+
+  {{ form.level_resolution_tape_m }}
+  {{ form.level_resolution_instrument_m }}
+  {{ form.level_coverage_factor_k }}
 
   <h3>Dados iniciais</h3>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
@@ -131,30 +134,27 @@
     </tbody>
   </table>
 
-  <h3>Parâmetros da incerteza</h3>
-  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
-    <p>{{ form.level_resolution_tape_m.label_tag }} {{ form.level_resolution_tape_m }}</p>
-    <p>{{ form.level_resolution_instrument_m.label_tag }} {{ form.level_resolution_instrument_m }}</p>
-    <p>{{ form.level_coverage_factor_k.label_tag }} {{ form.level_coverage_factor_k }}</p>
-  </div>
-
   <h3>Resultados da verificação e ajuste</h3>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
     <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
     <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
-    <p><label for="id_level_tur">TUR (critério/U(e))</label><input id="id_level_tur" type="text" readonly></p>
     <p><label for="id_level_error_before_mean">Erro médio absoluto antes (m)</label><input id="id_level_error_before_mean" type="text" readonly></p>
-    <p><label for="id_level_error_final_mean">Erro médio absoluto final (m)</label><input id="id_level_error_final_mean" type="text" readonly></p>
+    <p><label for="id_level_error_after_mean">Erro médio absoluto depois (m)</label><input id="id_level_error_after_mean" type="text" readonly></p>
   </div>
 
   <div id="before-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Verificação antes do ajuste</strong> <span id="before-pill" class="accept-pill pending">Pendente dados</span></p>
-    <p id="before-detail" style="margin:0;">Preencha VM e VL dos 4 pontos.</p>
+    <p style="margin:0 0 4px;"><strong>Comparação antes do ajuste</strong> <span id="before-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="before-detail" style="margin:0;">Preencha VM e VL dos 4 pontos para calcular erro e U(e) antes.</p>
+  </div>
+
+  <div id="after-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Comparação após ajuste</strong> <span id="after-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="after-detail" style="margin:0;">A seção após ajuste é opcional. Ao preencher, o sistema calcula erro e U(e) depois.</p>
   </div>
 
   <div id="uncert-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Comparação da incerteza expandida</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p style="margin:0 0 4px;"><strong>Comparação da incerteza expandida (fase final)</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
     <p id="uncert-detail" style="margin:0;">Preencha as medições para calcular U(e).</p>
   </div>
 
@@ -163,6 +163,25 @@
     <p id="accept-detail" style="margin:0;">Preencha os dados para avaliação final.</p>
     <p id="phase-detail" class="hint">Fase final considerada: -</p>
   </div>
+
+  <hr>
+  <h3>Resumo calculado (MVP)</h3>
+  <ul>
+    <li>Fase final considerada: <span id="sum-phase">-</span></li>
+    <li>Erro antes (m): <span id="sum-before-error">-</span></li>
+    <li>U(e) antes (m): <span id="sum-before-unc">-</span></li>
+    <li>Soma antes |erro| + U(e) (m): <span id="sum-before-combined">-</span></li>
+    <li>Status antes: <span id="sum-before-status">-</span></li>
+    <li>Erro depois (m): <span id="sum-after-error">-</span></li>
+    <li>U(e) depois (m): <span id="sum-after-unc">-</span></li>
+    <li>Soma depois |erro| + U(e) (m): <span id="sum-after-combined">-</span></li>
+    <li>Status depois: <span id="sum-after-status">-</span></li>
+    <li>Incerteza cadastrada (m): <span id="sum-unc-ref">-</span></li>
+    <li>Incerteza calculada final (m): <span id="sum-unc-final">-</span></li>
+    <li>Status incerteza final: <span id="sum-unc-status">-</span></li>
+    <li>Soma final |erro| + U(e) (m): <span id="sum-final-combined">-</span></li>
+    <li>Status final: <span id="sum-final-status">-</span></li>
+  </ul>
 
   <h3>Identificação e observação</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
@@ -204,15 +223,26 @@
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  function setNum(id, value, decimals = 2, useComma = true) {
+  function fmt(value, decimals = 3, useComma = true) {
+    if (value == null || !Number.isFinite(value)) return '-';
+    const fixed = value.toFixed(decimals);
+    return useComma ? fixed.replace('.', ',') : fixed;
+  }
+
+  function setNum(id, value, decimals = 3, useComma = true) {
     const el = document.getElementById(id);
     if (!el) return;
     if (value == null || !Number.isFinite(value)) {
       el.value = '';
       return;
     }
-    const fixed = value.toFixed(decimals);
-    el.value = useComma ? fixed.replace('.', ',') : fixed;
+    el.value = fmt(value, decimals, useComma);
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value;
   }
 
   function avg(values) {
@@ -245,6 +275,19 @@
     return rows;
   }
 
+  function calcExpandedUncertainty(rows, resolutionTape, resolutionInstrument, kFactor) {
+    const signed = rows.map((row) => row.signed);
+    if (signed.length < 2) return null;
+    const s = stdSample(signed);
+    if (s == null) return null;
+    const uA = s / Math.sqrt(signed.length);
+    const uVm = resolutionTape / Math.sqrt(12);
+    const uVl = resolutionInstrument / Math.sqrt(12);
+    const uB = Math.sqrt((uVm * uVm) + (uVl * uVl));
+    const uC = Math.sqrt((uA * uA) + (uB * uB));
+    return Math.abs(kFactor * uC);
+  }
+
   function setBoxStatus(prefix, status, detail) {
     const box = document.getElementById(`${prefix}-box`);
     const pill = document.getElementById(`${prefix}-pill`);
@@ -258,83 +301,101 @@
     detailEl.textContent = detail;
   }
 
+  function statusLabelByBool(flag) {
+    if (flag == null) return 'Pendente dados';
+    return flag ? 'Aprovado' : 'Reprovado';
+  }
+
   function recalc() {
     const beforeRows = collectPhase('before');
     const afterRows = collectPhase('after');
 
-    const beforeMeanAbsM = avg(beforeRows.map((row) => row.abs));
-    const afterMeanAbsM = avg(afterRows.map((row) => row.abs));
-    const finalPhase = afterRows.length ? 'after' : 'before';
-    const finalRows = afterRows.length ? afterRows : beforeRows;
-    const finalMeanAbsM = avg(finalRows.map((row) => row.abs));
-    const signedFinal = finalRows.map((row) => row.signed);
+    const beforeMeanAbs = avg(beforeRows.map((row) => row.abs));
+    const afterMeanAbs = avg(afterRows.map((row) => row.abs));
 
     const criterion = getNum('id_acceptance_criterion_pct');
     const uncertaintyRef = getNum('id_expanded_uncertainty_pct');
-    const resolutionTape = getNum('id_level_resolution_tape_m');
-    const resolutionInstrument = getNum('id_level_resolution_instrument_m');
-    const kFactor = getNum('id_level_coverage_factor_k');
 
-    const beforeMeanAbs = beforeMeanAbsM;
-    const finalMeanAbs = finalMeanAbsM;
-    setNum('id_level_error_before_mean', beforeMeanAbs, 3, true);
-    setNum('id_level_error_final_mean', finalMeanAbs, 3, true);
+    const resolutionTape = getNum('id_level_resolution_tape_m') ?? 0.001;
+    const resolutionInstrument = getNum('id_level_resolution_instrument_m') ?? 0.010;
+    const kFactor = getNum('id_level_coverage_factor_k') ?? 2.0;
 
-    const s = stdSample(signedFinal);
-    const uA = (s == null || signedFinal.length < 2) ? null : s / Math.sqrt(signedFinal.length);
-    const uVm = resolutionTape == null ? null : resolutionTape / Math.sqrt(12);
-    const uVl = resolutionInstrument == null ? null : resolutionInstrument / Math.sqrt(12);
-    const uB = (uVm == null || uVl == null) ? null : Math.sqrt((uVm * uVm) + (uVl * uVl));
-    const uC = (uA == null || uB == null) ? null : Math.sqrt((uA * uA) + (uB * uB));
-    const uncertaintyCalc = (uC == null || kFactor == null) ? null : Math.abs(kFactor * uC);
+    const beforeUncertainty = calcExpandedUncertainty(beforeRows, resolutionTape, resolutionInstrument, kFactor);
+    const afterUncertainty = calcExpandedUncertainty(afterRows, resolutionTape, resolutionInstrument, kFactor);
 
-    setNum('id_expanded_uncertainty_calc_pct', uncertaintyCalc, 3, true);
+    const finalPhase = afterRows.length ? 'after' : 'before';
+    const finalPhaseLabel = finalPhase === 'after' ? 'Após ajuste' : 'Antes do ajuste';
+    const finalError = finalPhase === 'after' ? afterMeanAbs : beforeMeanAbs;
+    const finalUncertainty = finalPhase === 'after' ? afterUncertainty : beforeUncertainty;
 
-    const tur = (criterion == null || uncertaintyCalc == null || uncertaintyCalc === 0)
+    const beforeCombined = (beforeMeanAbs == null || beforeUncertainty == null) ? null : beforeMeanAbs + Math.abs(beforeUncertainty);
+    const afterCombined = (afterMeanAbs == null || afterUncertainty == null) ? null : afterMeanAbs + Math.abs(afterUncertainty);
+    const finalCombined = (finalError == null || finalUncertainty == null) ? null : finalError + Math.abs(finalUncertainty);
+
+    const beforeOk = (beforeCombined == null || criterion == null) ? null : beforeCombined <= criterion;
+    const afterOk = (afterCombined == null || criterion == null) ? null : afterCombined <= criterion;
+    const uncertaintyOk = (finalUncertainty == null || uncertaintyRef == null) ? null : finalUncertainty <= uncertaintyRef;
+    const finalOk = (finalCombined == null || criterion == null)
       ? null
-      : criterion / uncertaintyCalc;
-    setNum('id_level_tur', tur, 2, true);
+      : (finalCombined <= criterion && (uncertaintyOk == null || uncertaintyOk));
+
+    setNum('id_level_error_before_mean', beforeMeanAbs, 3, true);
+    setNum('id_level_error_after_mean', afterMeanAbs, 3, true);
+    setNum('id_expanded_uncertainty_calc_pct', finalUncertainty, 3, true);
+    setNum('id_acceptance_criterion_pct', criterion, 2, true);
+    setNum('id_expanded_uncertainty_pct', uncertaintyRef, 3, true);
 
     const phaseDetail = document.getElementById('phase-detail');
     if (phaseDetail) {
-      const phaseLabel = finalPhase === 'after' ? 'Após ajuste' : 'Antes do ajuste';
-      phaseDetail.textContent = `Fase final considerada: ${phaseLabel}.`;
+      phaseDetail.textContent = `Fase final considerada: ${finalPhaseLabel}.`;
     }
 
-    if (beforeMeanAbs == null || criterion == null) {
-      setBoxStatus('before', 'pending', 'Preencha VM e VL dos 4 pontos para avaliar a etapa antes do ajuste.');
+    if (beforeCombined == null || criterion == null) {
+      setBoxStatus('before', 'pending', 'Preencha VM e VL dos 4 pontos para calcular erro e U(e) antes.');
     } else {
-      const beforeOk = beforeMeanAbs <= criterion;
-      const detail = beforeOk
-        ? `Erro médio absoluto antes: ${beforeMeanAbs.toFixed(3).replace('.', ',')} m (dentro do limite ${criterion.toFixed(3).replace('.', ',')} m).`
-        : `Erro médio absoluto antes: ${beforeMeanAbs.toFixed(3).replace('.', ',')} m (acima do limite ${criterion.toFixed(3).replace('.', ',')} m).`;
+      const detail = `Erro antes: ${fmt(beforeMeanAbs, 3)} m | U(e) antes: ${fmt(beforeUncertainty, 3)} m | Soma: ${fmt(beforeCombined, 3)} m (limite ${fmt(criterion, 2)} m).`;
       setBoxStatus('before', beforeOk ? 'ok' : 'fail', detail);
     }
 
-    if (uncertaintyCalc == null) {
-      setBoxStatus('uncert', 'pending', 'Preencha medições e parâmetros para calcular a incerteza expandida.');
-    } else if (uncertaintyRef == null) {
-      const detail = `U(e) calculada: ${uncertaintyCalc.toFixed(3).replace('.', ',')} m. Sem referência cadastrada para comparar.`;
-      setBoxStatus('uncert', 'pending', detail);
+    if (!afterRows.length) {
+      setBoxStatus('after', 'pending', 'Sem medições após ajuste. Preencha os 4 pontos para comparar o resultado depois.');
+    } else if (afterCombined == null || criterion == null) {
+      setBoxStatus('after', 'pending', 'Preencha VM e VL dos 4 pontos para calcular erro e U(e) depois.');
     } else {
-      const uncertaintyOk = uncertaintyCalc <= uncertaintyRef;
-      const detail = uncertaintyOk
-        ? `U(e) calculada: ${uncertaintyCalc.toFixed(3).replace('.', ',')} m | cadastrada: ${uncertaintyRef.toFixed(3).replace('.', ',')} m (dentro do limite).`
-        : `U(e) calculada: ${uncertaintyCalc.toFixed(3).replace('.', ',')} m | cadastrada: ${uncertaintyRef.toFixed(3).replace('.', ',')} m (acima do limite).`;
+      const detail = `Erro depois: ${fmt(afterMeanAbs, 3)} m | U(e) depois: ${fmt(afterUncertainty, 3)} m | Soma: ${fmt(afterCombined, 3)} m (limite ${fmt(criterion, 2)} m).`;
+      setBoxStatus('after', afterOk ? 'ok' : 'fail', detail);
+    }
+
+    if (finalUncertainty == null) {
+      setBoxStatus('uncert', 'pending', 'Preencha as medições da fase final para calcular a incerteza expandida.');
+    } else if (uncertaintyRef == null) {
+      setBoxStatus('uncert', 'pending', `U(e) final calculada: ${fmt(finalUncertainty, 3)} m. Sem referência cadastrada para comparar.`);
+    } else {
+      const detail = `U(e) final calculada: ${fmt(finalUncertainty, 3)} m | cadastrada: ${fmt(uncertaintyRef, 3)} m.`;
       setBoxStatus('uncert', uncertaintyOk ? 'ok' : 'fail', detail);
     }
 
-    const errorAbs = finalMeanAbs;
-    if (errorAbs == null || criterion == null || uncertaintyCalc == null) {
-      setBoxStatus('accept', 'pending', 'Preencha os dados para avaliar o critério final.');
-      return;
+    if (finalCombined == null || criterion == null) {
+      setBoxStatus('accept', 'pending', 'Preencha os dados para avaliação final.');
+    } else {
+      const detail = `Fase final: ${finalPhaseLabel} | |Erro final|: ${fmt(finalError, 3)} m | U(e): ${fmt(finalUncertainty, 3)} m | Soma: ${fmt(finalCombined, 3)} m (limite ${fmt(criterion, 2)} m).`;
+      setBoxStatus('accept', finalOk ? 'ok' : 'fail', detail);
     }
 
-    const uncertaintyRefOk = uncertaintyRef == null ? true : uncertaintyCalc <= uncertaintyRef;
-    const combined = errorAbs + Math.abs(uncertaintyCalc);
-    const finalOk = combined <= criterion && uncertaintyRefOk;
-    const detail = `|Erro final|: ${errorAbs.toFixed(3).replace('.', ',')} m | U(e): ${uncertaintyCalc.toFixed(3).replace('.', ',')} m | Soma: ${combined.toFixed(3).replace('.', ',')} m (limite ${criterion.toFixed(3).replace('.', ',')} m).`;
-    setBoxStatus('accept', finalOk ? 'ok' : 'fail', detail);
+    setText('sum-phase', finalPhaseLabel);
+    setText('sum-before-error', fmt(beforeMeanAbs, 3));
+    setText('sum-before-unc', fmt(beforeUncertainty, 3));
+    setText('sum-before-combined', fmt(beforeCombined, 3));
+    setText('sum-before-status', statusLabelByBool(beforeOk));
+    setText('sum-after-error', fmt(afterMeanAbs, 3));
+    setText('sum-after-unc', fmt(afterUncertainty, 3));
+    setText('sum-after-combined', fmt(afterCombined, 3));
+    setText('sum-after-status', afterRows.length ? statusLabelByBool(afterOk) : 'Sem dados');
+    setText('sum-unc-ref', fmt(uncertaintyRef, 3));
+    setText('sum-unc-final', fmt(finalUncertainty, 3));
+    setText('sum-unc-status', statusLabelByBool(uncertaintyOk));
+    setText('sum-final-combined', fmt(finalCombined, 3));
+    setText('sum-final-status', statusLabelByBool(finalOk));
   }
 
   form.addEventListener('input', recalc);

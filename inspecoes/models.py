@@ -803,9 +803,8 @@ class FormSubmission(models.Model):
     def level_final_mean_signed_m(self):
         return self._level_mean_signed_m(self.level_final_phase)
 
-    @property
-    def level_repeatability_u_a_m(self):
-        errors = self._level_signed_errors_m(self.level_final_phase)
+    def _level_repeatability_u_a_for_phase_m(self, phase='before'):
+        errors = self._level_signed_errors_m(phase)
         count = len(errors)
         if count < 2:
             return None
@@ -814,6 +813,10 @@ class FormSubmission(models.Model):
         if std_sample is None or sqrt_count in (None, 0):
             return None
         return std_sample / sqrt_count
+
+    @property
+    def level_repeatability_u_a_m(self):
+        return self._level_repeatability_u_a_for_phase_m(self.level_final_phase)
 
     @property
     def level_resolution_tape_value_m(self):
@@ -855,20 +858,36 @@ class FormSubmission(models.Model):
             return None
         return self._sqrt((u_vm * u_vm) + (u_vl * u_vl))
 
-    @property
-    def level_uncertainty_u_c_m(self):
-        u_a = self.level_repeatability_u_a_m
+    def _level_uncertainty_u_c_for_phase_m(self, phase='before'):
+        u_a = self._level_repeatability_u_a_for_phase_m(phase)
         u_b = self.level_resolution_u_b_m
         if u_a is None or u_b is None:
             return None
         return self._sqrt((u_a * u_a) + (u_b * u_b))
 
     @property
-    def level_uncertainty_expanded_m(self):
-        u_c = self.level_uncertainty_u_c_m
+    def level_uncertainty_u_c_m(self):
+        return self._level_uncertainty_u_c_for_phase_m(self.level_final_phase)
+
+    def _level_uncertainty_expanded_for_phase_m(self, phase='before'):
+        u_c = self._level_uncertainty_u_c_for_phase_m(phase)
         if u_c is None:
             return None
         return abs(self.level_coverage_factor_value * u_c)
+
+    @property
+    def level_uncertainty_expanded_before_m(self):
+        return self._level_uncertainty_expanded_for_phase_m('before')
+
+    @property
+    def level_uncertainty_expanded_after_m(self):
+        if not self.level_has_after_measurements:
+            return None
+        return self._level_uncertainty_expanded_for_phase_m('after')
+
+    @property
+    def level_uncertainty_expanded_m(self):
+        return self._level_uncertainty_expanded_for_phase_m(self.level_final_phase)
 
     @property
     def level_uncertainty_expanded_cm(self):
@@ -891,6 +910,44 @@ class FormSubmission(models.Model):
         if uncertainty in (None, 0) or limit is None:
             return None
         return limit / uncertainty
+
+    @staticmethod
+    def _is_within_limit(value, limit):
+        if value is None or limit is None:
+            return None
+        return value <= limit
+
+    @property
+    def level_before_error_ok(self):
+        return self._is_within_limit(self.level_before_mean_abs_m, self.acceptance_limit_pct)
+
+    @property
+    def level_after_error_ok(self):
+        if not self.level_has_after_measurements:
+            return None
+        return self._is_within_limit(self.level_after_mean_abs_m, self.acceptance_limit_pct)
+
+    @property
+    def level_before_combined_value(self):
+        if self.level_before_mean_abs_m is None or self.level_uncertainty_expanded_before_m is None:
+            return None
+        return self.level_before_mean_abs_m + abs(self.level_uncertainty_expanded_before_m)
+
+    @property
+    def level_after_combined_value(self):
+        if not self.level_has_after_measurements:
+            return None
+        if self.level_after_mean_abs_m is None or self.level_uncertainty_expanded_after_m is None:
+            return None
+        return self.level_after_mean_abs_m + abs(self.level_uncertainty_expanded_after_m)
+
+    @property
+    def level_before_combined_ok(self):
+        return self._is_within_limit(self.level_before_combined_value, self.acceptance_limit_pct)
+
+    @property
+    def level_after_combined_ok(self):
+        return self._is_within_limit(self.level_after_combined_value, self.acceptance_limit_pct)
 
     @property
     def tm(self):

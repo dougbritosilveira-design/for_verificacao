@@ -247,6 +247,18 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
     uncertainty_unit = submission.expanded_uncertainty_unit_label or acceptance_unit
 
     if submission.is_level_form:
+        before_combined = submission.level_before_combined_value
+        before_status = (
+            'Pendente dados'
+            if submission.level_before_combined_ok is None
+            else ('Aprovado' if submission.level_before_combined_ok else 'Reprovado')
+        )
+        after_combined = submission.level_after_combined_value
+        after_status = (
+            'Pendente dados'
+            if submission.level_after_combined_ok is None
+            else ('Aprovado' if submission.level_after_combined_ok else 'Reprovado')
+        )
         lines = [
             f'{form_code} - {form_title}',
             f'Data da visita: {submission.execution_date}',
@@ -255,21 +267,23 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
             f'Local: {submission.location_snapshot}',
             f'Executor: {submission.executor_name}',
             f'Fase final considerada: {submission.level_final_phase_label}',
-            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 3)}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
             f'Incerteza expandida cadastrada ({uncertainty_unit}): {_format_num(submission.expanded_uncertainty_pct, 3)}',
             f'Incerteza expandida calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
             f'Status da incerteza expandida: {uncertainty_status}',
             f'Erro antes ({acceptance_unit}): {_format_num(error_before_value, 3)}',
-            f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 3)}{acceptance_unit})',
+            f'U(e) antes ({uncertainty_unit}): {_format_num(submission.level_uncertainty_expanded_before_m, 3)}',
+            f'Soma antes |erro| + U(e) ({acceptance_unit}): {_format_num(before_combined, 3)}',
+            f'Status antes: {before_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
             f'Erro final ({acceptance_unit}): {_format_num(error_after_value, 3)}',
             f'|Erro final| ({acceptance_unit}): {_format_num(error_after_abs, 3)}',
-            f'Status erro final: {error_after_status} (limite <= {_format_num(acceptance_limit, 3)}{acceptance_unit})',
+            f'Status erro final: {error_after_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
+            f'Erro depois ({acceptance_unit}): {_format_num(submission.level_after_mean_abs_m, 3)}',
+            f'U(e) depois ({uncertainty_unit}): {_format_num(submission.level_uncertainty_expanded_after_m, 3)}',
+            f'Soma depois |erro| + U(e) ({acceptance_unit}): {_format_num(after_combined, 3)}',
+            f'Status depois: {after_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
             f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 3)}',
-            f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 3)}{acceptance_unit})',
-            f'TUR (critério/U(e)): {_format_num(submission.level_tur_value, 2)}',
-            f'Resolução da trena (m): {_format_num(submission.level_resolution_tape_value_m, 4)}',
-            f'Resolução do transmissor (m): {_format_num(submission.level_resolution_instrument_value_m, 4)}',
-            f'Fator k: {_format_num(submission.level_coverage_factor_value, 3)}',
+            f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
             '',
             'Verificação antes do ajuste (VM, VL, erro abs em m):',
         ]
