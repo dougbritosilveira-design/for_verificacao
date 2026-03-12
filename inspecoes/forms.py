@@ -2,6 +2,8 @@
 
 from .models import Equipment, FormSubmission, InspectionFormType
 
+DATE_INPUT_FORMATS = ['%Y-%m-%d', '%d/%m/%Y']
+
 
 class SelectionForm(forms.ModelForm):
     equipment = forms.ModelChoiceField(
@@ -18,7 +20,7 @@ class SelectionForm(forms.ModelForm):
     class Meta:
         model = FormSubmission
         fields = ['equipment', 'form_type', 'location_snapshot', 'om_number', 'execution_date', 'executor_name']
-        widgets = {'execution_date': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})}
         labels = {
             'location_snapshot': 'Local',
             'om_number': 'Nº OM',
@@ -32,6 +34,8 @@ class SelectionForm(forms.ModelForm):
         if equipment_queryset is None:
             equipment_queryset = Equipment.objects.filter(active=True).order_by('tag')
         self.fields['equipment'].queryset = equipment_queryset
+        self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
+        self.fields['execution_date'].localize = False
         self.fields['location_snapshot'].widget.attrs.update(
             {
                 'readonly': 'readonly',
@@ -163,12 +167,14 @@ class TechnicalForm(forms.ModelForm):
             'observation': 'Observação',
         }
         widgets = {
-            'execution_date': forms.DateInput(attrs={'type': 'date'}),
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
             'observation': forms.Textarea(attrs={'rows': 4}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
+        self.fields['execution_date'].localize = False
         if not self.is_bound:
             self.initial['belt_replaced'] = bool(getattr(self.instance, 'belt_replaced', False))
         for field in self.fields.values():
