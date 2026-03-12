@@ -364,9 +364,10 @@
 
     setNum('id_level_error_before_mean', beforeMeanAbs, 3, true);
     setNum('id_level_error_after_mean', afterMeanAbs, 3, true);
-    setNum('id_acceptance_criterion_pct', criterion, 2, true);
-    setNum('id_expanded_uncertainty_pct', uncertaintyRef, 3, true);
-    setNum('id_expanded_uncertainty_calc_pct', finalUncertainty, 3, true);
+    // Campos NumberInput exigem ponto no "value". O browser exibe no formato regional.
+    setNum('id_acceptance_criterion_pct', criterion, 2, false);
+    setNum('id_expanded_uncertainty_pct', uncertaintyRef, 3, false);
+    setNum('id_expanded_uncertainty_calc_pct', finalUncertainty, 3, false);
 
     const phaseDetail = document.getElementById('phase-detail');
     if (phaseDetail) {

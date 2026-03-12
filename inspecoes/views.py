@@ -1,4 +1,6 @@
-﻿from django.contrib import messages
+﻿from decimal import Decimal
+
+from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -7,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import LevelTechnicalForm, SelectionForm, TechnicalForm, ValidationForm
-from .models import Equipment, FormSubmission, PortalNotification, PortalUserAccess
+from .models import Equipment, EquipmentFormCriteria, FormSubmission, PortalNotification, PortalUserAccess
 from .notifications import (
     notify_technician_validation_result,
     notify_validators_submission_pending,
@@ -52,24 +54,98 @@ def _can_access_submission_for_equipment_scope(user, submission):
 
 def _resolve_criteria_defaults(equipment, form_type):
     acceptance_value = equipment.acceptance_criterion_pct
-    acceptance_unit = '%'
+    acceptance_unit = EquipmentFormCriteria.Unit.PERCENT
     uncertainty_value = equipment.expanded_uncertainty_pct
-    uncertainty_unit = '%'
-    if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
-        acceptance_unit = 'm'
-        uncertainty_unit = 'm'
+    uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
     if not form_type:
         return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
 
-    criteria_config = equipment.criteria_for_form(form_type)
+    criteria_config = _ensure_equipment_form_criteria(equipment, form_type)
     if criteria_config:
         if criteria_config.acceptance_criterion_value is not None:
             acceptance_value = criteria_config.acceptance_criterion_value
-        acceptance_unit = criteria_config.acceptance_criterion_unit or '%'
+        acceptance_unit = criteria_config.acceptance_criterion_unit or acceptance_unit
         if criteria_config.expanded_uncertainty_value is not None:
             uncertainty_value = criteria_config.expanded_uncertainty_value
         uncertainty_unit = criteria_config.expanded_uncertainty_unit or acceptance_unit
     return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
+
+
+def _default_units_for_form(form_type):
+    if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
+        return EquipmentFormCriteria.Unit.METER, EquipmentFormCriteria.Unit.METER
+    return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
+
+
+def _latest_submission_criteria_values(equipment, form_type):
+    latest_submission = (
+        FormSubmission.objects.filter(equipment=equipment, form_type=form_type)
+        .order_by('-created_at')
+        .only(
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_pct',
+        )
+        .first()
+    )
+    if not latest_submission:
+        return None, None
+    return latest_submission.acceptance_criterion_pct, latest_submission.expanded_uncertainty_pct
+
+
+def _ensure_equipment_form_criteria(equipment, form_type):
+    if not equipment or not form_type:
+        return None
+
+    default_acceptance_unit, default_uncertainty_unit = _default_units_for_form(form_type)
+    latest_acceptance, latest_uncertainty = _latest_submission_criteria_values(equipment, form_type)
+    default_acceptance = (
+        latest_acceptance
+        if latest_acceptance is not None
+        else (equipment.acceptance_criterion_pct if equipment.acceptance_criterion_pct is not None else Decimal('1.0'))
+    )
+    default_uncertainty = latest_uncertainty if latest_uncertainty is not None else equipment.expanded_uncertainty_pct
+
+    criteria_config, _ = EquipmentFormCriteria.objects.get_or_create(
+        equipment=equipment,
+        form_type=form_type,
+        defaults={
+            'acceptance_criterion_value': default_acceptance,
+            'acceptance_criterion_unit': default_acceptance_unit,
+            'expanded_uncertainty_value': default_uncertainty,
+            'expanded_uncertainty_unit': default_uncertainty_unit,
+        },
+    )
+
+    update_fields = []
+    if not criteria_config.acceptance_criterion_unit:
+        criteria_config.acceptance_criterion_unit = default_acceptance_unit
+        update_fields.append('acceptance_criterion_unit')
+    if not criteria_config.expanded_uncertainty_unit:
+        criteria_config.expanded_uncertainty_unit = default_uncertainty_unit
+        update_fields.append('expanded_uncertainty_unit')
+    if criteria_config.acceptance_criterion_value is None:
+        criteria_config.acceptance_criterion_value = default_acceptance
+        update_fields.append('acceptance_criterion_value')
+    if criteria_config.expanded_uncertainty_value is None and default_uncertainty is not None:
+        criteria_config.expanded_uncertainty_value = default_uncertainty
+        update_fields.append('expanded_uncertainty_value')
+    if (
+        default_acceptance_unit == EquipmentFormCriteria.Unit.METER
+        and criteria_config.acceptance_criterion_unit != EquipmentFormCriteria.Unit.METER
+    ):
+        criteria_config.acceptance_criterion_unit = EquipmentFormCriteria.Unit.METER
+        update_fields.append('acceptance_criterion_unit')
+    if (
+        default_uncertainty_unit == EquipmentFormCriteria.Unit.METER
+        and criteria_config.expanded_uncertainty_unit != EquipmentFormCriteria.Unit.METER
+    ):
+        criteria_config.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.METER
+        update_fields.append('expanded_uncertainty_unit')
+
+    if update_fields:
+        update_fields.append('updated_at')
+        criteria_config.save(update_fields=list(dict.fromkeys(update_fields)))
+    return criteria_config
 
 
 def _sync_submission_criteria_from_config(submission):
@@ -286,7 +362,7 @@ def form_edit_view(request, pk):
         messages.warning(request, 'Formulário já validado. Edição bloqueada.')
         return redirect('inspecoes:detail', pk=submission.pk)
 
-    if submission.is_level_form and submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
+    if submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
         _sync_submission_criteria_from_config(submission)
         submission.refresh_from_db()
 
