@@ -1,0 +1,346 @@
+﻿{% extends 'base.html' %}
+{% load l10n %}
+{% block title %}Formulário técnico{% endblock %}
+{% block content %}
+<h2>2. Formulário técnico</h2>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formulário:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
+    <p style="margin:0;"><strong>Observação do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observação.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+<p><strong>Campos automáticos:</strong> erro médio absoluto, U(e), TUR e critério final de aceitação.</p>
+<p><strong>Fluxo:</strong> se "antes do ajuste" ficar dentro do critério, a seção "após ajuste" é opcional.</p>
+
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  .level-table { width:100%; border-collapse: collapse; margin-bottom: 10px; }
+  .level-table th, .level-table td { border: 1px solid #ded6c4; padding: 8px; text-align: left; }
+  .level-table th { background:#f6f2e8; }
+  .readonly-cell input { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; }
+  .hint { font-size: 13px; color: #555047; margin-top: 4px; }
+</style>
+
+<form method="post" id="level-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Dados iniciais</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
+  </div>
+
+  <h3>Verificação antes do ajuste</h3>
+  <table class="level-table">
+    <thead>
+      <tr>
+        <th>Ponto</th>
+        <th>{{ form.level_before_vm_1.label }}</th>
+        <th>{{ form.level_before_vl_1.label }}</th>
+        <th>Erro absoluto (cm)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>{{ form.level_before_vm_1 }}</td>
+        <td>{{ form.level_before_vl_1 }}</td>
+        <td class="readonly-cell"><input id="id_before_err_abs_1" type="text" readonly></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{ form.level_before_vm_2 }}</td>
+        <td>{{ form.level_before_vl_2 }}</td>
+        <td class="readonly-cell"><input id="id_before_err_abs_2" type="text" readonly></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{ form.level_before_vm_3 }}</td>
+        <td>{{ form.level_before_vl_3 }}</td>
+        <td class="readonly-cell"><input id="id_before_err_abs_3" type="text" readonly></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>{{ form.level_before_vm_4 }}</td>
+        <td>{{ form.level_before_vl_4 }}</td>
+        <td class="readonly-cell"><input id="id_before_err_abs_4" type="text" readonly></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Verificação após ajuste (opcional)</h3>
+  <table class="level-table">
+    <thead>
+      <tr>
+        <th>Ponto</th>
+        <th>{{ form.level_after_vm_1.label }}</th>
+        <th>{{ form.level_after_vl_1.label }}</th>
+        <th>Erro absoluto (cm)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>{{ form.level_after_vm_1 }}</td>
+        <td>{{ form.level_after_vl_1 }}</td>
+        <td class="readonly-cell"><input id="id_after_err_abs_1" type="text" readonly></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>{{ form.level_after_vm_2 }}</td>
+        <td>{{ form.level_after_vl_2 }}</td>
+        <td class="readonly-cell"><input id="id_after_err_abs_2" type="text" readonly></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>{{ form.level_after_vm_3 }}</td>
+        <td>{{ form.level_after_vl_3 }}</td>
+        <td class="readonly-cell"><input id="id_after_err_abs_3" type="text" readonly></td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>{{ form.level_after_vm_4 }}</td>
+        <td>{{ form.level_after_vl_4 }}</td>
+        <td class="readonly-cell"><input id="id_after_err_abs_4" type="text" readonly></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Parâmetros da incerteza</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.level_resolution_tape_m.label_tag }} {{ form.level_resolution_tape_m }}</p>
+    <p>{{ form.level_resolution_instrument_m.label_tag }} {{ form.level_resolution_instrument_m }}</p>
+    <p>{{ form.level_coverage_factor_k.label_tag }} {{ form.level_coverage_factor_k }}</p>
+  </div>
+
+  <h3>Resultados da verificação e ajuste</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
+    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+    <p><label for="id_level_tur">TUR (critério/U(e))</label><input id="id_level_tur" type="text" readonly></p>
+    <p><label for="id_level_error_before_mean">Erro médio absoluto antes (cm)</label><input id="id_level_error_before_mean" type="text" readonly></p>
+    <p><label for="id_level_error_final_mean">Erro médio absoluto final (cm)</label><input id="id_level_error_final_mean" type="text" readonly></p>
+  </div>
+
+  <div id="before-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Verificação antes do ajuste</strong> <span id="before-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="before-detail" style="margin:0;">Preencha VM e VL dos 4 pontos.</p>
+  </div>
+
+  <div id="uncert-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Comparação da incerteza expandida</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="uncert-detail" style="margin:0;">Preencha as medições para calcular U(e).</p>
+  </div>
+
+  <div id="accept-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Critério final (|erro final| + U(e) <= limite)</strong> <span id="accept-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="accept-detail" style="margin:0;">Preencha os dados para avaliação final.</p>
+    <p id="phase-detail" class="hint">Fase final considerada: -</p>
+  </div>
+
+  <h3>Identificação e observação</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
+  </div>
+</form>
+
+<script>
+(function () {
+  const form = document.getElementById('level-form');
+  if (!form) return;
+
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const raw = (el.value || '').replace(',', '.').trim();
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function setNum(id, value, decimals = 2, useComma = true) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null || !Number.isFinite(value)) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = useComma ? fixed.replace('.', ',') : fixed;
+  }
+
+  function avg(values) {
+    const valid = values.filter((v) => v != null);
+    if (!valid.length) return null;
+    return valid.reduce((a, b) => a + b, 0) / valid.length;
+  }
+
+  function stdSample(values) {
+    const valid = values.filter((v) => v != null);
+    if (valid.length < 2) return null;
+    const mean = avg(valid);
+    const sumSq = valid.reduce((acc, value) => acc + Math.pow(value - mean, 2), 0);
+    return Math.sqrt(sumSq / (valid.length - 1));
+  }
+
+  function collectPhase(phase) {
+    const rows = [];
+    for (let i = 1; i <= 4; i += 1) {
+      const vm = getNum(`id_level_${phase}_vm_${i}`);
+      const vl = getNum(`id_level_${phase}_vl_${i}`);
+      if (vm != null && vl != null) {
+        const signed = vl - vm;
+        rows.push({ signed, abs: Math.abs(signed) });
+        setNum(`id_${phase}_err_abs_${i}`, Math.abs(signed) * 100, 2, true);
+      } else {
+        setNum(`id_${phase}_err_abs_${i}`, null);
+      }
+    }
+    return rows;
+  }
+
+  function setBoxStatus(prefix, status, detail) {
+    const box = document.getElementById(`${prefix}-box`);
+    const pill = document.getElementById(`${prefix}-pill`);
+    const detailEl = document.getElementById(`${prefix}-detail`);
+    if (!box || !pill || !detailEl) return;
+    box.classList.remove('ok', 'fail', 'pending');
+    pill.classList.remove('ok', 'fail', 'pending');
+    box.classList.add(status);
+    pill.classList.add(status);
+    pill.textContent = status === 'ok' ? 'Aprovado' : (status === 'fail' ? 'Reprovado' : 'Pendente dados');
+    detailEl.textContent = detail;
+  }
+
+  function recalc() {
+    const beforeRows = collectPhase('before');
+    const afterRows = collectPhase('after');
+
+    const beforeMeanAbsM = avg(beforeRows.map((row) => row.abs));
+    const afterMeanAbsM = avg(afterRows.map((row) => row.abs));
+    const finalPhase = afterRows.length ? 'after' : 'before';
+    const finalRows = afterRows.length ? afterRows : beforeRows;
+    const finalMeanAbsM = avg(finalRows.map((row) => row.abs));
+    const signedFinal = finalRows.map((row) => row.signed);
+
+    const criterion = getNum('id_acceptance_criterion_pct');
+    const uncertaintyRef = getNum('id_expanded_uncertainty_pct');
+    const resolutionTape = getNum('id_level_resolution_tape_m');
+    const resolutionInstrument = getNum('id_level_resolution_instrument_m');
+    const kFactor = getNum('id_level_coverage_factor_k');
+
+    const beforeMeanAbsCm = beforeMeanAbsM == null ? null : beforeMeanAbsM * 100;
+    const finalMeanAbsCm = finalMeanAbsM == null ? null : finalMeanAbsM * 100;
+    setNum('id_level_error_before_mean', beforeMeanAbsCm, 2, true);
+    setNum('id_level_error_final_mean', finalMeanAbsCm, 2, true);
+
+    const s = stdSample(signedFinal);
+    const uA = (s == null || signedFinal.length < 2) ? null : s / Math.sqrt(signedFinal.length);
+    const uVm = resolutionTape == null ? null : resolutionTape / Math.sqrt(12);
+    const uVl = resolutionInstrument == null ? null : resolutionInstrument / Math.sqrt(12);
+    const uB = (uVm == null || uVl == null) ? null : Math.sqrt((uVm * uVm) + (uVl * uVl));
+    const uC = (uA == null || uB == null) ? null : Math.sqrt((uA * uA) + (uB * uB));
+    const uncertaintyCalcM = (uC == null || kFactor == null) ? null : Math.abs(kFactor * uC);
+    const uncertaintyCalcCm = uncertaintyCalcM == null ? null : uncertaintyCalcM * 100;
+
+    setNum('id_expanded_uncertainty_calc_pct', uncertaintyCalcCm, 2, true);
+
+    const tur = (criterion == null || uncertaintyCalcCm == null || uncertaintyCalcCm === 0)
+      ? null
+      : criterion / uncertaintyCalcCm;
+    setNum('id_level_tur', tur, 2, true);
+
+    const phaseDetail = document.getElementById('phase-detail');
+    if (phaseDetail) {
+      const phaseLabel = finalPhase === 'after' ? 'Após ajuste' : 'Antes do ajuste';
+      phaseDetail.textContent = `Fase final considerada: ${phaseLabel}.`;
+    }
+
+    if (beforeMeanAbsCm == null || criterion == null) {
+      setBoxStatus('before', 'pending', 'Preencha VM e VL dos 4 pontos para avaliar a etapa antes do ajuste.');
+    } else {
+      const beforeOk = beforeMeanAbsCm <= criterion;
+      const detail = beforeOk
+        ? `Erro médio absoluto antes: ${beforeMeanAbsCm.toFixed(2).replace('.', ',')} cm (dentro do limite ${criterion.toFixed(2).replace('.', ',')} cm).`
+        : `Erro médio absoluto antes: ${beforeMeanAbsCm.toFixed(2).replace('.', ',')} cm (acima do limite ${criterion.toFixed(2).replace('.', ',')} cm).`;
+      setBoxStatus('before', beforeOk ? 'ok' : 'fail', detail);
+    }
+
+    if (uncertaintyCalcCm == null) {
+      setBoxStatus('uncert', 'pending', 'Preencha medições e parâmetros para calcular a incerteza expandida.');
+    } else if (uncertaintyRef == null) {
+      const detail = `U(e) calculada: ${uncertaintyCalcCm.toFixed(2).replace('.', ',')} cm. Sem referência cadastrada para comparar.`;
+      setBoxStatus('uncert', 'pending', detail);
+    } else {
+      const uncertaintyOk = uncertaintyCalcCm <= uncertaintyRef;
+      const detail = uncertaintyOk
+        ? `U(e) calculada: ${uncertaintyCalcCm.toFixed(2).replace('.', ',')} cm | cadastrada: ${uncertaintyRef.toFixed(2).replace('.', ',')} cm (dentro do limite).`
+        : `U(e) calculada: ${uncertaintyCalcCm.toFixed(2).replace('.', ',')} cm | cadastrada: ${uncertaintyRef.toFixed(2).replace('.', ',')} cm (acima do limite).`;
+      setBoxStatus('uncert', uncertaintyOk ? 'ok' : 'fail', detail);
+    }
+
+    const errorAbs = finalMeanAbsCm;
+    if (errorAbs == null || criterion == null || uncertaintyCalcCm == null) {
+      setBoxStatus('accept', 'pending', 'Preencha os dados para avaliar o critério final.');
+      return;
+    }
+
+    const uncertaintyRefOk = uncertaintyRef == null ? true : uncertaintyCalcCm <= uncertaintyRef;
+    const combined = errorAbs + Math.abs(uncertaintyCalcCm);
+    const finalOk = combined <= criterion && uncertaintyRefOk;
+    const detail = `|Erro final|: ${errorAbs.toFixed(2).replace('.', ',')} cm | U(e): ${uncertaintyCalcCm.toFixed(2).replace('.', ',')} cm | Soma: ${combined.toFixed(2).replace('.', ',')} cm (limite ${criterion.toFixed(2).replace('.', ',')} cm).`;
+    setBoxStatus('accept', finalOk ? 'ok' : 'fail', detail);
+  }
+
+  form.addEventListener('input', recalc);
+  form.addEventListener('change', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}

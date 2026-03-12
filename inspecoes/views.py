@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import SelectionForm, TechnicalForm, ValidationForm
+from .forms import LevelTechnicalForm, SelectionForm, TechnicalForm, ValidationForm
 from .models import Equipment, FormSubmission, PortalNotification, PortalUserAccess
 from .notifications import (
     notify_technician_validation_result,
@@ -50,19 +50,26 @@ def _can_access_submission_for_equipment_scope(user, submission):
     return submission.equipment_id in scoped_ids
 
 
-def _resolve_percent_criteria_defaults(equipment, form_type):
+def _resolve_criteria_defaults(equipment, form_type):
     acceptance_value = equipment.acceptance_criterion_pct
+    acceptance_unit = '%'
     uncertainty_value = equipment.expanded_uncertainty_pct
+    uncertainty_unit = '%'
+    if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
+        acceptance_unit = 'cm'
+        uncertainty_unit = 'cm'
     if not form_type:
-        return acceptance_value, uncertainty_value
+        return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
 
     criteria_config = equipment.criteria_for_form(form_type)
     if criteria_config:
-        if criteria_config.acceptance_criterion_unit == '%':
+        if criteria_config.acceptance_criterion_value is not None:
             acceptance_value = criteria_config.acceptance_criterion_value
-        if criteria_config.expanded_uncertainty_unit == '%':
+        acceptance_unit = criteria_config.acceptance_criterion_unit or '%'
+        if criteria_config.expanded_uncertainty_value is not None:
             uncertainty_value = criteria_config.expanded_uncertainty_value
-    return acceptance_value, uncertainty_value
+        uncertainty_unit = criteria_config.expanded_uncertainty_unit or acceptance_unit
+    return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
 
 
 def _can_view(user, screen):
@@ -194,12 +201,14 @@ def selection_view(request):
         if form.is_valid():
             submission = form.save(commit=False)
             submission.created_by = request.user
-            acceptance_value, uncertainty_value = _resolve_percent_criteria_defaults(
+            acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit = _resolve_criteria_defaults(
                 submission.equipment,
                 submission.form_type,
             )
             submission.acceptance_criterion_pct = acceptance_value
+            submission.acceptance_criterion_unit = acceptance_unit
             submission.expanded_uncertainty_pct = uncertainty_value
+            submission.expanded_uncertainty_unit = uncertainty_unit
             if not submission.location_snapshot:
                 submission.location_snapshot = submission.equipment.location
             submission.status = FormSubmission.Status.DRAFT
@@ -249,8 +258,11 @@ def form_edit_view(request, pk):
         messages.warning(request, 'Formulário já validado. Edição bloqueada.')
         return redirect('inspecoes:detail', pk=submission.pk)
 
+    form_class = LevelTechnicalForm if submission.is_level_form else TechnicalForm
+    template_name = 'inspecoes/form_edit_level.html' if submission.is_level_form else 'inspecoes/form_edit.html'
+
     if request.method == 'POST':
-        form = TechnicalForm(request.POST, instance=submission)
+        form = form_class(request.POST, instance=submission)
         if form.is_valid():
             previous_status = submission.status
             submission = form.save(commit=False)
@@ -269,8 +281,8 @@ def form_edit_view(request, pk):
                 return redirect('inspecoes:detail', pk=submission.pk)
             return redirect('inspecoes:form-edit', pk=submission.pk)
     else:
-        form = TechnicalForm(instance=submission)
-    return render(request, 'inspecoes/form_edit.html', {'form': form, 'submission': submission})
+        form = form_class(instance=submission)
+    return render(request, template_name, {'form': form, 'submission': submission})
 
 
 @login_required

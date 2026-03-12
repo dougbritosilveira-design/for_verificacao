@@ -1,4 +1,4 @@
-import re
+﻿import re
 from datetime import timedelta
 from decimal import Decimal, localcontext
 
@@ -14,7 +14,7 @@ from django.utils.functional import cached_property
 
 class PortalUserAccess(models.Model):
     class Role(models.TextChoices):
-        TECHNICIAN = 'technician', 'Técnico'
+        TECHNICIAN = 'technician', 'TÃ©cnico'
         VALIDATOR = 'validator', 'Validador'
         VIEWER = 'viewer', 'Visualizador'
         MASTER = 'master', 'Master'
@@ -23,55 +23,55 @@ class PortalUserAccess(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='portal_access',
-        verbose_name='Usuário',
+        verbose_name='UsuÃ¡rio',
     )
     registration = models.CharField(
-        'Matrícula',
+        'MatrÃ­cula',
         max_length=50,
         blank=True,
-        help_text='Se vazio, usa o username do usuário.',
+        help_text='Se vazio, usa o username do usuÃ¡rio.',
     )
     role = models.CharField(
         'Perfil',
         max_length=20,
         choices=Role.choices,
         default=Role.VIEWER,
-        help_text='Perfil operacional no portal: Técnico, Validador, Visualizador ou Master.',
+        help_text='Perfil operacional no portal: TÃ©cnico, Validador, Visualizador ou Master.',
     )
     visible_equipments = models.ManyToManyField(
         'Equipment',
         blank=True,
         related_name='portal_user_accesses',
-        verbose_name='Equipamentos visíveis (técnico)',
+        verbose_name='Equipamentos visÃ­veis (tÃ©cnico)',
         help_text=(
-            'Para perfil Técnico, selecione os equipamentos que este usuário pode enxergar. '
-            'Se deixar vazio, o técnico enxerga todos.'
+            'Para perfil TÃ©cnico, selecione os equipamentos que este usuÃ¡rio pode enxergar. '
+            'Se deixar vazio, o tÃ©cnico enxerga todos.'
         ),
     )
     can_view_forms = models.BooleanField(
-        'Acessar tela Formulários (legado)',
+        'Acessar tela FormulÃ¡rios (legado)',
         default=True,
-        help_text='Compatibilidade com versões anteriores.',
+        help_text='Compatibilidade com versÃµes anteriores.',
     )
     can_view_history = models.BooleanField(
-        'Acessar tela Histórico (legado)',
+        'Acessar tela HistÃ³rico (legado)',
         default=True,
-        help_text='Compatibilidade com versões anteriores.',
+        help_text='Compatibilidade com versÃµes anteriores.',
     )
     can_view_deadlines = models.BooleanField(
         'Acessar tela Prazos (legado)',
         default=True,
-        help_text='Compatibilidade com versões anteriores.',
+        help_text='Compatibilidade com versÃµes anteriores.',
     )
     can_edit_forms = models.BooleanField(
-        'Editar formulários (legado)',
+        'Editar formulÃ¡rios (legado)',
         default=False,
-        help_text='Compatibilidade com versões anteriores.',
+        help_text='Compatibilidade com versÃµes anteriores.',
     )
     can_edit = models.BooleanField(
         'Pode editar (legado)',
         default=False,
-        help_text='Compatibilidade com versões anteriores.',
+        help_text='Compatibilidade com versÃµes anteriores.',
     )
     updated_at = models.DateTimeField('Atualizado em', auto_now=True)
 
@@ -229,7 +229,7 @@ class InspectionFormType(models.Model):
 
 class Equipment(models.Model):
     tag = models.CharField('TAG', max_length=80, unique=True)
-    description = models.CharField('Descrição', max_length=255)
+    description = models.CharField('DescriÃ§Ã£o', max_length=255)
     location = models.CharField('Local', max_length=255)
     inspection_form_types = models.ManyToManyField(
         InspectionFormType,
@@ -243,20 +243,20 @@ class Equipment(models.Model):
         null=True,
         blank=True,
         validators=[MinValueValidator(1)],
-        help_text='Quantidade de dias para nova verificação/ajuste do equipamento.',
+        help_text='Quantidade de dias para nova verificaÃ§Ã£o/ajuste do equipamento.',
     )
     notification_emails = models.TextField(
-        'E-mails para notificação',
+        'E-mails para notificaÃ§Ã£o',
         blank=True,
-        help_text='Informe um ou mais e-mails separados por vírgula, ponto e vírgula ou quebra de linha.',
+        help_text='Informe um ou mais e-mails separados por vÃ­rgula, ponto e vÃ­rgula ou quebra de linha.',
     )
     acceptance_criterion_pct = models.DecimalField(
-        'Critério de aceitação (%)',
+        'CritÃ©rio de aceitaÃ§Ã£o (%)',
         max_digits=6,
         decimal_places=1,
         default=Decimal('1.0'),
         validators=[MinValueValidator(Decimal('0.001'))],
-        help_text='Limite de aceitação para o erro final (%). Ex.: 1,0',
+        help_text='Limite de aceitaÃ§Ã£o para o erro final (%). Ex.: 1,0',
     )
     expanded_uncertainty_pct = models.DecimalField(
         'Incerteza expandida (%)',
@@ -342,10 +342,10 @@ class Equipment(models.Model):
     @property
     def deadline_status_label(self):
         labels = {
-            'not_configured': 'Não configurado',
-            'no_history': 'Sem histórico',
+            'not_configured': 'NÃ£o configurado',
+            'no_history': 'Sem histÃ³rico',
             'on_time': 'Dentro do prazo',
-            'due_soon': 'Próximo do vencimento',
+            'due_soon': 'PrÃ³ximo do vencimento',
             'overdue': 'Vencido / atrasado',
         }
         return labels.get(self.deadline_status_code, 'Indefinido')
@@ -367,11 +367,11 @@ class Equipment(models.Model):
         if status == 'not_configured':
             return 'Defina a periodicidade em dias no cadastro do equipamento.'
         if status == 'no_history':
-            return 'Ainda não há formulário salvo/validado para calcular a próxima visita.'
+            return 'Ainda nÃ£o hÃ¡ formulÃ¡rio salvo/validado para calcular a prÃ³xima visita.'
         if self.days_until_due is None:
             return 'Sem prazo calculado.'
         if self.days_until_due < 0:
-            return f'Atrasado há {abs(self.days_until_due)} dia(s).'
+            return f'Atrasado hÃ¡ {abs(self.days_until_due)} dia(s).'
         if self.days_until_due == 0:
             return 'Vence hoje.'
         return f'Faltam {self.days_until_due} dia(s).'
@@ -461,16 +461,18 @@ class FormSubmission(models.Model):
     DEFAULT_UNCERTAINTY_TOTALIZER_RESOLUTION = Decimal('0.001')
     DEFAULT_UNCERTAINTY_MEASUREMENT_DURATION_MIN = Decimal('5')
     DEFAULT_UNCERTAINTY_COVERAGE_FACTOR = Decimal('2')
+    FORM_CODE_BELT = 'FOR 08.05.003'
+    FORM_CODE_LEVEL = 'FOR 07.04.01.002'
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
-        PENDING_VALIDATION = 'pending_validation', 'Pendente validação'
-        REWORK_REQUIRED = 'rework_required', 'Refação solicitada'
+        PENDING_VALIDATION = 'pending_validation', 'Pendente validaÃ§Ã£o'
+        REWORK_REQUIRED = 'rework_required', 'RefaÃ§Ã£o solicitada'
         APPROVED = 'approved', 'Aprovado'
         SENT_TO_SAP = 'sent_to_sap', 'Enviado SAP'
 
     class SapStatus(models.TextChoices):
-        NOT_STARTED = 'not_started', 'Não iniciado'
+        NOT_STARTED = 'not_started', 'NÃ£o iniciado'
         SUCCESS = 'success', 'Sucesso'
         FAILED = 'failed', 'Falhou'
 
@@ -492,14 +494,20 @@ class FormSubmission(models.Model):
         verbose_name='Criado por',
     )
     location_snapshot = models.CharField(max_length=255)
-    om_number = models.CharField('Nº OM', max_length=50)
+    om_number = models.CharField('NÂº OM', max_length=50)
     execution_date = models.DateField(default=timezone.localdate)
     executor_name = models.CharField(max_length=120)
     acceptance_criterion_pct = models.DecimalField(
-        'Critério de aceitação (%)',
+        'CritÃ©rio de aceitaÃ§Ã£o (%)',
         max_digits=6,
         decimal_places=1,
         default=Decimal('1.0'),
+    )
+    acceptance_criterion_unit = models.CharField(
+        'Unidade do criterio',
+        max_length=8,
+        choices=EquipmentFormCriteria.Unit.choices,
+        default=EquipmentFormCriteria.Unit.PERCENT,
     )
     expanded_uncertainty_pct = models.DecimalField(
         'Incerteza expandida (%)',
@@ -508,12 +516,59 @@ class FormSubmission(models.Model):
         null=True,
         blank=True,
     )
+    expanded_uncertainty_unit = models.CharField(
+        'Unidade da incerteza',
+        max_length=8,
+        choices=EquipmentFormCriteria.Unit.choices,
+        default=EquipmentFormCriteria.Unit.PERCENT,
+    )
     expanded_uncertainty_calc_pct = models.DecimalField(
         'Incerteza expandida calculada (%)',
         max_digits=12,
         decimal_places=3,
         null=True,
         blank=True,
+    )
+
+    level_before_vm_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vl_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vm_2 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vl_2 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vm_3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vl_3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vm_4 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_before_vl_4 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vm_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vl_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vm_2 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vl_2 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vm_3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vl_3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vm_4 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_after_vl_4 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    level_resolution_tape_m = models.DecimalField(
+        'Resolucao da trena (m)',
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        default=Decimal('0.001'),
+    )
+    level_resolution_instrument_m = models.DecimalField(
+        'Resolucao do instrumento (m)',
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        default=Decimal('0.010'),
+    )
+    level_coverage_factor_k = models.DecimalField(
+        'Fator de abrangencia k',
+        max_digits=8,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('2.000'),
     )
 
     t1 = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
@@ -593,6 +648,20 @@ class FormSubmission(models.Model):
             return self.form_type.full_label
         return InspectionFormType.default_label()
 
+    @property
+    def form_code(self):
+        if self.form_type_id and self.form_type:
+            return (self.form_type.code or '').strip().upper()
+        return self.FORM_CODE_BELT
+
+    @property
+    def is_level_form(self):
+        return self.form_code.startswith(self.FORM_CODE_LEVEL)
+
+    @property
+    def is_belt_form(self):
+        return not self.is_level_form
+
     @staticmethod
     def _avg(*values):
         valid = [v for v in values if v is not None]
@@ -619,6 +688,215 @@ class FormSubmission(models.Model):
         with localcontext() as context:
             context.prec = 28
             return decimal_value.sqrt()
+
+    @staticmethod
+    def _std_sample(values):
+        valid = [v for v in values if v is not None]
+        count = len(valid)
+        if count < 2:
+            return None
+        mean = sum(valid) / Decimal(count)
+        sum_square = sum((value - mean) * (value - mean) for value in valid)
+        variance = sum_square / Decimal(count - 1)
+        return FormSubmission._sqrt(variance)
+
+    def _level_points(self, phase='before'):
+        if phase == 'after':
+            return [
+                (self.level_after_vm_1, self.level_after_vl_1),
+                (self.level_after_vm_2, self.level_after_vl_2),
+                (self.level_after_vm_3, self.level_after_vl_3),
+                (self.level_after_vm_4, self.level_after_vl_4),
+            ]
+        return [
+            (self.level_before_vm_1, self.level_before_vl_1),
+            (self.level_before_vm_2, self.level_before_vl_2),
+            (self.level_before_vm_3, self.level_before_vl_3),
+            (self.level_before_vm_4, self.level_before_vl_4),
+        ]
+
+    def _level_rows(self, phase='before'):
+        rows = []
+        for index, (vm_value, vl_value) in enumerate(self._level_points(phase), start=1):
+            error_signed = None
+            error_abs_cm = None
+            if vm_value is not None and vl_value is not None:
+                error_signed = vl_value - vm_value
+                error_abs_cm = self._to_cm(abs(error_signed))
+            rows.append(
+                {
+                    'index': index,
+                    'vm': vm_value,
+                    'vl': vl_value,
+                    'error_signed_m': error_signed,
+                    'error_abs_cm': error_abs_cm,
+                }
+            )
+        return rows
+
+    def _level_signed_errors_m(self, phase='before'):
+        values = []
+        for vm_value, vl_value in self._level_points(phase):
+            if vm_value is None or vl_value is None:
+                continue
+            values.append(vl_value - vm_value)
+        return values
+
+    @staticmethod
+    def _to_cm(value):
+        if value is None:
+            return None
+        return value * Decimal('100')
+
+    @property
+    def level_has_after_measurements(self):
+        return bool(self._level_signed_errors_m('after'))
+
+    @property
+    def level_final_phase(self):
+        return 'after' if self.level_has_after_measurements else 'before'
+
+    @property
+    def level_final_phase_label(self):
+        return 'ApÃ³s ajuste' if self.level_has_after_measurements else 'Antes do ajuste'
+
+    @property
+    def level_before_rows(self):
+        return self._level_rows('before')
+
+    @property
+    def level_after_rows(self):
+        return self._level_rows('after')
+
+    def _level_mean_abs_m(self, phase='before'):
+        errors = self._level_signed_errors_m(phase)
+        if not errors:
+            return None
+        abs_values = [abs(v) for v in errors]
+        return self._avg(*abs_values)
+
+    def _level_mean_signed_m(self, phase='before'):
+        errors = self._level_signed_errors_m(phase)
+        if not errors:
+            return None
+        return self._avg(*errors)
+
+    @property
+    def level_before_mean_abs_m(self):
+        return self._level_mean_abs_m('before')
+
+    @property
+    def level_after_mean_abs_m(self):
+        return self._level_mean_abs_m('after')
+
+    @property
+    def level_final_mean_abs_m(self):
+        return self._level_mean_abs_m(self.level_final_phase)
+
+    @property
+    def level_before_mean_abs_cm(self):
+        return self._to_cm(self.level_before_mean_abs_m)
+
+    @property
+    def level_after_mean_abs_cm(self):
+        return self._to_cm(self.level_after_mean_abs_m)
+
+    @property
+    def level_final_mean_abs_cm(self):
+        return self._to_cm(self.level_final_mean_abs_m)
+
+    @property
+    def level_final_mean_signed_m(self):
+        return self._level_mean_signed_m(self.level_final_phase)
+
+    @property
+    def level_repeatability_u_a_m(self):
+        errors = self._level_signed_errors_m(self.level_final_phase)
+        count = len(errors)
+        if count < 2:
+            return None
+        std_sample = self._std_sample(errors)
+        sqrt_count = self._sqrt(Decimal(count))
+        if std_sample is None or sqrt_count in (None, 0):
+            return None
+        return std_sample / sqrt_count
+
+    @property
+    def level_resolution_tape_value_m(self):
+        if self.level_resolution_tape_m is not None:
+            return self.level_resolution_tape_m
+        return Decimal('0.001')
+
+    @property
+    def level_resolution_instrument_value_m(self):
+        if self.level_resolution_instrument_m is not None:
+            return self.level_resolution_instrument_m
+        return Decimal('0.010')
+
+    @property
+    def level_coverage_factor_value(self):
+        if self.level_coverage_factor_k is not None:
+            return self.level_coverage_factor_k
+        return Decimal('2')
+
+    @property
+    def level_resolution_u_vm_m(self):
+        sqrt_twelve = self._sqrt(Decimal('12'))
+        if sqrt_twelve in (None, 0):
+            return None
+        return self.level_resolution_tape_value_m / sqrt_twelve
+
+    @property
+    def level_resolution_u_vl_m(self):
+        sqrt_twelve = self._sqrt(Decimal('12'))
+        if sqrt_twelve in (None, 0):
+            return None
+        return self.level_resolution_instrument_value_m / sqrt_twelve
+
+    @property
+    def level_resolution_u_b_m(self):
+        u_vm = self.level_resolution_u_vm_m
+        u_vl = self.level_resolution_u_vl_m
+        if u_vm is None or u_vl is None:
+            return None
+        return self._sqrt((u_vm * u_vm) + (u_vl * u_vl))
+
+    @property
+    def level_uncertainty_u_c_m(self):
+        u_a = self.level_repeatability_u_a_m
+        u_b = self.level_resolution_u_b_m
+        if u_a is None or u_b is None:
+            return None
+        return self._sqrt((u_a * u_a) + (u_b * u_b))
+
+    @property
+    def level_uncertainty_expanded_m(self):
+        u_c = self.level_uncertainty_u_c_m
+        if u_c is None:
+            return None
+        return abs(self.level_coverage_factor_value * u_c)
+
+    @property
+    def level_uncertainty_expanded_cm(self):
+        return self._to_cm(self.level_uncertainty_expanded_m)
+
+    @property
+    def level_before_within_criterion(self):
+        if not self.is_level_form:
+            return None
+        before_error = self.level_before_mean_abs_cm
+        limit = self.acceptance_limit_pct
+        if before_error is None or limit is None:
+            return None
+        return before_error <= limit
+
+    @property
+    def level_tur_value(self):
+        uncertainty = self.level_uncertainty_expanded_cm
+        limit = self.acceptance_limit_pct
+        if uncertainty in (None, 0) or limit is None:
+            return None
+        return limit / uncertainty
 
     @property
     def tm(self):
@@ -785,12 +1063,16 @@ class FormSubmission(models.Model):
 
     @property
     def expanded_uncertainty_calc_pct_auto(self):
+        if self.is_level_form:
+            return self.level_uncertainty_expanded_cm
         return self.expanded_uncertainty_after_pct_auto
 
     @property
     def expanded_uncertainty_calc_value(self):
         if self.expanded_uncertainty_calc_pct is not None:
             return self.expanded_uncertainty_calc_pct
+        if self.is_level_form:
+            return self.level_uncertainty_expanded_cm
         return self.expanded_uncertainty_calc_pct_auto
 
     @property
@@ -813,34 +1095,64 @@ class FormSubmission(models.Model):
 
     @property
     def expanded_uncertainty_status_detail(self):
+        unit = self.expanded_uncertainty_unit_label
         if self.expanded_uncertainty_calc_value is None:
             return 'Preencha as medicoes para calcular a incerteza expandida.'
         if self.expanded_uncertainty_pct is None:
             return 'Cadastre a incerteza expandida de referencia no equipamento para comparar.'
         if self.expanded_uncertainty_ok:
             return (
-                f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.3f}%) '
-                f'dentro do limite cadastrado ({self.expanded_uncertainty_pct:.3f}%).'
+                f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.2f}{unit}) '
+                f'dentro do limite cadastrado ({self.expanded_uncertainty_pct:.2f}{unit}).'
             )
         return (
-            f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.3f}%) '
-            f'acima do limite cadastrado ({self.expanded_uncertainty_pct:.3f}%).'
+            f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.2f}{unit}) '
+            f'acima do limite cadastrado ({self.expanded_uncertainty_pct:.2f}{unit}).'
         )
 
     @property
     def acceptance_limit_pct(self):
         if self.acceptance_criterion_pct is not None:
             return self.acceptance_criterion_pct
-        if self.equipment_id and self.equipment.acceptance_criterion_pct is not None:
-            return self.equipment.acceptance_criterion_pct
+        if self.equipment_id:
+            if self.form_type_id:
+                criteria = self.equipment.criteria_for_form(self.form_type)
+                if criteria and criteria.acceptance_criterion_value is not None:
+                    return criteria.acceptance_criterion_value
+            if self.equipment.acceptance_criterion_pct is not None:
+                return self.equipment.acceptance_criterion_pct
         return self.DEFAULT_ACCEPTANCE_LIMIT_PCT
 
     @property
+    def acceptance_unit_label(self):
+        if self.acceptance_criterion_unit:
+            return self.acceptance_criterion_unit
+        if self.equipment_id and self.form_type_id:
+            criteria = self.equipment.criteria_for_form(self.form_type)
+            if criteria:
+                return criteria.acceptance_criterion_unit
+        return '%'
+
+    @property
+    def expanded_uncertainty_unit_label(self):
+        if self.expanded_uncertainty_unit:
+            return self.expanded_uncertainty_unit
+        if self.equipment_id and self.form_type_id:
+            criteria = self.equipment.criteria_for_form(self.form_type)
+            if criteria:
+                return criteria.expanded_uncertainty_unit
+        return '%'
+
+    @property
     def acceptance_error_before_value(self):
+        if self.is_level_form:
+            return self.level_before_mean_abs_cm
         return self.error_before_pct if self.error_before_pct is not None else self.error_before_pct_auto
 
     @property
     def acceptance_error_after_value(self):
+        if self.is_level_form:
+            return self.level_final_mean_abs_cm
         return self.error_after_pct if self.error_after_pct is not None else self.error_after_pct_auto
 
     @property
@@ -888,10 +1200,11 @@ class FormSubmission(models.Model):
 
     @property
     def acceptance_block_reason(self):
+        unit = self.acceptance_unit_label
         if self.acceptance_error_after_abs is None:
             return (
                 'Critério de aceitação não pode ser avaliado. '
-                'Preencha os dados necessários para calcular o erro final (%).'
+                f'Preencha os dados necessários para calcular o erro final ({unit}).'
             )
         if self.expanded_uncertainty_calc_value is None:
             return (
@@ -901,14 +1214,14 @@ class FormSubmission(models.Model):
         if self.expanded_uncertainty_pct is not None and not self.expanded_uncertainty_ok:
             return (
                 'Validação final bloqueada: incerteza expandida calculada acima da referência cadastrada '
-                f'({self.expanded_uncertainty_calc_value:.2f}% > {self.expanded_uncertainty_pct:.2f}%).'
+                f'({self.expanded_uncertainty_calc_value:.2f}{unit} > {self.expanded_uncertainty_pct:.2f}{unit}).'
             )
         if self.acceptance_ok:
             return ''
         combined = self.acceptance_combined_value
         return (
             'Validação final bloqueada: soma |erro final| + U(e) acima do critério de aceitação '
-            f'(<= {self.acceptance_limit_pct:.2f}%). Valor atual: {combined:.2f}%.'
+            f'(<= {self.acceptance_limit_pct:.2f}{unit}). Valor atual: {combined:.2f}{unit}.'
         )
 
     def save(self, *args, **kwargs):
@@ -918,49 +1231,51 @@ class FormSubmission(models.Model):
                 self.form_type = self.equipment.available_form_types.first()
             if self.form_type_id:
                 configured_criteria = self.equipment.criteria_for_form(self.form_type)
-            if self.acceptance_criterion_pct is None:
-                if (
-                    configured_criteria
-                    and configured_criteria.acceptance_criterion_unit == EquipmentFormCriteria.Unit.PERCENT
-                ):
+            if self._state.adding and configured_criteria:
+                if configured_criteria.acceptance_criterion_value is not None:
                     self.acceptance_criterion_pct = configured_criteria.acceptance_criterion_value
-                else:
+                self.acceptance_criterion_unit = configured_criteria.acceptance_criterion_unit
+                self.expanded_uncertainty_pct = configured_criteria.expanded_uncertainty_value
+                self.expanded_uncertainty_unit = configured_criteria.expanded_uncertainty_unit
+            elif self._state.adding:
+                if self.acceptance_criterion_pct is None:
                     self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
-            if self.expanded_uncertainty_pct is None:
-                if (
-                    configured_criteria
-                    and configured_criteria.expanded_uncertainty_unit == EquipmentFormCriteria.Unit.PERCENT
-                ):
-                    self.expanded_uncertainty_pct = configured_criteria.expanded_uncertainty_value
-                else:
+                if self.expanded_uncertainty_pct is None:
                     self.expanded_uncertainty_pct = self.equipment.expanded_uncertainty_pct
-        self.ibm = self.ibm_auto
-        self.mark_distance = self.mark_distance_auto
-        self.belt_speed_v = self.belt_speed_v_auto
-        self.belt_length = self.belt_length_auto
-        self.speed_characteristic_b04 = self.speed_characteristic_b04_auto
-        self.calculated_flow_ic = self.calculated_flow_ic_auto
-        self.error_before_pct = self.error_before_pct_auto
-        self.error_after_pct = self.error_after_pct_auto
-        self.expanded_uncertainty_calc_pct = self.expanded_uncertainty_calc_pct_auto
+                self.acceptance_criterion_unit = self.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
+                self.expanded_uncertainty_unit = self.expanded_uncertainty_unit or EquipmentFormCriteria.Unit.PERCENT
+        if self.is_level_form:
+            self.error_before_pct = self.level_before_mean_abs_cm
+            self.error_after_pct = self.level_final_mean_abs_cm
+            self.expanded_uncertainty_calc_pct = self.level_uncertainty_expanded_cm
+        else:
+            self.ibm = self.ibm_auto
+            self.mark_distance = self.mark_distance_auto
+            self.belt_speed_v = self.belt_speed_v_auto
+            self.belt_length = self.belt_length_auto
+            self.speed_characteristic_b04 = self.speed_characteristic_b04_auto
+            self.calculated_flow_ic = self.calculated_flow_ic_auto
+            self.error_before_pct = self.error_before_pct_auto
+            self.error_after_pct = self.error_after_pct_auto
+            self.expanded_uncertainty_calc_pct = self.expanded_uncertainty_calc_pct_auto
         super().save(*args, **kwargs)
 
 
 class PortalNotification(models.Model):
     class Category(models.TextChoices):
-        FORM_PENDING_VALIDATION = 'form_pending_validation', 'Formulário pendente validação'
-        FORM_APPROVED = 'form_approved', 'Formulário aprovado'
-        FORM_REWORK = 'form_rework', 'Formulário para refazer'
+        FORM_PENDING_VALIDATION = 'form_pending_validation', 'FormulÃ¡rio pendente validaÃ§Ã£o'
+        FORM_APPROVED = 'form_approved', 'FormulÃ¡rio aprovado'
+        FORM_REWORK = 'form_rework', 'FormulÃ¡rio para refazer'
         DEADLINE_ALERT = 'deadline_alert', 'Alerta de prazo'
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='portal_notifications',
-        verbose_name='Usuário',
+        verbose_name='UsuÃ¡rio',
     )
     category = models.CharField('Categoria', max_length=40, choices=Category.choices)
-    title = models.CharField('Título', max_length=200)
+    title = models.CharField('TÃ­tulo', max_length=200)
     message = models.TextField('Mensagem')
     submission = models.ForeignKey(
         FormSubmission,
@@ -968,7 +1283,7 @@ class PortalNotification(models.Model):
         null=True,
         blank=True,
         related_name='notifications',
-        verbose_name='Formulário',
+        verbose_name='FormulÃ¡rio',
     )
     equipment = models.ForeignKey(
         Equipment,
@@ -979,7 +1294,7 @@ class PortalNotification(models.Model):
         verbose_name='Equipamento',
     )
     dedupe_key = models.CharField(
-        'Chave de deduplicação',
+        'Chave de deduplicaÃ§Ã£o',
         max_length=180,
         blank=True,
         default='',
@@ -1013,3 +1328,4 @@ def ensure_portal_access_for_new_user(sender, instance, created, **kwargs):
                 'role': PortalUserAccess.Role.MASTER if instance.is_superuser else PortalUserAccess.Role.VIEWER,
             },
         )
+

@@ -1,4 +1,6 @@
-﻿from django import forms
+﻿from decimal import Decimal
+
+from django import forms
 
 from .models import Equipment, FormSubmission, InspectionFormType
 
@@ -207,6 +209,110 @@ class TechnicalForm(forms.ModelForm):
         )
 
 
+
+class LevelTechnicalForm(forms.ModelForm):
+    class Meta:
+        model = FormSubmission
+        fields = [
+            'om_number',
+            'execution_date',
+            'level_before_vm_1', 'level_before_vl_1',
+            'level_before_vm_2', 'level_before_vl_2',
+            'level_before_vm_3', 'level_before_vl_3',
+            'level_before_vm_4', 'level_before_vl_4',
+            'level_after_vm_1', 'level_after_vl_1',
+            'level_after_vm_2', 'level_after_vl_2',
+            'level_after_vm_3', 'level_after_vl_3',
+            'level_after_vm_4', 'level_after_vl_4',
+            'level_resolution_tape_m',
+            'level_resolution_instrument_m',
+            'level_coverage_factor_k',
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_pct',
+            'expanded_uncertainty_calc_pct',
+            'sector', 'sector_2', 'sector_3',
+            'validator_registration',
+            'technician_1_name',
+            'technician_2_name', 'technician_2_registration',
+            'technician_3_name', 'technician_3_registration',
+            'observation',
+        ]
+        labels = {
+            'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
+            'level_before_vm_1': 'VM 1 (m)',
+            'level_before_vl_1': 'VL 1 (m)',
+            'level_before_vm_2': 'VM 2 (m)',
+            'level_before_vl_2': 'VL 2 (m)',
+            'level_before_vm_3': 'VM 3 (m)',
+            'level_before_vl_3': 'VL 3 (m)',
+            'level_before_vm_4': 'VM 4 (m)',
+            'level_before_vl_4': 'VL 4 (m)',
+            'level_after_vm_1': 'VM 1 (m)',
+            'level_after_vl_1': 'VL 1 (m)',
+            'level_after_vm_2': 'VM 2 (m)',
+            'level_after_vl_2': 'VL 2 (m)',
+            'level_after_vm_3': 'VM 3 (m)',
+            'level_after_vl_3': 'VL 3 (m)',
+            'level_after_vm_4': 'VM 4 (m)',
+            'level_after_vl_4': 'VL 4 (m)',
+            'level_resolution_tape_m': 'Resolução da trena (m)',
+            'level_resolution_instrument_m': 'Resolução do transmissor (m)',
+            'level_coverage_factor_k': 'Fator de abrangência (k)',
+            'acceptance_criterion_pct': 'Critério de aceitação (cm)',
+            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada (cm)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada (cm)',
+            'sector': 'Setor 1',
+            'sector_2': 'Setor 2',
+            'sector_3': 'Setor 3',
+            'validator_registration': 'Matrícula 1',
+            'technician_1_name': 'Nome 1',
+            'technician_2_name': 'Nome 2',
+            'technician_2_registration': 'Matrícula 2',
+            'technician_3_name': 'Nome 3',
+            'technician_3_registration': 'Matrícula 3',
+            'observation': 'Observação',
+        }
+        widgets = {
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
+        self.fields['execution_date'].localize = False
+
+        for field in self.fields.values():
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['level_resolution_tape_m'].widget.attrs.update({'step': '0.0001'})
+        self.fields['level_resolution_instrument_m'].widget.attrs.update({'step': '0.0001'})
+        self.fields['level_coverage_factor_k'].widget.attrs.update({'step': '0.001'})
+
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct']:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo calculado/carregado automaticamente pelo sistema.',
+                }
+            )
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update(
+            {'title': 'Campo vindo do cadastro do equipamento.'}
+        )
+
+        if not self.instance.level_resolution_tape_m:
+            self.initial.setdefault('level_resolution_tape_m', Decimal('0.001'))
+        if not self.instance.level_resolution_instrument_m:
+            self.initial.setdefault('level_resolution_instrument_m', Decimal('0.010'))
+        if not self.instance.level_coverage_factor_k:
+            self.initial.setdefault('level_coverage_factor_k', Decimal('2.000'))
+
 class ValidationForm(forms.Form):
     class DecisionChoices:
         APPROVE = 'approve'
@@ -243,3 +349,4 @@ class ValidationForm(forms.Form):
         if decision == self.DecisionChoices.REWORK and not feedback:
             self.add_error('feedback', 'Informe o motivo da refação.')
         return cleaned
+

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load l10n %}
 {% block title %}Detalhe do formulário{% endblock %}
 {% block content %}
@@ -7,7 +7,7 @@
 <p><strong>Formulário:</strong> {{ submission.form_type_label }}</p>
 <p><strong>Equipamento:</strong> {{ submission.equipment.tag }} - {{ submission.equipment.description }}</p>
 <p><strong>Local:</strong> {{ submission.location_snapshot }}</p>
-<p><strong>Data da visita:</strong> {{ submission.execution_date }}</p>
+<p><strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}</p>
 <p><strong>Formulário preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
 <p><strong>Criado por:</strong>
   {% if submission.created_by %}
@@ -21,9 +21,9 @@
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
 <p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|default:'-' }}</p>
-<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}%</p>
-<p><strong>Incerteza expandida cadastrada:</strong> {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}%</p>
-<p><strong>Incerteza expandida calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}</p>
+<p><strong>Incerteza expandida cadastrada:</strong> {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</p>
+<p><strong>Incerteza expandida calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</p>
 <p><strong>Status da incerteza expandida:</strong>
   <span class="badge {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
     {{ submission.expanded_uncertainty_status_label }}
@@ -31,7 +31,7 @@
   ({{ submission.expanded_uncertainty_status_detail }})
 </p>
 <p><strong>Status do erro final (|erro| <= critério):</strong> {{ submission.instrument_error_status_label }}</p>
-<p><strong>Soma final |erro| + U(e):</strong> {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}%</p>
+<p><strong>Soma final |erro| + U(e):</strong> {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}</p>
 <p><strong>Status final:</strong>
   <span class="badge {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
     {{ submission.acceptance_status_label }}
@@ -79,32 +79,86 @@
 
 <hr>
 <h3>Medições (resumo)</h3>
-<ul>
-  <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
-  <li>M1/M2/M3: {{ submission.m1|floatformat:2|localize|default:'-' }} / {{ submission.m2|floatformat:2|localize|default:'-' }} / {{ submission.m3|floatformat:2|localize|default:'-' }} (MD: {{ submission.md|floatformat:2|localize|default:'-' }})</li>
-  <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
-  <li>Distância entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
-  <li>Pulsos por volta / IBM: {{ submission.pulses_per_turn_1|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_2|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_3|floatformat:2|localize|default:'-' }} (IBM: {{ submission.ibm|floatformat:2|localize|default:'-' }})</li>
-  <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
-  <li>IL depois: {{ submission.il_after|floatformat:2|localize|default:'-' }}</li>
-  <li>Q (P/D): {{ submission.loading_q|floatformat:2|localize|default:'-' }}</li>
-  <li>V (velocidade da correia): {{ submission.belt_speed_v|floatformat:4|localize|default:'-' }}</li>
-  <li>L (comprimento da correia): {{ submission.belt_length|floatformat:2|localize|default:'-' }}</li>
-  <li>B04 (IBM/L): {{ submission.speed_characteristic_b04|floatformat:2|localize|default:'-' }}</li>
-  <li>Ic informado: {{ submission.calculated_flow_ic|floatformat:2|localize|default:'-' }}</li>
-  <li>Ic automático: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
-  <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
-  <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
-  <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|localize|default:'-' }}</li>
-  <li>U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|localize|default:'-' }}</li>
-  <li>U(e) calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}</li>
-  <li>Soma final |erro| + U(e) (%): {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}</li>
-  <li>Setor 1: {{ submission.sector|default:'-' }}</li>
-  <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
-  <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
-  <li>Nome 1 / Matrícula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
-  <li>Nome 2 / Matrícula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
-  <li>Nome 3 / Matrícula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
-</ul>
+{% if submission.is_level_form %}
+  <ul>
+    <li>Fase final considerada: {{ submission.level_final_phase_label }}</li>
+    <li>Erro médio absoluto antes: {{ submission.level_before_mean_abs_cm|floatformat:2|localize|default:'-' }} cm</li>
+    <li>Erro médio absoluto final: {{ submission.level_final_mean_abs_cm|floatformat:2|localize|default:'-' }} cm</li>
+    <li>U(e) calculada: {{ submission.level_uncertainty_expanded_cm|floatformat:2|localize|default:'-' }} cm</li>
+    <li>TUR (critério/U(e)): {{ submission.level_tur_value|floatformat:2|localize|default:'-' }}</li>
+    <li>Resolução da trena: {{ submission.level_resolution_tape_value_m|floatformat:4|localize|default:'-' }} m</li>
+    <li>Resolução do transmissor: {{ submission.level_resolution_instrument_value_m|floatformat:4|localize|default:'-' }} m</li>
+    <li>Fator k: {{ submission.level_coverage_factor_value|floatformat:3|localize|default:'-' }}</li>
+    <li>Setor 1: {{ submission.sector|default:'-' }}</li>
+    <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
+    <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
+    <li>Nome 1 / Matrícula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
+    <li>Nome 2 / Matrícula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
+    <li>Nome 3 / Matrícula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
+  </ul>
+
+  <h4>Antes do ajuste</h4>
+  <table>
+    <thead>
+      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (cm)</th></tr>
+    </thead>
+    <tbody>
+      {% for row in submission.level_before_rows %}
+        <tr>
+          <td>{{ row.index }}</td>
+          <td>{{ row.vm|floatformat:3|localize|default:'-' }}</td>
+          <td>{{ row.vl|floatformat:3|localize|default:'-' }}</td>
+          <td>{{ row.error_abs_cm|floatformat:2|localize|default:'-' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h4>Após ajuste</h4>
+  <table>
+    <thead>
+      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (cm)</th></tr>
+    </thead>
+    <tbody>
+      {% for row in submission.level_after_rows %}
+        <tr>
+          <td>{{ row.index }}</td>
+          <td>{{ row.vm|floatformat:3|localize|default:'-' }}</td>
+          <td>{{ row.vl|floatformat:3|localize|default:'-' }}</td>
+          <td>{{ row.error_abs_cm|floatformat:2|localize|default:'-' }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <ul>
+    <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
+    <li>M1/M2/M3: {{ submission.m1|floatformat:2|localize|default:'-' }} / {{ submission.m2|floatformat:2|localize|default:'-' }} / {{ submission.m3|floatformat:2|localize|default:'-' }} (MD: {{ submission.md|floatformat:2|localize|default:'-' }})</li>
+    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
+    <li>Distância entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
+    <li>Pulsos por volta / IBM: {{ submission.pulses_per_turn_1|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_2|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_3|floatformat:2|localize|default:'-' }} (IBM: {{ submission.ibm|floatformat:2|localize|default:'-' }})</li>
+    <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
+    <li>IL depois: {{ submission.il_after|floatformat:2|localize|default:'-' }}</li>
+    <li>Q (P/D): {{ submission.loading_q|floatformat:2|localize|default:'-' }}</li>
+    <li>V (velocidade da correia): {{ submission.belt_speed_v|floatformat:4|localize|default:'-' }}</li>
+    <li>L (comprimento da correia): {{ submission.belt_length|floatformat:2|localize|default:'-' }}</li>
+    <li>B04 (IBM/L): {{ submission.speed_characteristic_b04|floatformat:2|localize|default:'-' }}</li>
+    <li>Ic informado: {{ submission.calculated_flow_ic|floatformat:2|localize|default:'-' }}</li>
+    <li>Ic automático: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
+    <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
+    <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
+    <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|localize|default:'-' }}</li>
+    <li>U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|localize|default:'-' }}</li>
+    <li>U(e) calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}</li>
+    <li>Soma final |erro| + U(e) (%): {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}</li>
+    <li>Setor 1: {{ submission.sector|default:'-' }}</li>
+    <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
+    <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
+    <li>Nome 1 / Matrícula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
+    <li>Nome 2 / Matrícula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
+    <li>Nome 3 / Matrícula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
+  </ul>
+{% endif %}
+
 <p><strong>Observação:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
 {% endblock %}

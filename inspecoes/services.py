@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import base64
 import binascii
@@ -165,7 +165,7 @@ def _draw_pdf_header(pdf, page_width, page_height, image_reader_cls=None):
     pdf.setFont('Helvetica-Bold', 14)
     pdf.drawString(text_x, top_y - 4, 'Hydro MPSA')
     pdf.setFont('Helvetica', 10)
-    pdf.drawString(text_x, top_y - 21, 'Formulário interno de Verificação/Ajuste')
+    pdf.drawString(text_x, top_y - 21, 'FormulÃ¡rio interno de VerificaÃ§Ã£o/Ajuste')
     pdf.setFont('Helvetica', 8)
     pdf.drawRightString(
         page_width - margin_x,
@@ -243,50 +243,106 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         if submission.form_type_id and submission.form_type
         else 'Verificacao e ajuste de balanca dinamica (MVP)'
     )
+    acceptance_unit = submission.acceptance_unit_label or '%'
+    uncertainty_unit = submission.expanded_uncertainty_unit_label or acceptance_unit
 
-    lines = [
-        f'{form_code} - {form_title}',
-        f'Data da visita: {submission.execution_date}',
-        f'OM: {submission.om_number}',
-        f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
-        f'Local: {submission.location_snapshot}',
-        f'Houve troca de correia: {"Sim" if submission.belt_replaced else "Nao"}',
-        f'Executor: {submission.executor_name}',
-        f'Critério de aceitação (%): {_format_num(acceptance_limit, 1)}',
-        f'Incerteza expandida cadastrada (%): {_format_num(submission.expanded_uncertainty_pct, 2)}',
-        f'Incerteza expandida calculada (%): {_format_num(uncertainty_calc, 2)}',
-        f'Status da incerteza expandida: {uncertainty_status}',
-        '',
-        f'T1/T2/T3: {_format_num(submission.t1, 2)} / {_format_num(submission.t2, 2)} / {_format_num(submission.t3, 2)}',
-        f'TM (média): {_format_num(submission.tm, 2)}',
-        f'M1/M2/M3: {_format_num(submission.m1, 2)} / {_format_num(submission.m2, 2)} / {_format_num(submission.m3, 2)}',
-        f'MD (média): {_format_num(submission.md, 2)}',
-        f'Distância entre marcas: {_format_num(submission.mark_distance, 2)}',
-        f'IBM (média pulsos): {_format_num(submission.ibm, 2)}',
-        f'Velocidade V: {_format_num(submission.belt_speed_v, 4)}',
-        f'Comprimento L: {_format_num(submission.belt_length, 2)}',
-        f'B04 (IBM/L): {_format_num(submission.speed_characteristic_b04, 2)}',
-        f'Ic (Q x V x 3,6): {_format_num(submission.calculated_flow_ic, 2)}',
-        f'IL antes: {_format_num(submission.il_before, 2)}',
-        f'Erro antes (%): {_format_num(error_before_value, 2)}',
-        f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
-        f'IL depois: {_format_num(submission.il_after, 2)}',
-        f'Erro depois (%): {_format_num(error_after_value, 2)}',
-        f'|Erro final| (%): {_format_num(error_after_abs, 2)}',
-        f'Status erro depois: {error_after_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
-        f'Soma final |erro| + U(e) (%): {_format_num(combined_value, 2)}',
-        f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 1)}%)',
-        f'Setor 1: {submission.sector or ""}',
-        f'Setor 2: {submission.sector_2 or ""}',
-        f'Setor 3: {submission.sector_3 or ""}',
-        f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
-        f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
-        f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
-        f'Observação: {submission.observation or ""}',
-        '',
-        f'Validado por: {submission.validator_name or "-"}',
-        f'Validado em: {_format_datetime(submission.validated_at)}',
-    ]
+    if submission.is_level_form:
+        lines = [
+            f'{form_code} - {form_title}',
+            f'Data da visita: {submission.execution_date}',
+            f'OM: {submission.om_number}',
+            f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
+            f'Local: {submission.location_snapshot}',
+            f'Executor: {submission.executor_name}',
+            f'Fase final considerada: {submission.level_final_phase_label}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
+            f'Incerteza expandida cadastrada ({uncertainty_unit}): {_format_num(submission.expanded_uncertainty_pct, 2)}',
+            f'Incerteza expandida calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 2)}',
+            f'Status da incerteza expandida: {uncertainty_status}',
+            f'Erro antes ({acceptance_unit}): {_format_num(error_before_value, 2)}',
+            f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
+            f'Erro final ({acceptance_unit}): {_format_num(error_after_value, 2)}',
+            f'|Erro final| ({acceptance_unit}): {_format_num(error_after_abs, 2)}',
+            f'Status erro final: {error_after_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
+            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 2)}',
+            f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
+            f'TUR (critério/U(e)): {_format_num(submission.level_tur_value, 2)}',
+            f'Resolução da trena (m): {_format_num(submission.level_resolution_tape_value_m, 4)}',
+            f'Resolução do transmissor (m): {_format_num(submission.level_resolution_instrument_value_m, 4)}',
+            f'Fator k: {_format_num(submission.level_coverage_factor_value, 3)}',
+            '',
+            'Verificação antes do ajuste (VM, VL, erro abs em cm):',
+        ]
+        for row in submission.level_before_rows:
+            lines.append(
+                f'Ponto {row["index"]}: VM={_format_num(row["vm"], 3)} | VL={_format_num(row["vl"], 3)} | Erro abs={_format_num(row["error_abs_cm"], 2)}'
+            )
+        if submission.level_has_after_measurements:
+            lines.append('')
+            lines.append('Verificação após ajuste (VM, VL, erro abs em cm):')
+            for row in submission.level_after_rows:
+                lines.append(
+                    f'Ponto {row["index"]}: VM={_format_num(row["vm"], 3)} | VL={_format_num(row["vl"], 3)} | Erro abs={_format_num(row["error_abs_cm"], 2)}'
+                )
+        lines.extend(
+            [
+                '',
+                f'Setor 1: {submission.sector or ""}',
+                f'Setor 2: {submission.sector_2 or ""}',
+                f'Setor 3: {submission.sector_3 or ""}',
+                f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
+                f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
+                f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
+                f'Observação: {submission.observation or ""}',
+                '',
+                f'Validado por: {submission.validator_name or "-"}',
+                f'Validado em: {_format_datetime(submission.validated_at)}',
+            ]
+        )
+    else:
+        lines = [
+            f'{form_code} - {form_title}',
+            f'Data da visita: {submission.execution_date}',
+            f'OM: {submission.om_number}',
+            f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
+            f'Local: {submission.location_snapshot}',
+            f'Houve troca de correia: {"Sim" if submission.belt_replaced else "Nao"}',
+            f'Executor: {submission.executor_name}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 1)}',
+            f'Incerteza expandida cadastrada ({uncertainty_unit}): {_format_num(submission.expanded_uncertainty_pct, 2)}',
+            f'Incerteza expandida calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 2)}',
+            f'Status da incerteza expandida: {uncertainty_status}',
+            '',
+            f'T1/T2/T3: {_format_num(submission.t1, 2)} / {_format_num(submission.t2, 2)} / {_format_num(submission.t3, 2)}',
+            f'TM (média): {_format_num(submission.tm, 2)}',
+            f'M1/M2/M3: {_format_num(submission.m1, 2)} / {_format_num(submission.m2, 2)} / {_format_num(submission.m3, 2)}',
+            f'MD (média): {_format_num(submission.md, 2)}',
+            f'Distância entre marcas: {_format_num(submission.mark_distance, 2)}',
+            f'IBM (média pulsos): {_format_num(submission.ibm, 2)}',
+            f'Velocidade V: {_format_num(submission.belt_speed_v, 4)}',
+            f'Comprimento L: {_format_num(submission.belt_length, 2)}',
+            f'B04 (IBM/L): {_format_num(submission.speed_characteristic_b04, 2)}',
+            f'Ic (Q x V x 3,6): {_format_num(submission.calculated_flow_ic, 2)}',
+            f'IL antes: {_format_num(submission.il_before, 2)}',
+            f'Erro antes ({acceptance_unit}): {_format_num(error_before_value, 2)}',
+            f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 1)}{acceptance_unit})',
+            f'IL depois: {_format_num(submission.il_after, 2)}',
+            f'Erro depois ({acceptance_unit}): {_format_num(error_after_value, 2)}',
+            f'|Erro final| ({acceptance_unit}): {_format_num(error_after_abs, 2)}',
+            f'Status erro depois: {error_after_status} (limite <= {_format_num(acceptance_limit, 1)}{acceptance_unit})',
+            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 2)}',
+            f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 1)}{acceptance_unit})',
+            f'Setor 1: {submission.sector or ""}',
+            f'Setor 2: {submission.sector_2 or ""}',
+            f'Setor 3: {submission.sector_3 or ""}',
+            f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
+            f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
+            f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
+            f'Observação: {submission.observation or ""}',
+            '',
+            f'Validado por: {submission.validator_name or "-"}',
+            f'Validado em: {_format_datetime(submission.validated_at)}',
+        ]
 
     pdf.setFont('Helvetica', 10)
     for line in lines:
@@ -327,7 +383,7 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
             pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Falha ao renderizar assinatura')
     else:
         pdf.setFont('Helvetica', 9)
-        pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Assinatura não disponível')
+        pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Assinatura nÃ£o disponÃ­vel')
 
     pdf.save()
     return buffer.getvalue()
@@ -335,7 +391,7 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
 
 def upload_pdf_to_sap(submission: FormSubmission, pdf_bytes: bytes) -> Tuple[bool, str, str]:
     if not settings.SAP_API_BASE_URL or not settings.SAP_API_TOKEN:
-        return False, '', 'SAP não configurado (defina SAP_API_BASE_URL e SAP_API_TOKEN).'
+        return False, '', 'SAP nÃ£o configurado (defina SAP_API_BASE_URL e SAP_API_TOKEN).'
 
     url = f"{settings.SAP_API_BASE_URL}{settings.SAP_API_ATTACH_ENDPOINT}"
     headers = {'Authorization': f'Bearer {settings.SAP_API_TOKEN}'}
@@ -386,3 +442,4 @@ def process_sap_submission(submission: FormSubmission) -> None:
         if submission.status != FormSubmission.Status.SENT_TO_SAP:
             submission.status = FormSubmission.Status.APPROVED
     submission.save(update_fields=['sap_status', 'sap_attachment_id', 'sap_response_message', 'sap_sent_at', 'status', 'updated_at'])
+
