@@ -271,7 +271,9 @@ def form_validate_view(request, pk):
                 )
                 notify_technician_validation_result(submission, approved=True, validator_user=request.user, feedback=feedback)
                 messages.success(request, 'Formulário validado com sucesso.')
-                return _pdf_download_response(submission)
+                if _can_view(request.user, 'history'):
+                    return redirect('inspecoes:history')
+                return redirect('inspecoes:detail', pk=submission.pk)
 
             submission.status = FormSubmission.Status.REWORK_REQUIRED
             submission.save(
@@ -290,6 +292,8 @@ def form_validate_view(request, pk):
             )
             notify_technician_validation_result(submission, approved=False, validator_user=request.user, feedback=feedback)
             messages.warning(request, 'Formulário reprovado e devolvido para edição do técnico responsável.')
+            if _can_view(request.user, 'history'):
+                return redirect('inspecoes:history')
             return redirect('inspecoes:detail', pk=submission.pk)
     else:
         initial_name = request.user.get_full_name().strip() or request.user.username
