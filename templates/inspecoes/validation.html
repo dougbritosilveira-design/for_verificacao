@@ -13,6 +13,9 @@
   .criteria-status.ok { background:#d8f0df; color:#1f5a2d; }
   .criteria-status.fail { background:#ffdede; color:#8a1d1d; }
   .criteria-status.pending { background:#fff0c5; color:#7c5a00; }
+  .confirm-row { display:flex; align-items:center; gap:8px; margin: 8px 0 12px; }
+  .confirm-row input[type="checkbox"] { width:auto; margin:0; }
+  .confirm-row label { margin:0; }
 </style>
 {% endblock %}
 {% block content %}
@@ -63,7 +66,10 @@
   <div class="sig-tools">
     <button type="button" id="clear-signature" class="secondary">Limpar assinatura</button>
   </div>
-  <p>{{ form.confirm }} {{ form.confirm.label }}</p>
+  <div class="confirm-row">
+    {{ form.confirm }}
+    {{ form.confirm.label_tag }}
+  </div>
   {% if form.errors %}<div style="color:#a12a2a;">{{ form.errors }}</div>{% endif %}
   <button type="submit">Salvar validação</button>
 </form>
