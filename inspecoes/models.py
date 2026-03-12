@@ -279,6 +279,11 @@ class Equipment(models.Model):
     def available_form_types(self):
         return self.inspection_form_types.filter(active=True).order_by('code')
 
+    def criteria_for_form(self, form_type):
+        if not form_type:
+            return None
+        return self.form_criteria_configs.filter(form_type=form_type).first()
+
     @property
     def deadline_warning_days(self):
         return int(getattr(settings, 'EQUIPMENT_DUE_SOON_DAYS', 7))
@@ -385,6 +390,70 @@ class Equipment(models.Model):
     @property
     def should_notify_deadline(self):
         return self.deadline_status_code in {'due_soon', 'overdue'} and self.has_notification_recipients
+
+
+class EquipmentFormCriteria(models.Model):
+    class Unit(models.TextChoices):
+        PERCENT = '%', '%'
+        CENTIMETER = 'cm', 'cm'
+
+    equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.CASCADE,
+        related_name='form_criteria_configs',
+        verbose_name='Equipamento',
+    )
+    form_type = models.ForeignKey(
+        InspectionFormType,
+        on_delete=models.CASCADE,
+        related_name='equipment_criteria_configs',
+        verbose_name='Formulario',
+    )
+    acceptance_criterion_value = models.DecimalField(
+        'Criterio de aceitacao',
+        max_digits=10,
+        decimal_places=3,
+        default=Decimal('1.0'),
+        validators=[MinValueValidator(Decimal('0.000'))],
+    )
+    acceptance_criterion_unit = models.CharField(
+        'Unidade do criterio',
+        max_length=8,
+        choices=Unit.choices,
+        default=Unit.PERCENT,
+    )
+    expanded_uncertainty_value = models.DecimalField(
+        'Incerteza expandida',
+        max_digits=10,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0.000'))],
+    )
+    expanded_uncertainty_unit = models.CharField(
+        'Unidade da incerteza',
+        max_length=8,
+        choices=Unit.choices,
+        default=Unit.PERCENT,
+    )
+    updated_at = models.DateTimeField('Atualizado em', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuracao de criterio por formulario'
+        verbose_name_plural = 'Configuracoes de criterio por formulario'
+        ordering = ['equipment__tag', 'form_type__code']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['equipment', 'form_type'],
+                name='unique_equipment_form_criteria_config',
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f'{self.equipment.tag} | {self.form_type.code} | '
+            f'criterio={self.acceptance_criterion_value}{self.acceptance_criterion_unit}'
+        )
 
 
 class FormSubmission(models.Model):
@@ -843,13 +912,28 @@ class FormSubmission(models.Model):
         )
 
     def save(self, *args, **kwargs):
+        configured_criteria = None
         if self.equipment_id:
             if self.form_type_id is None:
                 self.form_type = self.equipment.available_form_types.first()
+            if self.form_type_id:
+                configured_criteria = self.equipment.criteria_for_form(self.form_type)
             if self.acceptance_criterion_pct is None:
-                self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
+                if (
+                    configured_criteria
+                    and configured_criteria.acceptance_criterion_unit == EquipmentFormCriteria.Unit.PERCENT
+                ):
+                    self.acceptance_criterion_pct = configured_criteria.acceptance_criterion_value
+                else:
+                    self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
             if self.expanded_uncertainty_pct is None:
-                self.expanded_uncertainty_pct = self.equipment.expanded_uncertainty_pct
+                if (
+                    configured_criteria
+                    and configured_criteria.expanded_uncertainty_unit == EquipmentFormCriteria.Unit.PERCENT
+                ):
+                    self.expanded_uncertainty_pct = configured_criteria.expanded_uncertainty_value
+                else:
+                    self.expanded_uncertainty_pct = self.equipment.expanded_uncertainty_pct
         self.ibm = self.ibm_auto
         self.mark_distance = self.mark_distance_auto
         self.belt_speed_v = self.belt_speed_v_auto

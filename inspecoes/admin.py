@@ -1,7 +1,29 @@
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 
-from .models import Equipment, FormSubmission, InspectionFormType, PortalNotification, PortalUserAccess
+from .models import (
+    Equipment,
+    EquipmentFormCriteria,
+    FormSubmission,
+    InspectionFormType,
+    PortalNotification,
+    PortalUserAccess,
+)
+
+
+class EquipmentFormCriteriaInline(admin.TabularInline):
+    model = EquipmentFormCriteria
+    extra = 0
+    autocomplete_fields = ('form_type',)
+    fields = (
+        'form_type',
+        'acceptance_criterion_value',
+        'acceptance_criterion_unit',
+        'expanded_uncertainty_value',
+        'expanded_uncertainty_unit',
+        'updated_at',
+    )
+    readonly_fields = ('updated_at',)
 
 
 @admin.register(InspectionFormType)
@@ -42,6 +64,7 @@ class EquipmentAdmin(admin.ModelAdmin):
         'notification_emails',
         'deadline_info_admin',
     )
+    inlines = (EquipmentFormCriteriaInline,)
 
     @admin.display(description='Status do prazo')
     def deadline_status_admin(self, obj):
@@ -81,6 +104,28 @@ class FormSubmissionAdmin(admin.ModelAdmin):
     )
     list_filter = ('form_type', 'status', 'sap_status', 'created_at')
     search_fields = ('om_number', 'equipment__tag', 'equipment__description', 'executor_name')
+
+
+@admin.register(EquipmentFormCriteria)
+class EquipmentFormCriteriaAdmin(admin.ModelAdmin):
+    list_display = (
+        'equipment',
+        'form_type',
+        'acceptance_criterion_value',
+        'acceptance_criterion_unit',
+        'expanded_uncertainty_value',
+        'expanded_uncertainty_unit',
+        'updated_at',
+    )
+    list_filter = (
+        'acceptance_criterion_unit',
+        'expanded_uncertainty_unit',
+        'form_type',
+        'equipment__active',
+    )
+    search_fields = ('equipment__tag', 'equipment__description', 'form_type__code', 'form_type__title')
+    autocomplete_fields = ('equipment', 'form_type')
+    ordering = ('equipment__tag', 'form_type__code')
 
 
 @admin.register(PortalNotification)

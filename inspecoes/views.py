@@ -50,6 +50,21 @@ def _can_access_submission_for_equipment_scope(user, submission):
     return submission.equipment_id in scoped_ids
 
 
+def _resolve_percent_criteria_defaults(equipment, form_type):
+    acceptance_value = equipment.acceptance_criterion_pct
+    uncertainty_value = equipment.expanded_uncertainty_pct
+    if not form_type:
+        return acceptance_value, uncertainty_value
+
+    criteria_config = equipment.criteria_for_form(form_type)
+    if criteria_config:
+        if criteria_config.acceptance_criterion_unit == '%':
+            acceptance_value = criteria_config.acceptance_criterion_value
+        if criteria_config.expanded_uncertainty_unit == '%':
+            uncertainty_value = criteria_config.expanded_uncertainty_value
+    return acceptance_value, uncertainty_value
+
+
 def _can_view(user, screen):
     access = _access_for_user(user)
     if not access:
@@ -179,8 +194,12 @@ def selection_view(request):
         if form.is_valid():
             submission = form.save(commit=False)
             submission.created_by = request.user
-            submission.acceptance_criterion_pct = submission.equipment.acceptance_criterion_pct
-            submission.expanded_uncertainty_pct = submission.equipment.expanded_uncertainty_pct
+            acceptance_value, uncertainty_value = _resolve_percent_criteria_defaults(
+                submission.equipment,
+                submission.form_type,
+            )
+            submission.acceptance_criterion_pct = acceptance_value
+            submission.expanded_uncertainty_pct = uncertainty_value
             if not submission.location_snapshot:
                 submission.location_snapshot = submission.equipment.location
             submission.status = FormSubmission.Status.DRAFT
