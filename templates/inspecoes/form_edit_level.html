@@ -31,7 +31,7 @@
   .level-table { width:100%; border-collapse: collapse; margin-bottom: 10px; }
   .level-table th, .level-table td { border: 1px solid #ded6c4; padding: 8px; text-align: left; }
   .level-table th { background:#f6f2e8; }
-  .readonly-cell input { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; }
+  .auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
   .hint { font-size: 13px; color: #555047; margin-top: 4px; }
 </style>
 
@@ -51,6 +51,11 @@
   {{ form.level_resolution_tape_m }}
   {{ form.level_resolution_instrument_m }}
   {{ form.level_coverage_factor_k }}
+  <div id="level-defaults"
+       data-criterion="{{ submission.acceptance_limit_pct|default_if_none:''|unlocalize }}"
+       data-uncert-ref="{{ submission.expanded_uncertainty_pct|default_if_none:''|unlocalize }}"
+       data-uncert-calc="{{ submission.expanded_uncertainty_calc_value|default_if_none:''|unlocalize }}"
+       hidden></div>
 
   <h3>Dados iniciais</h3>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
@@ -73,30 +78,30 @@
         <td>1</td>
         <td>{{ form.level_before_vm_1 }}</td>
         <td>{{ form.level_before_vl_1 }}</td>
-        <td class="readonly-cell"><input id="id_before_err_abs_1" type="text" readonly></td>
+        <td><input id="id_before_err_abs_1" class="auto-locked" type="text" readonly disabled></td>
       </tr>
       <tr>
         <td>2</td>
         <td>{{ form.level_before_vm_2 }}</td>
         <td>{{ form.level_before_vl_2 }}</td>
-        <td class="readonly-cell"><input id="id_before_err_abs_2" type="text" readonly></td>
+        <td><input id="id_before_err_abs_2" class="auto-locked" type="text" readonly disabled></td>
       </tr>
       <tr>
         <td>3</td>
         <td>{{ form.level_before_vm_3 }}</td>
         <td>{{ form.level_before_vl_3 }}</td>
-        <td class="readonly-cell"><input id="id_before_err_abs_3" type="text" readonly></td>
+        <td><input id="id_before_err_abs_3" class="auto-locked" type="text" readonly disabled></td>
       </tr>
       <tr>
         <td>4</td>
         <td>{{ form.level_before_vm_4 }}</td>
         <td>{{ form.level_before_vl_4 }}</td>
-        <td class="readonly-cell"><input id="id_before_err_abs_4" type="text" readonly></td>
+        <td><input id="id_before_err_abs_4" class="auto-locked" type="text" readonly disabled></td>
       </tr>
     </tbody>
   </table>
 
-  <h3>Verificação após ajuste (opcional)</h3>
+  <h3>Verificação após ajuste</h3>
   <table class="level-table">
     <thead>
       <tr>
@@ -111,25 +116,25 @@
         <td>1</td>
         <td>{{ form.level_after_vm_1 }}</td>
         <td>{{ form.level_after_vl_1 }}</td>
-        <td class="readonly-cell"><input id="id_after_err_abs_1" type="text" readonly></td>
+        <td><input id="id_after_err_abs_1" class="auto-locked" type="text" readonly disabled></td>
       </tr>
       <tr>
         <td>2</td>
         <td>{{ form.level_after_vm_2 }}</td>
         <td>{{ form.level_after_vl_2 }}</td>
-        <td class="readonly-cell"><input id="id_after_err_abs_2" type="text" readonly></td>
+        <td><input id="id_after_err_abs_2" class="auto-locked" type="text" readonly disabled></td>
       </tr>
       <tr>
         <td>3</td>
         <td>{{ form.level_after_vm_3 }}</td>
         <td>{{ form.level_after_vl_3 }}</td>
-        <td class="readonly-cell"><input id="id_after_err_abs_3" type="text" readonly></td>
+        <td><input id="id_after_err_abs_3" class="auto-locked" type="text" readonly disabled></td>
       </tr>
       <tr>
         <td>4</td>
         <td>{{ form.level_after_vm_4 }}</td>
         <td>{{ form.level_after_vl_4 }}</td>
-        <td class="readonly-cell"><input id="id_after_err_abs_4" type="text" readonly></td>
+        <td><input id="id_after_err_abs_4" class="auto-locked" type="text" readonly disabled></td>
       </tr>
     </tbody>
   </table>
@@ -139,8 +144,8 @@
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
     <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
     <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
-    <p><label for="id_level_error_before_mean">Erro médio absoluto antes (m)</label><input id="id_level_error_before_mean" type="text" readonly></p>
-    <p><label for="id_level_error_after_mean">Erro médio absoluto depois (m)</label><input id="id_level_error_after_mean" type="text" readonly></p>
+    <p><label for="id_level_error_before_mean">Erro médio absoluto antes (m)</label><input id="id_level_error_before_mean" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_level_error_after_mean">Erro médio absoluto depois (m)</label><input id="id_level_error_after_mean" class="auto-locked" type="text" readonly disabled></p>
   </div>
 
   <div id="before-box" class="accept-box pending">
@@ -150,7 +155,7 @@
 
   <div id="after-box" class="accept-box pending">
     <p style="margin:0 0 4px;"><strong>Comparação após ajuste</strong> <span id="after-pill" class="accept-pill pending">Pendente dados</span></p>
-    <p id="after-detail" style="margin:0;">A seção após ajuste é opcional. Ao preencher, o sistema calcula erro e U(e) depois.</p>
+    <p id="after-detail" style="margin:0;">Preencha os pontos para calcular erro e U(e) depois do ajuste.</p>
   </div>
 
   <div id="uncert-box" class="accept-box pending">
@@ -159,29 +164,10 @@
   </div>
 
   <div id="accept-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Critério final (|erro final| + U(e) <= limite)</strong> <span id="accept-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p style="margin:0 0 4px;"><strong>Critério final (|erro final| + U(e) &lt;= limite)</strong> <span id="accept-pill" class="accept-pill pending">Pendente dados</span></p>
     <p id="accept-detail" style="margin:0;">Preencha os dados para avaliação final.</p>
     <p id="phase-detail" class="hint">Fase final considerada: -</p>
   </div>
-
-  <hr>
-  <h3>Resumo calculado (MVP)</h3>
-  <ul>
-    <li>Fase final considerada: <span id="sum-phase">-</span></li>
-    <li>Erro antes (m): <span id="sum-before-error">-</span></li>
-    <li>U(e) antes (m): <span id="sum-before-unc">-</span></li>
-    <li>Soma antes |erro| + U(e) (m): <span id="sum-before-combined">-</span></li>
-    <li>Status antes: <span id="sum-before-status">-</span></li>
-    <li>Erro depois (m): <span id="sum-after-error">-</span></li>
-    <li>U(e) depois (m): <span id="sum-after-unc">-</span></li>
-    <li>Soma depois |erro| + U(e) (m): <span id="sum-after-combined">-</span></li>
-    <li>Status depois: <span id="sum-after-status">-</span></li>
-    <li>Incerteza cadastrada (m): <span id="sum-unc-ref">-</span></li>
-    <li>Incerteza calculada final (m): <span id="sum-unc-final">-</span></li>
-    <li>Status incerteza final: <span id="sum-unc-status">-</span></li>
-    <li>Soma final |erro| + U(e) (m): <span id="sum-final-combined">-</span></li>
-    <li>Status final: <span id="sum-final-status">-</span></li>
-  </ul>
 
   <h3>Identificação e observação</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
@@ -209,18 +195,41 @@
   </div>
 </form>
 
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>Fase final considerada: <span id="sum-phase">-</span></p>
+<p>Erro antes (m): <span id="sum-before-error">-</span></p>
+<p>U(e) antes (m): <span id="sum-before-unc">-</span></p>
+<p>Soma antes |erro| + U(e) (m): <span id="sum-before-combined">-</span></p>
+<p>Status antes: <span id="sum-before-status">-</span></p>
+<p>Erro depois (m): <span id="sum-after-error">-</span></p>
+<p>U(e) depois (m): <span id="sum-after-unc">-</span></p>
+<p>Soma depois |erro| + U(e) (m): <span id="sum-after-combined">-</span></p>
+<p>Status depois: <span id="sum-after-status">-</span></p>
+<p>Incerteza cadastrada (m): <span id="sum-unc-ref">-</span></p>
+<p>Incerteza calculada final (m): <span id="sum-unc-final">-</span></p>
+<p>Status incerteza final: <span id="sum-unc-status">-</span></p>
+<p>Soma final |erro| + U(e) (m): <span id="sum-final-combined">-</span></p>
+<p>Status final: <span id="sum-final-status">-</span></p>
+
 <script>
 (function () {
   const form = document.getElementById('level-form');
   if (!form) return;
+  const defaultsEl = document.getElementById('level-defaults');
+
+  function parseNum(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).replace(',', '.').trim();
+    if (!txt) return null;
+    const value = Number(txt);
+    return Number.isFinite(value) ? value : null;
+  }
 
   function getNum(id) {
     const el = document.getElementById(id);
     if (!el) return null;
-    const raw = (el.value || '').replace(',', '.').trim();
-    if (!raw) return null;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : null;
+    return parseNum(el.value || '');
   }
 
   function fmt(value, decimals = 3, useComma = true) {
@@ -313,8 +322,19 @@
     const beforeMeanAbs = avg(beforeRows.map((row) => row.abs));
     const afterMeanAbs = avg(afterRows.map((row) => row.abs));
 
-    const criterion = getNum('id_acceptance_criterion_pct');
-    const uncertaintyRef = getNum('id_expanded_uncertainty_pct');
+    let criterion = getNum('id_acceptance_criterion_pct');
+    let uncertaintyRef = getNum('id_expanded_uncertainty_pct');
+    let uncertaintyCalcStored = getNum('id_expanded_uncertainty_calc_pct');
+
+    if (criterion == null && defaultsEl) {
+      criterion = parseNum(defaultsEl.dataset.criterion);
+    }
+    if (uncertaintyRef == null && defaultsEl) {
+      uncertaintyRef = parseNum(defaultsEl.dataset.uncertRef);
+    }
+    if (uncertaintyCalcStored == null && defaultsEl) {
+      uncertaintyCalcStored = parseNum(defaultsEl.dataset.uncertCalc);
+    }
 
     const resolutionTape = getNum('id_level_resolution_tape_m') ?? 0.001;
     const resolutionInstrument = getNum('id_level_resolution_instrument_m') ?? 0.010;
@@ -326,7 +346,10 @@
     const finalPhase = afterRows.length ? 'after' : 'before';
     const finalPhaseLabel = finalPhase === 'after' ? 'Após ajuste' : 'Antes do ajuste';
     const finalError = finalPhase === 'after' ? afterMeanAbs : beforeMeanAbs;
-    const finalUncertainty = finalPhase === 'after' ? afterUncertainty : beforeUncertainty;
+    let finalUncertainty = finalPhase === 'after' ? afterUncertainty : beforeUncertainty;
+    if (finalUncertainty == null) {
+      finalUncertainty = uncertaintyCalcStored;
+    }
 
     const beforeCombined = (beforeMeanAbs == null || beforeUncertainty == null) ? null : beforeMeanAbs + Math.abs(beforeUncertainty);
     const afterCombined = (afterMeanAbs == null || afterUncertainty == null) ? null : afterMeanAbs + Math.abs(afterUncertainty);
@@ -341,9 +364,9 @@
 
     setNum('id_level_error_before_mean', beforeMeanAbs, 3, true);
     setNum('id_level_error_after_mean', afterMeanAbs, 3, true);
-    setNum('id_expanded_uncertainty_calc_pct', finalUncertainty, 3, true);
     setNum('id_acceptance_criterion_pct', criterion, 2, true);
     setNum('id_expanded_uncertainty_pct', uncertaintyRef, 3, true);
+    setNum('id_expanded_uncertainty_calc_pct', finalUncertainty, 3, true);
 
     const phaseDetail = document.getElementById('phase-detail');
     if (phaseDetail) {

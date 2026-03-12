@@ -313,6 +313,24 @@ class LevelTechnicalForm(forms.ModelForm):
         if not self.instance.level_coverage_factor_k:
             self.initial.setdefault('level_coverage_factor_k', Decimal('2.000'))
 
+        criterion_value = self.instance.acceptance_criterion_pct
+        if criterion_value is None:
+            criterion_value = self.instance.acceptance_limit_pct
+        if criterion_value is not None:
+            self.initial.setdefault('acceptance_criterion_pct', criterion_value)
+
+        uncertainty_ref = self.instance.expanded_uncertainty_pct
+        if uncertainty_ref is None and self.instance.equipment_id and self.instance.form_type_id:
+            criteria = self.instance.equipment.criteria_for_form(self.instance.form_type)
+            if criteria and criteria.expanded_uncertainty_value is not None:
+                uncertainty_ref = criteria.expanded_uncertainty_value
+        if uncertainty_ref is not None:
+            self.initial.setdefault('expanded_uncertainty_pct', uncertainty_ref)
+
+        uncertainty_calc = self.instance.expanded_uncertainty_calc_value
+        if uncertainty_calc is not None:
+            self.initial.setdefault('expanded_uncertainty_calc_pct', uncertainty_calc)
+
 class ValidationForm(forms.Form):
     class DecisionChoices:
         APPROVE = 'approve'
