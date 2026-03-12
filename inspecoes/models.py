@@ -849,7 +849,7 @@ class PortalNotification(models.Model):
     class Category(models.TextChoices):
         FORM_PENDING_VALIDATION = 'form_pending_validation', 'Formulário pendente validação'
         FORM_APPROVED = 'form_approved', 'Formulário aprovado'
-        FORM_REWORK = 'form_rework', 'Formulário para refação'
+        FORM_REWORK = 'form_rework', 'Formulário para refazer'
         DEADLINE_ALERT = 'deadline_alert', 'Alerta de prazo'
 
     user = models.ForeignKey(
