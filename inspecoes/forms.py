@@ -27,8 +27,11 @@ class SelectionForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        equipment_queryset = kwargs.pop('equipment_queryset', None)
         super().__init__(*args, **kwargs)
-        self.fields['equipment'].queryset = Equipment.objects.filter(active=True).order_by('tag')
+        if equipment_queryset is None:
+            equipment_queryset = Equipment.objects.filter(active=True).order_by('tag')
+        self.fields['equipment'].queryset = equipment_queryset
         self.fields['location_snapshot'].widget.attrs.update(
             {
                 'readonly': 'readonly',
@@ -62,7 +65,7 @@ class SelectionForm(forms.ModelForm):
         if not equipment_id:
             return None
         try:
-            return Equipment.objects.get(pk=equipment_id, active=True)
+            return self.fields['equipment'].queryset.get(pk=equipment_id)
         except Equipment.DoesNotExist:
             return None
 

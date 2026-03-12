@@ -100,6 +100,7 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
         'full_name_admin',
         'registration_display_admin',
         'role',
+        'equipment_scope_admin',
         'can_create_admin',
         'can_validate_admin',
         'can_manage_admin',
@@ -110,6 +111,7 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
     ordering = ('user__username',)
     list_per_page = 50
     autocomplete_fields = ('user',)
+    filter_horizontal = ('visible_equipments',)
     actions = (
         'set_role_technician',
         'set_role_validator',
@@ -120,6 +122,7 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
         'user',
         'registration',
         'role',
+        'visible_equipments',
         'legacy_flags_info',
     )
     readonly_fields = ('legacy_flags_info',)
@@ -151,6 +154,15 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
     @admin.display(description='Master/Admin')
     def can_manage_admin(self, obj):
         return 'Sim' if obj.can_manage_admin_portal else 'Não'
+
+    @admin.display(description='Escopo de equipamentos')
+    def equipment_scope_admin(self, obj):
+        if obj.role != PortalUserAccess.Role.TECHNICIAN:
+            return 'Todos (não técnico)'
+        count = obj.visible_equipments.count()
+        if count == 0:
+            return 'Todos'
+        return f'{count} equipamento(s)'
 
     @admin.display(description='Flags legadas')
     def legacy_flags_info(self, obj):

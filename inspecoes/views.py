@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -25,6 +26,28 @@ def _pdf_download_response(submission):
 
 def _access_for_user(user):
     return PortalUserAccess.for_user(user)
+
+
+def _technician_scoped_equipment_ids(user):
+    access = _access_for_user(user)
+    if not access or access.role != PortalUserAccess.Role.TECHNICIAN:
+        return None
+    return access.scoped_equipment_ids
+
+
+def _visible_equipments_queryset(user):
+    queryset = Equipment.objects.all()
+    scoped_ids = _technician_scoped_equipment_ids(user)
+    if scoped_ids:
+        queryset = queryset.filter(pk__in=scoped_ids)
+    return queryset
+
+
+def _can_access_submission_for_equipment_scope(user, submission):
+    scoped_ids = _technician_scoped_equipment_ids(user)
+    if scoped_ids is None:
+        return True
+    return submission.equipment_id in scoped_ids
 
 
 def _can_view(user, screen):
@@ -102,6 +125,11 @@ def _deny_screen_access(request, screen_label):
     return _redirect_first_allowed(request)
 
 
+def _deny_equipment_scope_access(request):
+    messages.warning(request, 'Seu usuário não possui acesso ao equipamento deste formulário.')
+    return _redirect_first_allowed(request)
+
+
 def _deny_create_access(request):
     messages.warning(request, 'Seu usuário não possui permissão para criar formulários.')
     return _redirect_first_allowed(request)
@@ -134,7 +162,12 @@ def selection_view(request):
     if not _can_create_forms(request.user):
         return _deny_create_access(request)
 
-    equipment_qs = Equipment.objects.filter(active=True).prefetch_related('inspection_form_types').order_by('tag')
+    equipment_qs = (
+        _visible_equipments_queryset(request.user)
+        .filter(active=True)
+        .prefetch_related('inspection_form_types')
+        .order_by('tag')
+    )
     equipment_locations = {str(e.pk): e.location for e in equipment_qs}
     equipment_form_types = {
         str(e.pk): [{'id': str(form.pk), 'label': form.full_label} for form in e.available_form_types]
@@ -142,7 +175,7 @@ def selection_view(request):
     }
 
     if request.method == 'POST':
-        form = SelectionForm(request.POST)
+        form = SelectionForm(request.POST, equipment_queryset=equipment_qs)
         if form.is_valid():
             submission = form.save(commit=False)
             submission.created_by = request.user
@@ -159,7 +192,7 @@ def selection_view(request):
         equipment_id = request.GET.get('equipment')
         if equipment_id:
             try:
-                equipment = Equipment.objects.get(pk=equipment_id)
+                equipment = equipment_qs.get(pk=equipment_id)
             except Equipment.DoesNotExist:
                 equipment = None
             if equipment:
@@ -168,7 +201,7 @@ def selection_view(request):
                 first_form_type = equipment.available_form_types.first()
                 if first_form_type:
                     initial['form_type'] = first_form_type.pk
-        form = SelectionForm(initial=initial)
+        form = SelectionForm(initial=initial, equipment_queryset=equipment_qs)
     return render(
         request,
         'inspecoes/selection.html',
@@ -188,6 +221,8 @@ def form_edit_view(request, pk):
         return _deny_edit_access(request)
 
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
+    if not _can_access_submission_for_equipment_scope(request.user, submission):
+        return _deny_equipment_scope_access(request)
     if submission.status == FormSubmission.Status.PENDING_VALIDATION:
         messages.warning(request, 'Formulario ja enviado para validacao. Edicao bloqueada.')
         return redirect('inspecoes:detail', pk=submission.pk)
@@ -227,6 +262,8 @@ def form_validate_view(request, pk):
         return _deny_validate_access(request)
 
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
+    if not _can_access_submission_for_equipment_scope(request.user, submission):
+        return _deny_equipment_scope_access(request)
     if submission.status in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.info(request, 'Formulário já validado.')
         return redirect('inspecoes:detail', pk=submission.pk)
@@ -307,6 +344,8 @@ def form_download_pdf_view(request, pk):
         return _deny_screen_access(request, 'Detalhe/PDF do formulário')
 
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
+    if not _can_access_submission_for_equipment_scope(request.user, submission):
+        return _deny_equipment_scope_access(request)
     if submission.status not in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.warning(request, 'Valide o formulário antes de baixar o PDF final.')
         if _can_validate_forms(request.user):
@@ -323,6 +362,8 @@ def form_send_sap_view(request, pk):
         return _deny_send_sap_access(request)
 
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
+    if not _can_access_submission_for_equipment_scope(request.user, submission):
+        return _deny_equipment_scope_access(request)
     if request.method != 'POST':
         return redirect('inspecoes:detail', pk=submission.pk)
 
@@ -350,6 +391,9 @@ def history_view(request):
         return _deny_screen_access(request, 'Histórico')
 
     qs = FormSubmission.objects.select_related('equipment', 'form_type').all()
+    scoped_equipment_ids = _technician_scoped_equipment_ids(request.user)
+    if scoped_equipment_ids:
+        qs = qs.filter(equipment_id__in=scoped_equipment_ids)
     status = request.GET.get('status')
     tag = request.GET.get('tag')
     om = request.GET.get('om')
@@ -375,7 +419,7 @@ def equipment_deadlines_view(request):
     status_filter = (request.GET.get('deadline_status') or '').strip()
     active_only = (request.GET.get('active_only') or '1') == '1'
 
-    equipments_qs = Equipment.objects.all().order_by('tag')
+    equipments_qs = _visible_equipments_queryset(request.user).order_by('tag')
     if active_only:
         equipments_qs = equipments_qs.filter(active=True)
     if tag:
@@ -438,7 +482,15 @@ def notifications_view(request):
     notifications = PortalNotification.objects.filter(user=request.user).select_related(
         'submission',
         'equipment',
-    )[:200]
+    )
+    scoped_equipment_ids = _technician_scoped_equipment_ids(request.user)
+    if scoped_equipment_ids:
+        notifications = notifications.filter(
+            Q(equipment_id__in=scoped_equipment_ids)
+            | Q(submission__equipment_id__in=scoped_equipment_ids)
+            | (Q(equipment__isnull=True) & Q(submission__isnull=True))
+        )
+    notifications = notifications[:200]
     return render(
         request,
         'inspecoes/notifications.html',
@@ -451,4 +503,6 @@ def detail_view(request, pk):
     if not (_can_view(request.user, 'forms') or _can_view(request.user, 'history')):
         return _deny_screen_access(request, 'Detalhe do formulário')
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
+    if not _can_access_submission_for_equipment_scope(request.user, submission):
+        return _deny_equipment_scope_access(request)
     return render(request, 'inspecoes/detail.html', {'submission': submission})

@@ -38,6 +38,16 @@ class PortalUserAccess(models.Model):
         default=Role.VIEWER,
         help_text='Perfil operacional no portal: Técnico, Validador, Visualizador ou Master.',
     )
+    visible_equipments = models.ManyToManyField(
+        'Equipment',
+        blank=True,
+        related_name='portal_user_accesses',
+        verbose_name='Equipamentos visíveis (técnico)',
+        help_text=(
+            'Para perfil Técnico, selecione os equipamentos que este usuário pode enxergar. '
+            'Se deixar vazio, o técnico enxerga todos.'
+        ),
+    )
     can_view_forms = models.BooleanField(
         'Acessar tela Formulários (legado)',
         default=True,
@@ -140,6 +150,13 @@ class PortalUserAccess(models.Model):
     @property
     def can_edit_portal(self):
         return self.can_edit_forms_portal or self.can_validate_forms_portal
+
+    @property
+    def scoped_equipment_ids(self):
+        if self.role != self.Role.TECHNICIAN:
+            return None
+        equipment_ids = list(self.visible_equipments.values_list('id', flat=True))
+        return equipment_ids or None
 
     @property
     def access_label(self):
