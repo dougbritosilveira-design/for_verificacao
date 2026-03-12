@@ -72,6 +72,34 @@ def _resolve_criteria_defaults(equipment, form_type):
     return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
 
 
+def _sync_submission_criteria_from_config(submission):
+    if not submission.equipment_id:
+        return
+
+    acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit = _resolve_criteria_defaults(
+        submission.equipment,
+        submission.form_type,
+    )
+
+    update_fields = []
+    if acceptance_value is not None and submission.acceptance_criterion_pct != acceptance_value:
+        submission.acceptance_criterion_pct = acceptance_value
+        update_fields.append('acceptance_criterion_pct')
+    if acceptance_unit and submission.acceptance_criterion_unit != acceptance_unit:
+        submission.acceptance_criterion_unit = acceptance_unit
+        update_fields.append('acceptance_criterion_unit')
+    if submission.expanded_uncertainty_pct != uncertainty_value:
+        submission.expanded_uncertainty_pct = uncertainty_value
+        update_fields.append('expanded_uncertainty_pct')
+    if uncertainty_unit and submission.expanded_uncertainty_unit != uncertainty_unit:
+        submission.expanded_uncertainty_unit = uncertainty_unit
+        update_fields.append('expanded_uncertainty_unit')
+
+    if update_fields:
+        update_fields.append('updated_at')
+        submission.save(update_fields=update_fields)
+
+
 def _can_view(user, screen):
     access = _access_for_user(user)
     if not access:
@@ -257,6 +285,10 @@ def form_edit_view(request, pk):
     if submission.status in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.warning(request, 'Formulário já validado. Edição bloqueada.')
         return redirect('inspecoes:detail', pk=submission.pk)
+
+    if submission.is_level_form and submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
+        _sync_submission_criteria_from_config(submission)
+        submission.refresh_from_db()
 
     form_class = LevelTechnicalForm if submission.is_level_form else TechnicalForm
     template_name = 'inspecoes/form_edit_level.html' if submission.is_level_form else 'inspecoes/form_edit.html'
