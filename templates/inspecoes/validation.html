@@ -32,9 +32,27 @@
     <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   {% endif %}
   <li>Status atual: {{ submission.get_status_display }}</li>
-  <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:2 }}{{ submission.acceptance_unit_label }}</li>
-  <li>Incerteza expandida cadastrada: {{ submission.expanded_uncertainty_pct|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</li>
-  <li>Incerteza expandida calculada: {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</li>
+  <li>Critério de aceitação:
+    {% if submission.is_level_form %}
+      {{ submission.acceptance_limit_pct|floatformat:3 }}{{ submission.acceptance_unit_label }}
+    {% else %}
+      {{ submission.acceptance_limit_pct|floatformat:1 }}{{ submission.acceptance_unit_label }}
+    {% endif %}
+  </li>
+  <li>Incerteza expandida cadastrada:
+    {% if submission.is_level_form %}
+      {{ submission.expanded_uncertainty_pct|floatformat:3|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+    {% else %}
+      {{ submission.expanded_uncertainty_pct|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+    {% endif %}
+  </li>
+  <li>Incerteza expandida calculada:
+    {% if submission.is_level_form %}
+      {{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+    {% else %}
+      {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+    {% endif %}
+  </li>
   <li>Status da incerteza expandida: {{ submission.expanded_uncertainty_status_label }}</li>
 </ul>
 <div class="criteria-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
@@ -45,13 +63,13 @@
     </span>
   </p>
   <div class="criteria-grid">
-    <div><strong>Limite:</strong> soma final <= {{ submission.acceptance_limit_pct|floatformat:2 }}{{ submission.acceptance_unit_label }}</div>
-    <div><strong>Erro antes ({{ submission.acceptance_unit_label }}):</strong> {{ submission.acceptance_error_before_value|floatformat:2|default:'-' }}</div>
-    <div><strong>Erro final ({{ submission.acceptance_unit_label }}):</strong> {{ submission.acceptance_error_after_value|floatformat:2|default:'-' }}</div>
-    <div><strong>Valor absoluto do erro final:</strong> {{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}{{ submission.acceptance_unit_label }}</div>
+    <div><strong>Limite:</strong> soma final <= {% if submission.is_level_form %}{{ submission.acceptance_limit_pct|floatformat:3 }}{% else %}{{ submission.acceptance_limit_pct|floatformat:1 }}{% endif %}{{ submission.acceptance_unit_label }}</div>
+    <div><strong>Erro antes ({{ submission.acceptance_unit_label }}):</strong> {% if submission.is_level_form %}{{ submission.acceptance_error_before_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_before_value|floatformat:2|default:'-' }}{% endif %}</div>
+    <div><strong>Erro final ({{ submission.acceptance_unit_label }}):</strong> {% if submission.is_level_form %}{{ submission.acceptance_error_after_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_after_value|floatformat:2|default:'-' }}{% endif %}</div>
+    <div><strong>Valor absoluto do erro final:</strong> {% if submission.is_level_form %}{{ submission.acceptance_error_after_abs|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
     <div><strong>Status do erro final:</strong> {{ submission.instrument_error_status_label }}</div>
-    <div><strong>Incerteza calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</div>
-    <div><strong>Soma final |erro| + U(e):</strong> {{ submission.acceptance_combined_value|floatformat:2|default:'-' }}{{ submission.acceptance_unit_label }}</div>
+    <div><strong>Incerteza calculada:</strong> {% if submission.is_level_form %}{{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}{% else %}{{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{% endif %}{{ submission.expanded_uncertainty_unit_label }}</div>
+    <div><strong>Soma final |erro| + U(e):</strong> {% if submission.is_level_form %}{{ submission.acceptance_combined_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_combined_value|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
   </div>
   {% if not submission.acceptance_ok %}
     <p style="margin-top:8px; color:#8a1d1d;">

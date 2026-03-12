@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -192,3 +192,4 @@ def sync_deadline_notifications_for_user(user):
             equipment=equipment,
             dedupe_key=dedupe_key,
         )
+

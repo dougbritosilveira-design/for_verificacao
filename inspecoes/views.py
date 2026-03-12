@@ -1,4 +1,4 @@
-from django.contrib import messages
+﻿from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -56,8 +56,8 @@ def _resolve_criteria_defaults(equipment, form_type):
     uncertainty_value = equipment.expanded_uncertainty_pct
     uncertainty_unit = '%'
     if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
-        acceptance_unit = 'cm'
-        uncertainty_unit = 'cm'
+        acceptance_unit = 'm'
+        uncertainty_unit = 'm'
     if not form_type:
         return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
 
@@ -537,3 +537,4 @@ def detail_view(request, pk):
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
     return render(request, 'inspecoes/detail.html', {'submission': submission})
+

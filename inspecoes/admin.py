@@ -1,4 +1,4 @@
-from django.contrib import admin, messages
+﻿from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 
 from .models import (
@@ -249,3 +249,4 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
     @admin.action(description='Definir perfil: Master')
     def set_role_master(self, request, queryset):
         self._bulk_set_role(request, queryset, PortalUserAccess.Role.MASTER, 'Master')
+

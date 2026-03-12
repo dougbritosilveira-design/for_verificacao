@@ -21,9 +21,27 @@
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
 <p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|default:'-' }}</p>
-<p><strong>Critério de aceitação (formulário):</strong> {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}</p>
-<p><strong>Incerteza expandida cadastrada:</strong> {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</p>
-<p><strong>Incerteza expandida calculada:</strong> {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}</p>
+<p><strong>Critério de aceitação (formulário):</strong>
+  {% if submission.is_level_form %}
+    {{ submission.acceptance_criterion_pct|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
+  {% else %}
+    {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}{{ submission.acceptance_unit_label }}
+  {% endif %}
+</p>
+<p><strong>Incerteza expandida cadastrada:</strong>
+  {% if submission.is_level_form %}
+    {{ submission.expanded_uncertainty_pct|floatformat:3|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+  {% else %}
+    {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+  {% endif %}
+</p>
+<p><strong>Incerteza expandida calculada:</strong>
+  {% if submission.is_level_form %}
+    {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+  {% else %}
+    {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
+  {% endif %}
+</p>
 <p><strong>Status da incerteza expandida:</strong>
   <span class="badge {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
     {{ submission.expanded_uncertainty_status_label }}
@@ -31,7 +49,13 @@
   ({{ submission.expanded_uncertainty_status_detail }})
 </p>
 <p><strong>Status do erro final (|erro| <= critério):</strong> {{ submission.instrument_error_status_label }}</p>
-<p><strong>Soma final |erro| + U(e):</strong> {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}</p>
+<p><strong>Soma final |erro| + U(e):</strong>
+  {% if submission.is_level_form %}
+    {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
+  {% else %}
+    {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
+  {% endif %}
+</p>
 <p><strong>Status final:</strong>
   <span class="badge {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
     {{ submission.acceptance_status_label }}
@@ -82,9 +106,9 @@
 {% if submission.is_level_form %}
   <ul>
     <li>Fase final considerada: {{ submission.level_final_phase_label }}</li>
-    <li>Erro médio absoluto antes: {{ submission.level_before_mean_abs_cm|floatformat:2|localize|default:'-' }} cm</li>
-    <li>Erro médio absoluto final: {{ submission.level_final_mean_abs_cm|floatformat:2|localize|default:'-' }} cm</li>
-    <li>U(e) calculada: {{ submission.level_uncertainty_expanded_cm|floatformat:2|localize|default:'-' }} cm</li>
+    <li>Erro médio absoluto antes: {{ submission.level_before_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro médio absoluto final: {{ submission.level_final_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>U(e) calculada: {{ submission.level_uncertainty_expanded_m|floatformat:3|localize|default:'-' }} m</li>
     <li>TUR (critério/U(e)): {{ submission.level_tur_value|floatformat:2|localize|default:'-' }}</li>
     <li>Resolução da trena: {{ submission.level_resolution_tape_value_m|floatformat:4|localize|default:'-' }} m</li>
     <li>Resolução do transmissor: {{ submission.level_resolution_instrument_value_m|floatformat:4|localize|default:'-' }} m</li>
@@ -100,7 +124,7 @@
   <h4>Antes do ajuste</h4>
   <table>
     <thead>
-      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (cm)</th></tr>
+      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (m)</th></tr>
     </thead>
     <tbody>
       {% for row in submission.level_before_rows %}
@@ -108,7 +132,7 @@
           <td>{{ row.index }}</td>
           <td>{{ row.vm|floatformat:3|localize|default:'-' }}</td>
           <td>{{ row.vl|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.error_abs_cm|floatformat:2|localize|default:'-' }}</td>
+          <td>{{ row.error_abs_m|floatformat:3|localize|default:'-' }}</td>
         </tr>
       {% endfor %}
     </tbody>
@@ -117,7 +141,7 @@
   <h4>Após ajuste</h4>
   <table>
     <thead>
-      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (cm)</th></tr>
+      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (m)</th></tr>
     </thead>
     <tbody>
       {% for row in submission.level_after_rows %}
@@ -125,7 +149,7 @@
           <td>{{ row.index }}</td>
           <td>{{ row.vm|floatformat:3|localize|default:'-' }}</td>
           <td>{{ row.vl|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.error_abs_cm|floatformat:2|localize|default:'-' }}</td>
+          <td>{{ row.error_abs_m|floatformat:3|localize|default:'-' }}</td>
         </tr>
       {% endfor %}
     </tbody>

@@ -259,9 +259,9 @@ class LevelTechnicalForm(forms.ModelForm):
             'level_resolution_tape_m': 'Resolução da trena (m)',
             'level_resolution_instrument_m': 'Resolução do transmissor (m)',
             'level_coverage_factor_k': 'Fator de abrangência (k)',
-            'acceptance_criterion_pct': 'Critério de aceitação (cm)',
-            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada (cm)',
-            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada (cm)',
+            'acceptance_criterion_pct': 'Critério de aceitação (m)',
+            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada (m)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada (m)',
             'sector': 'Setor 1',
             'sector_2': 'Setor 2',
             'sector_3': 'Setor 3',
@@ -287,9 +287,9 @@ class LevelTechnicalForm(forms.ModelForm):
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
 
-        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.01'})
-        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.001'})
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.001'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
         self.fields['level_resolution_tape_m'].widget.attrs.update({'step': '0.0001'})
         self.fields['level_resolution_instrument_m'].widget.attrs.update({'step': '0.0001'})
         self.fields['level_coverage_factor_k'].widget.attrs.update({'step': '0.001'})

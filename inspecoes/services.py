@@ -165,7 +165,7 @@ def _draw_pdf_header(pdf, page_width, page_height, image_reader_cls=None):
     pdf.setFont('Helvetica-Bold', 14)
     pdf.drawString(text_x, top_y - 4, 'Hydro MPSA')
     pdf.setFont('Helvetica', 10)
-    pdf.drawString(text_x, top_y - 21, 'FormulÃ¡rio interno de VerificaÃ§Ã£o/Ajuste')
+    pdf.drawString(text_x, top_y - 21, 'Formulário interno de Verificação/Ajuste')
     pdf.setFont('Helvetica', 8)
     pdf.drawRightString(
         page_width - margin_x,
@@ -255,34 +255,34 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
             f'Local: {submission.location_snapshot}',
             f'Executor: {submission.executor_name}',
             f'Fase final considerada: {submission.level_final_phase_label}',
-            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
-            f'Incerteza expandida cadastrada ({uncertainty_unit}): {_format_num(submission.expanded_uncertainty_pct, 2)}',
-            f'Incerteza expandida calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 2)}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 3)}',
+            f'Incerteza expandida cadastrada ({uncertainty_unit}): {_format_num(submission.expanded_uncertainty_pct, 3)}',
+            f'Incerteza expandida calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
             f'Status da incerteza expandida: {uncertainty_status}',
-            f'Erro antes ({acceptance_unit}): {_format_num(error_before_value, 2)}',
-            f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
-            f'Erro final ({acceptance_unit}): {_format_num(error_after_value, 2)}',
-            f'|Erro final| ({acceptance_unit}): {_format_num(error_after_abs, 2)}',
-            f'Status erro final: {error_after_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
-            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 2)}',
-            f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 2)}{acceptance_unit})',
+            f'Erro antes ({acceptance_unit}): {_format_num(error_before_value, 3)}',
+            f'Status erro antes: {error_before_status} (limite <= {_format_num(acceptance_limit, 3)}{acceptance_unit})',
+            f'Erro final ({acceptance_unit}): {_format_num(error_after_value, 3)}',
+            f'|Erro final| ({acceptance_unit}): {_format_num(error_after_abs, 3)}',
+            f'Status erro final: {error_after_status} (limite <= {_format_num(acceptance_limit, 3)}{acceptance_unit})',
+            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 3)}',
+            f'Status final: {combined_status} (limite <= {_format_num(acceptance_limit, 3)}{acceptance_unit})',
             f'TUR (critério/U(e)): {_format_num(submission.level_tur_value, 2)}',
             f'Resolução da trena (m): {_format_num(submission.level_resolution_tape_value_m, 4)}',
             f'Resolução do transmissor (m): {_format_num(submission.level_resolution_instrument_value_m, 4)}',
             f'Fator k: {_format_num(submission.level_coverage_factor_value, 3)}',
             '',
-            'Verificação antes do ajuste (VM, VL, erro abs em cm):',
+            'Verificação antes do ajuste (VM, VL, erro abs em m):',
         ]
         for row in submission.level_before_rows:
             lines.append(
-                f'Ponto {row["index"]}: VM={_format_num(row["vm"], 3)} | VL={_format_num(row["vl"], 3)} | Erro abs={_format_num(row["error_abs_cm"], 2)}'
+                f'Ponto {row["index"]}: VM={_format_num(row["vm"], 3)} | VL={_format_num(row["vl"], 3)} | Erro abs={_format_num(row["error_abs_m"], 3)}'
             )
         if submission.level_has_after_measurements:
             lines.append('')
-            lines.append('Verificação após ajuste (VM, VL, erro abs em cm):')
+            lines.append('Verificação após ajuste (VM, VL, erro abs em m):')
             for row in submission.level_after_rows:
                 lines.append(
-                    f'Ponto {row["index"]}: VM={_format_num(row["vm"], 3)} | VL={_format_num(row["vl"], 3)} | Erro abs={_format_num(row["error_abs_cm"], 2)}'
+                    f'Ponto {row["index"]}: VM={_format_num(row["vm"], 3)} | VL={_format_num(row["vl"], 3)} | Erro abs={_format_num(row["error_abs_m"], 3)}'
                 )
         lines.extend(
             [
@@ -383,7 +383,7 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
             pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Falha ao renderizar assinatura')
     else:
         pdf.setFont('Helvetica', 9)
-        pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Assinatura nÃ£o disponÃ­vel')
+        pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Assinatura não disponível')
 
     pdf.save()
     return buffer.getvalue()
@@ -391,7 +391,7 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
 
 def upload_pdf_to_sap(submission: FormSubmission, pdf_bytes: bytes) -> Tuple[bool, str, str]:
     if not settings.SAP_API_BASE_URL or not settings.SAP_API_TOKEN:
-        return False, '', 'SAP nÃ£o configurado (defina SAP_API_BASE_URL e SAP_API_TOKEN).'
+        return False, '', 'SAP não configurado (defina SAP_API_BASE_URL e SAP_API_TOKEN).'
 
     url = f"{settings.SAP_API_BASE_URL}{settings.SAP_API_ATTACH_ENDPOINT}"
     headers = {'Authorization': f'Bearer {settings.SAP_API_TOKEN}'}
