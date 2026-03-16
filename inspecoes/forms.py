@@ -334,6 +334,141 @@ class LevelTechnicalForm(forms.ModelForm):
             if self.initial.get('expanded_uncertainty_calc_pct') in (None, ''):
                 self.initial['expanded_uncertainty_calc_pct'] = uncertainty_calc
 
+
+class ScannerTechnicalForm(forms.ModelForm):
+    class Meta:
+        model = FormSubmission
+        fields = [
+            'om_number',
+            'execution_date',
+            'scanner_certificate_file',
+            'scanner_certificate_number',
+            'scanner_provider',
+            'scanner_model',
+            'scanner_serial_number',
+            'scanner_measurement_date',
+            'scanner_release_date',
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_pct',
+            'expanded_uncertainty_calc_pct',
+            'scanner_manufacturer_ppm',
+            'scanner_k_factor',
+            'scanner_u_ref_mm',
+            'scanner_u_rep_mm',
+            'scanner_u_res_mm',
+            'scanner_u_setup_mm',
+            'scanner_u_env_mm',
+            'scanner_target_1', 'scanner_nominal_1_m', 'scanner_measured_1_m',
+            'scanner_target_2', 'scanner_nominal_2_m', 'scanner_measured_2_m',
+            'scanner_target_3', 'scanner_nominal_3_m', 'scanner_measured_3_m',
+            'scanner_target_4', 'scanner_nominal_4_m', 'scanner_measured_4_m',
+            'scanner_target_5', 'scanner_nominal_5_m', 'scanner_measured_5_m',
+            'scanner_target_6', 'scanner_nominal_6_m', 'scanner_measured_6_m',
+            'sector', 'sector_2', 'sector_3',
+            'validator_registration',
+            'technician_1_name',
+            'technician_2_name', 'technician_2_registration',
+            'technician_3_name', 'technician_3_registration',
+            'observation',
+        ]
+        labels = {
+            'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
+            'scanner_certificate_file': 'Certificado de calibração (PDF)',
+            'scanner_certificate_number': 'Número do certificado',
+            'scanner_provider': 'Laboratório / fornecedor',
+            'scanner_model': 'Modelo do scanner',
+            'scanner_serial_number': 'Número de série',
+            'scanner_measurement_date': 'Data da medição no certificado',
+            'scanner_release_date': 'Data de emissão do certificado',
+            'acceptance_criterion_pct': 'Critério de aceitação fixo (mm)',
+            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada U(e) (mm)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (mm)',
+            'scanner_manufacturer_ppm': 'Parcela do fabricante (ppm)',
+            'scanner_k_factor': 'Fator de abrangência (k)',
+            'scanner_u_ref_mm': 'u_ref (mm)',
+            'scanner_u_rep_mm': 'u_rep (mm)',
+            'scanner_u_res_mm': 'u_res (mm)',
+            'scanner_u_setup_mm': 'u_setup (mm)',
+            'scanner_u_env_mm': 'u_env (mm)',
+            'scanner_target_1': 'Ponto 1',
+            'scanner_nominal_1_m': 'Nominal 1 (m)',
+            'scanner_measured_1_m': 'Medido 1 (m)',
+            'scanner_target_2': 'Ponto 2',
+            'scanner_nominal_2_m': 'Nominal 2 (m)',
+            'scanner_measured_2_m': 'Medido 2 (m)',
+            'scanner_target_3': 'Ponto 3',
+            'scanner_nominal_3_m': 'Nominal 3 (m)',
+            'scanner_measured_3_m': 'Medido 3 (m)',
+            'scanner_target_4': 'Ponto 4',
+            'scanner_nominal_4_m': 'Nominal 4 (m)',
+            'scanner_measured_4_m': 'Medido 4 (m)',
+            'scanner_target_5': 'Ponto 5',
+            'scanner_nominal_5_m': 'Nominal 5 (m)',
+            'scanner_measured_5_m': 'Medido 5 (m)',
+            'scanner_target_6': 'Ponto 6',
+            'scanner_nominal_6_m': 'Nominal 6 (m)',
+            'scanner_measured_6_m': 'Medido 6 (m)',
+            'sector': 'Setor 1',
+            'sector_2': 'Setor 2',
+            'sector_3': 'Setor 3',
+            'validator_registration': 'Matrícula 1',
+            'technician_1_name': 'Nome 1',
+            'technician_2_name': 'Nome 2',
+            'technician_2_registration': 'Matrícula 2',
+            'technician_3_name': 'Nome 3',
+            'technician_3_registration': 'Matrícula 3',
+            'observation': 'Observação',
+        }
+        widgets = {
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'scanner_measurement_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'scanner_release_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for date_field in ['execution_date', 'scanner_measurement_date', 'scanner_release_date']:
+            self.fields[date_field].input_formats = DATE_INPUT_FORMATS
+            self.fields[date_field].localize = False
+
+        for field in self.fields.values():
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.001'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
+        self.fields['scanner_manufacturer_ppm'].widget.attrs.update({'step': '0.1'})
+        self.fields['scanner_k_factor'].widget.attrs.update({'step': '0.1'})
+
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct']:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo carregado/calculado automaticamente pelo sistema.',
+                }
+            )
+        self.fields['expanded_uncertainty_pct'].widget.attrs.update(
+            {'title': 'Campo vindo do cadastro do equipamento.'}
+        )
+
+        if not self.instance.scanner_manufacturer_ppm:
+            self.initial.setdefault('scanner_manufacturer_ppm', Decimal('10.0'))
+        if not self.instance.scanner_k_factor:
+            self.initial.setdefault('scanner_k_factor', Decimal('2.0'))
+        if self.instance.scanner_u_ref_mm is None:
+            self.initial.setdefault('scanner_u_ref_mm', Decimal('0.000'))
+        if self.instance.scanner_u_res_mm is None:
+            self.initial.setdefault('scanner_u_res_mm', Decimal('0.000'))
+        if self.instance.scanner_u_setup_mm is None:
+            self.initial.setdefault('scanner_u_setup_mm', Decimal('0.000'))
+        if self.instance.scanner_u_env_mm is None:
+            self.initial.setdefault('scanner_u_env_mm', Decimal('0.000'))
+
+
 class ValidationForm(forms.Form):
     class DecisionChoices:
         APPROVE = 'approve'

@@ -5,3 +5,4 @@ gunicorn>=22.0
 whitenoise>=6.7
 dj-database-url>=2.2
 psycopg2-binary>=2.9
+pypdf>=4.2

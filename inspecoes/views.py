@@ -1,14 +1,16 @@
 ﻿from decimal import Decimal
+from pathlib import Path
 
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import LevelTechnicalForm, SelectionForm, TechnicalForm, ValidationForm
+from .certificate_parser import parse_scanner_certificate
+from .forms import LevelTechnicalForm, ScannerTechnicalForm, SelectionForm, TechnicalForm, ValidationForm
 from .models import Equipment, EquipmentFormCriteria, FormSubmission, PortalNotification, PortalUserAccess
 from .notifications import (
     notify_technician_validation_result,
@@ -74,6 +76,11 @@ def _resolve_criteria_defaults(equipment, form_type):
 def _default_units_for_form(form_type):
     if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
         return EquipmentFormCriteria.Unit.METER, EquipmentFormCriteria.Unit.METER
+    if form_type:
+        code = (form_type.code or '').strip().upper()
+        title = (form_type.title or '').strip().upper()
+        if FormSubmission.FORM_CODE_SCANNER in code or 'SCANNER' in code or 'SCANNER' in title:
+            return EquipmentFormCriteria.Unit.MILLIMETER, EquipmentFormCriteria.Unit.MILLIMETER
     return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
 
 
@@ -140,6 +147,18 @@ def _ensure_equipment_form_criteria(equipment, form_type):
         and criteria_config.expanded_uncertainty_unit != EquipmentFormCriteria.Unit.METER
     ):
         criteria_config.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.METER
+        update_fields.append('expanded_uncertainty_unit')
+    if (
+        default_acceptance_unit == EquipmentFormCriteria.Unit.MILLIMETER
+        and criteria_config.acceptance_criterion_unit != EquipmentFormCriteria.Unit.MILLIMETER
+    ):
+        criteria_config.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
+        update_fields.append('acceptance_criterion_unit')
+    if (
+        default_uncertainty_unit == EquipmentFormCriteria.Unit.MILLIMETER
+        and criteria_config.expanded_uncertainty_unit != EquipmentFormCriteria.Unit.MILLIMETER
+    ):
+        criteria_config.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
         update_fields.append('expanded_uncertainty_unit')
 
     if update_fields:
@@ -366,14 +385,73 @@ def form_edit_view(request, pk):
         _sync_submission_criteria_from_config(submission)
         submission.refresh_from_db()
 
-    form_class = LevelTechnicalForm if submission.is_level_form else TechnicalForm
-    template_name = 'inspecoes/form_edit_level.html' if submission.is_level_form else 'inspecoes/form_edit.html'
+    if submission.is_scanner_form:
+        form_class = ScannerTechnicalForm
+        template_name = 'inspecoes/form_edit_scanner.html'
+    elif submission.is_level_form:
+        form_class = LevelTechnicalForm
+        template_name = 'inspecoes/form_edit_level.html'
+    else:
+        form_class = TechnicalForm
+        template_name = 'inspecoes/form_edit.html'
 
     if request.method == 'POST':
-        form = form_class(request.POST, instance=submission)
+        if submission.is_scanner_form:
+            form = form_class(request.POST, request.FILES, instance=submission)
+        else:
+            form = form_class(request.POST, instance=submission)
         if form.is_valid():
             previous_status = submission.status
             submission = form.save(commit=False)
+
+            if submission.is_scanner_form and 'parse_certificate' in request.POST:
+                submission.save()
+                if not submission.scanner_certificate_file:
+                    messages.warning(request, 'Anexe o certificado em PDF para fazer a leitura automática.')
+                    return redirect('inspecoes:form-edit', pk=submission.pk)
+
+                try:
+                    with submission.scanner_certificate_file.open('rb') as certificate_file:
+                        parsed = parse_scanner_certificate(
+                            certificate_file.read(),
+                            filename=Path(submission.scanner_certificate_file.name).name,
+                        )
+                except Exception as exc:
+                    messages.error(request, f'Não foi possível ler o certificado: {exc}')
+                    return redirect('inspecoes:form-edit', pk=submission.pk)
+
+                parsed_values = parsed.get('values', {})
+                for field_name, value in parsed_values.items():
+                    if not hasattr(submission, field_name):
+                        continue
+                    current_value = getattr(submission, field_name)
+                    is_measurement_field = field_name.startswith('scanner_target_') or field_name.startswith('scanner_nominal_') or field_name.startswith('scanner_measured_')
+                    should_update = is_measurement_field or current_value in (None, '')
+                    if should_update:
+                        setattr(submission, field_name, value)
+
+                submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
+                submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
+                if submission.expanded_uncertainty_pct is None and submission.acceptance_limit_pct is not None:
+                    submission.expanded_uncertainty_pct = (submission.acceptance_limit_pct / Decimal('3')).quantize(
+                        Decimal('0.001')
+                    )
+                submission.save()
+
+                points_found = parsed.get('points_found', 0)
+                if points_found:
+                    messages.success(
+                        request,
+                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        'Certificado lido, mas não foram encontrados pontos de medição automáticos. '
+                        'Preencha os pontos manualmente.',
+                    )
+                return redirect('inspecoes:form-edit', pk=submission.pk)
+
             if 'go_validate' in request.POST and submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
                 submission.status = FormSubmission.Status.PENDING_VALIDATION
             submission.save()
@@ -491,6 +569,27 @@ def form_download_pdf_view(request, pk):
             return redirect('inspecoes:form-validate', pk=submission.pk)
         return redirect('inspecoes:detail', pk=submission.pk)
     return _pdf_download_response(submission)
+
+
+@login_required
+def form_download_certificate_view(request, pk):
+    if not (_can_view(request.user, 'forms') or _can_view(request.user, 'history')):
+        return _deny_screen_access(request, 'Download do certificado')
+
+    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
+    if not _can_access_submission_for_equipment_scope(request.user, submission):
+        return _deny_equipment_scope_access(request)
+    if not submission.is_scanner_form:
+        messages.warning(request, 'Este formulário não possui certificado vinculado.')
+        return redirect('inspecoes:detail', pk=submission.pk)
+    if not submission.scanner_certificate_file:
+        messages.warning(request, 'Nenhum certificado anexado neste formulário.')
+        return redirect('inspecoes:detail', pk=submission.pk)
+
+    filename = Path(submission.scanner_certificate_file.name).name or f'certificado_formulario_{submission.pk}.pdf'
+    response = FileResponse(submission.scanner_certificate_file.open('rb'), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
@@ -645,4 +744,5 @@ def detail_view(request, pk):
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
     return render(request, 'inspecoes/detail.html', {'submission': submission})
+
 

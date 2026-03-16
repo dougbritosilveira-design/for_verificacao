@@ -246,7 +246,58 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
     acceptance_unit = submission.acceptance_unit_label or '%'
     uncertainty_unit = submission.expanded_uncertainty_unit_label or acceptance_unit
 
-    if submission.is_level_form:
+    if submission.is_scanner_form:
+        lines = [
+            f'{form_code} - {form_title}',
+            f'Data da visita: {submission.execution_date}',
+            f'OM: {submission.om_number}',
+            f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
+            f'Local: {submission.location_snapshot}',
+            f'Executor: {submission.executor_name}',
+            f'Certificado: {Path(submission.scanner_certificate_file.name).name if submission.scanner_certificate_file else "-"}',
+            f'Número do certificado: {submission.scanner_certificate_number or "-"}',
+            f'Modelo: {submission.scanner_model or "-"}',
+            f'Série: {submission.scanner_serial_number or "-"}',
+            f'Laboratório/fornecedor: {submission.scanner_provider or "-"}',
+            f'Data da medição no certificado: {submission.scanner_measurement_date or "-"}',
+            f'Critério fixo ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
+            f'Parcela do fabricante (ppm): {_format_num(submission.scanner_manufacturer_ppm_value, 3)}',
+            f'Incerteza cadastrada ({uncertainty_unit}): {_format_num(submission.expanded_uncertainty_pct, 3)}',
+            f'Incerteza calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
+            f'Status da incerteza: {uncertainty_status}',
+            f'Erro máximo absoluto ({acceptance_unit}): {_format_num(submission.scanner_max_error_abs_mm, 3)}',
+            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 3)}',
+            f'Status final (critério fixo): {combined_status}',
+            f'Status critério fabricante: {submission.scanner_status_manufacturer}',
+            '',
+            'Pontos avaliados (nominal/medido/erro abs em mm):',
+        ]
+        for row in submission.scanner_points:
+            lines.append(
+                f'Ponto {row["index"]} ({row["target"]}): '
+                f'N={_format_num(row["nominal_m"], 3)} m | '
+                f'M={_format_num(row["measured_m"], 3)} m | '
+                f'Erro={_format_num(row["error_abs_mm"], 3)} mm | '
+                f'CA fab={_format_num(row["ca_manufacturer_mm"], 3)} mm | '
+                f'Fixo={"OK" if row["ok_fixed"] else ("N/A" if row["ok_fixed"] is None else "NOK")} | '
+                f'Fabricante={"OK" if row["ok_manufacturer"] else ("N/A" if row["ok_manufacturer"] is None else "NOK")}'
+            )
+        lines.extend(
+            [
+                '',
+                f'Setor 1: {submission.sector or ""}',
+                f'Setor 2: {submission.sector_2 or ""}',
+                f'Setor 3: {submission.sector_3 or ""}',
+                f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
+                f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
+                f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
+                f'Observação: {submission.observation or ""}',
+                '',
+                f'Validado por: {submission.validator_name or "-"}',
+                f'Validado em: {_format_datetime(submission.validated_at)}',
+            ]
+        )
+    elif submission.is_level_form:
         before_combined = submission.level_before_combined_value
         before_status = (
             'Pendente dados'

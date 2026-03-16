@@ -396,6 +396,7 @@ class EquipmentFormCriteria(models.Model):
     class Unit(models.TextChoices):
         PERCENT = '%', '%'
         METER = 'm', 'm'
+        MILLIMETER = 'mm', 'mm'
 
     equipment = models.ForeignKey(
         Equipment,
@@ -463,6 +464,7 @@ class FormSubmission(models.Model):
     DEFAULT_UNCERTAINTY_COVERAGE_FACTOR = Decimal('2')
     FORM_CODE_BELT = 'FOR 08.05.003'
     FORM_CODE_LEVEL = 'FOR 07.04.01.002'
+    FORM_CODE_SCANNER = 'FOR SCANNER'
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -529,6 +531,56 @@ class FormSubmission(models.Model):
         null=True,
         blank=True,
     )
+
+    scanner_certificate_file = models.FileField(
+        upload_to='scanner_certificates/',
+        null=True,
+        blank=True,
+        verbose_name='Certificado de calibração (PDF)',
+    )
+    scanner_certificate_number = models.CharField(max_length=120, blank=True)
+    scanner_provider = models.CharField(max_length=255, blank=True)
+    scanner_model = models.CharField(max_length=255, blank=True)
+    scanner_serial_number = models.CharField(max_length=120, blank=True)
+    scanner_measurement_date = models.DateField(null=True, blank=True)
+    scanner_release_date = models.DateField(null=True, blank=True)
+    scanner_manufacturer_ppm = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('10'),
+    )
+    scanner_k_factor = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('2'),
+    )
+    scanner_u_ref_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, default=Decimal('0'))
+    scanner_u_rep_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_u_res_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, default=Decimal('0'))
+    scanner_u_setup_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, default=Decimal('0'))
+    scanner_u_env_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True, default=Decimal('0'))
+    scanner_target_1 = models.CharField(max_length=120, blank=True, default='Refletor 1')
+    scanner_nominal_1_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_measured_1_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_target_2 = models.CharField(max_length=120, blank=True, default='Refletor 2')
+    scanner_nominal_2_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_measured_2_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_target_3 = models.CharField(max_length=120, blank=True, default='Refletor 3')
+    scanner_nominal_3_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_measured_3_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_target_4 = models.CharField(max_length=120, blank=True, default='Refletor 4')
+    scanner_nominal_4_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_measured_4_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_target_5 = models.CharField(max_length=120, blank=True, default='Refletor 5')
+    scanner_nominal_5_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_measured_5_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_target_6 = models.CharField(max_length=120, blank=True, default='Refletor 6')
+    scanner_nominal_6_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    scanner_measured_6_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
 
     level_before_vm_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     level_before_vl_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -659,8 +711,18 @@ class FormSubmission(models.Model):
         return self.form_code.startswith(self.FORM_CODE_LEVEL)
 
     @property
+    def is_scanner_form(self):
+        code = self.form_code
+        if self.FORM_CODE_SCANNER in code:
+            return True
+        title = ''
+        if self.form_type_id and self.form_type:
+            title = (self.form_type.title or '').strip().upper()
+        return 'SCANNER' in code or 'SCANNER' in title
+
+    @property
     def is_belt_form(self):
-        return not self.is_level_form
+        return not self.is_level_form and not self.is_scanner_form
 
     @staticmethod
     def _avg(*values):
@@ -699,6 +761,116 @@ class FormSubmission(models.Model):
         sum_square = sum((value - mean) * (value - mean) for value in valid)
         variance = sum_square / Decimal(count - 1)
         return FormSubmission._sqrt(variance)
+
+    @property
+    def scanner_points(self):
+        rows = []
+        for index in range(1, 7):
+            target = (getattr(self, f'scanner_target_{index}', '') or '').strip() or f'Refletor {index}'
+            nominal = getattr(self, f'scanner_nominal_{index}_m', None)
+            measured = getattr(self, f'scanner_measured_{index}_m', None)
+            error_m = None
+            error_abs_mm = None
+            ca_manufacturer_mm = None
+            ok_fixed = None
+            ok_manufacturer = None
+            if nominal is not None and measured is not None:
+                error_m = measured - nominal
+                error_abs_mm = abs(error_m) * Decimal('1000')
+                ca_manufacturer_mm = self.scanner_ca_manufacturer_for_distance(nominal)
+                if self.acceptance_limit_pct is not None:
+                    ok_fixed = (error_abs_mm + (self.scanner_u_expanded_mm or Decimal('0'))) <= self.acceptance_limit_pct
+                if ca_manufacturer_mm is not None:
+                    ok_manufacturer = (error_abs_mm + (self.scanner_u_expanded_mm or Decimal('0'))) <= ca_manufacturer_mm
+            rows.append(
+                {
+                    'index': index,
+                    'target': target,
+                    'nominal_m': nominal,
+                    'measured_m': measured,
+                    'error_m': error_m,
+                    'error_abs_mm': error_abs_mm,
+                    'ca_fixed_mm': self.acceptance_limit_pct,
+                    'ca_manufacturer_mm': ca_manufacturer_mm,
+                    'ok_fixed': ok_fixed,
+                    'ok_manufacturer': ok_manufacturer,
+                }
+            )
+        return rows
+
+    @property
+    def scanner_valid_points(self):
+        return [row for row in self.scanner_points if row['nominal_m'] is not None and row['measured_m'] is not None]
+
+    @property
+    def scanner_error_abs_values_mm(self):
+        return [row['error_abs_mm'] for row in self.scanner_valid_points if row['error_abs_mm'] is not None]
+
+    @property
+    def scanner_max_error_abs_mm(self):
+        values = self.scanner_error_abs_values_mm
+        return max(values) if values else None
+
+    @property
+    def scanner_k_factor_value(self):
+        return self.scanner_k_factor if self.scanner_k_factor is not None else Decimal('2')
+
+    @property
+    def scanner_manufacturer_ppm_value(self):
+        return self.scanner_manufacturer_ppm if self.scanner_manufacturer_ppm is not None else Decimal('10')
+
+    @property
+    def scanner_u_components_mm(self):
+        return [
+            self.scanner_u_ref_mm or Decimal('0'),
+            self.scanner_u_rep_mm or Decimal('0'),
+            self.scanner_u_res_mm or Decimal('0'),
+            self.scanner_u_setup_mm or Decimal('0'),
+            self.scanner_u_env_mm or Decimal('0'),
+        ]
+
+    @property
+    def scanner_u_combined_mm(self):
+        components = self.scanner_u_components_mm
+        if not components:
+            return None
+        sum_squares = sum(component * component for component in components)
+        return self._sqrt(sum_squares)
+
+    @property
+    def scanner_u_expanded_mm(self):
+        u_combined = self.scanner_u_combined_mm
+        if u_combined is None:
+            return None
+        return abs(self.scanner_k_factor_value * u_combined)
+
+    def scanner_ca_manufacturer_for_distance(self, distance_m):
+        if distance_m is None or self.acceptance_limit_pct is None:
+            return None
+        ppm = self.scanner_manufacturer_ppm_value
+        return self.acceptance_limit_pct + (ppm * Decimal('0.001') * distance_m)
+
+    @property
+    def scanner_status_fixed(self):
+        valid_rows = self.scanner_valid_points
+        if not valid_rows:
+            return 'Pendente dados'
+        if self.acceptance_limit_pct is None or self.scanner_u_expanded_mm is None:
+            return 'Pendente dados'
+        if all(row['ok_fixed'] for row in valid_rows):
+            return 'Aprovado'
+        return 'Reprovado'
+
+    @property
+    def scanner_status_manufacturer(self):
+        valid_rows = self.scanner_valid_points
+        if not valid_rows:
+            return 'Pendente dados'
+        if self.scanner_u_expanded_mm is None:
+            return 'Pendente dados'
+        if all(row['ok_manufacturer'] for row in valid_rows):
+            return 'Aprovado'
+        return 'Reprovado'
 
     def _level_points(self, phase='before'):
         if phase == 'after':
@@ -1116,6 +1288,8 @@ class FormSubmission(models.Model):
     def expanded_uncertainty_calc_pct_auto(self):
         if self.is_level_form:
             return self.level_uncertainty_expanded_m
+        if self.is_scanner_form:
+            return self.scanner_u_expanded_mm
         return self.expanded_uncertainty_after_pct_auto
 
     @property
@@ -1182,6 +1356,10 @@ class FormSubmission(models.Model):
             criteria = self.equipment.criteria_for_form(self.form_type)
             if criteria:
                 return criteria.acceptance_criterion_unit
+        if self.is_level_form:
+            return 'm'
+        if self.is_scanner_form:
+            return 'mm'
         return '%'
 
     @property
@@ -1192,18 +1370,26 @@ class FormSubmission(models.Model):
             criteria = self.equipment.criteria_for_form(self.form_type)
             if criteria:
                 return criteria.expanded_uncertainty_unit
+        if self.is_level_form:
+            return 'm'
+        if self.is_scanner_form:
+            return 'mm'
         return '%'
 
     @property
     def acceptance_error_before_value(self):
         if self.is_level_form:
             return self.level_before_mean_abs_m
+        if self.is_scanner_form:
+            return self.scanner_max_error_abs_mm
         return self.error_before_pct if self.error_before_pct is not None else self.error_before_pct_auto
 
     @property
     def acceptance_error_after_value(self):
         if self.is_level_form:
             return self.level_final_mean_abs_m
+        if self.is_scanner_form:
+            return self.scanner_max_error_abs_mm
         return self.error_after_pct if self.error_after_pct is not None else self.error_after_pct_auto
 
     @property
@@ -1295,10 +1481,19 @@ class FormSubmission(models.Model):
                     self.expanded_uncertainty_pct = self.equipment.expanded_uncertainty_pct
                 self.acceptance_criterion_unit = self.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
                 self.expanded_uncertainty_unit = self.expanded_uncertainty_unit or EquipmentFormCriteria.Unit.PERCENT
+        if self.is_scanner_form:
+            if self.acceptance_criterion_unit == EquipmentFormCriteria.Unit.PERCENT:
+                self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
+            if self.expanded_uncertainty_unit == EquipmentFormCriteria.Unit.PERCENT:
+                self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
         if self.is_level_form:
             self.error_before_pct = self.level_before_mean_abs_m
             self.error_after_pct = self.level_final_mean_abs_m
             self.expanded_uncertainty_calc_pct = self.level_uncertainty_expanded_m
+        elif self.is_scanner_form:
+            self.error_before_pct = self.scanner_max_error_abs_mm
+            self.error_after_pct = self.scanner_max_error_abs_mm
+            self.expanded_uncertainty_calc_pct = self.scanner_u_expanded_mm
         else:
             self.ibm = self.ibm_auto
             self.mark_distance = self.mark_distance_auto
@@ -1379,5 +1574,6 @@ def ensure_portal_access_for_new_user(sender, instance, created, **kwargs):
                 'role': PortalUserAccess.Role.MASTER if instance.is_superuser else PortalUserAccess.Role.VIEWER,
             },
         )
+
 
 

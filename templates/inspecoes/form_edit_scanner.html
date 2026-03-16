@@ -1,0 +1,407 @@
+{% extends 'base.html' %}
+{% block title %}Formulário técnico - Scanner{% endblock %}
+{% block content %}
+<h2>2. Formulário técnico</h2>
+<p>
+  <strong>OM:</strong> {{ submission.om_number }}
+  | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}
+  | <strong>Equipamento:</strong> {{ submission.equipment.tag }}
+  | <strong>Formulário:</strong> {{ submission.form_type_label }}
+  | <strong>Local:</strong> {{ submission.location_snapshot }}
+</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
+    <p style="margin:0;">
+      <strong>Observação do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observação.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+<p><strong>Campos automáticos:</strong> erro absoluto (mm), U(e), comparação por critério fixo e por critério do fabricante.</p>
+
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  .scanner-table { width:100%; border-collapse: collapse; margin-bottom: 12px; }
+  .scanner-table th, .scanner-table td { border: 1px solid #ded6c4; padding: 8px; text-align: left; vertical-align: top; }
+  .scanner-table th { background:#f6f2e8; }
+  .auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
+  .inline-actions { margin-top: 6px; display:flex; gap:8px; flex-wrap: wrap; align-items: center; }
+  .inline-actions a { text-decoration: none; color: #204a7a; }
+</style>
+
+<form method="post" enctype="multipart/form-data" id="scanner-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Dados iniciais</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
+  </div>
+
+  <h3>Certificado de calibração</h3>
+  <div class="row" style="grid-template-columns:repeat(2,minmax(260px,1fr));">
+    <p>{{ form.scanner_certificate_file.label_tag }} {{ form.scanner_certificate_file }}</p>
+    <div class="inline-actions">
+      <button type="submit" name="parse_certificate" value="1" class="secondary">Ler certificado e preencher</button>
+      {% if submission.scanner_certificate_file %}
+        <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado atual</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p>{{ form.scanner_certificate_number.label_tag }} {{ form.scanner_certificate_number }}</p>
+    <p>{{ form.scanner_provider.label_tag }} {{ form.scanner_provider }}</p>
+    <p>{{ form.scanner_model.label_tag }} {{ form.scanner_model }}</p>
+    <p>{{ form.scanner_serial_number.label_tag }} {{ form.scanner_serial_number }}</p>
+    <p>{{ form.scanner_measurement_date.label_tag }} {{ form.scanner_measurement_date }}</p>
+    <p>{{ form.scanner_release_date.label_tag }} {{ form.scanner_release_date }}</p>
+  </div>
+
+  <h3>Parâmetros da incerteza (mm)</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(180px,1fr));">
+    <p>{{ form.scanner_u_ref_mm.label_tag }} {{ form.scanner_u_ref_mm }}</p>
+    <p>{{ form.scanner_u_rep_mm.label_tag }} {{ form.scanner_u_rep_mm }}</p>
+    <p>{{ form.scanner_u_res_mm.label_tag }} {{ form.scanner_u_res_mm }}</p>
+    <p>{{ form.scanner_u_setup_mm.label_tag }} {{ form.scanner_u_setup_mm }}</p>
+    <p>{{ form.scanner_u_env_mm.label_tag }} {{ form.scanner_u_env_mm }}</p>
+    <p>{{ form.scanner_k_factor.label_tag }} {{ form.scanner_k_factor }}</p>
+    <p>{{ form.scanner_manufacturer_ppm.label_tag }} {{ form.scanner_manufacturer_ppm }}</p>
+  </div>
+
+  <h3>Pontos de medição (acurácia linear)</h3>
+  <table class="scanner-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Alvo</th>
+        <th>Nominal (m)</th>
+        <th>Medido (m)</th>
+        <th>Erro abs (mm)</th>
+        <th>Critério fixo (mm)</th>
+        <th>Critério fabricante (mm)</th>
+        <th>Status fixo</th>
+        <th>Status fabricante</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td><td>{{ form.scanner_target_1 }}</td><td>{{ form.scanner_nominal_1_m }}</td><td>{{ form.scanner_measured_1_m }}</td>
+        <td><input id="scanner_error_abs_1" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_fixed_1" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_manuf_1" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="scanner_status_fixed_1" class="accept-pill pending">-</span></td>
+        <td><span id="scanner_status_manuf_1" class="accept-pill pending">-</span></td>
+      </tr>
+      <tr>
+        <td>2</td><td>{{ form.scanner_target_2 }}</td><td>{{ form.scanner_nominal_2_m }}</td><td>{{ form.scanner_measured_2_m }}</td>
+        <td><input id="scanner_error_abs_2" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_fixed_2" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_manuf_2" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="scanner_status_fixed_2" class="accept-pill pending">-</span></td>
+        <td><span id="scanner_status_manuf_2" class="accept-pill pending">-</span></td>
+      </tr>
+      <tr>
+        <td>3</td><td>{{ form.scanner_target_3 }}</td><td>{{ form.scanner_nominal_3_m }}</td><td>{{ form.scanner_measured_3_m }}</td>
+        <td><input id="scanner_error_abs_3" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_fixed_3" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_manuf_3" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="scanner_status_fixed_3" class="accept-pill pending">-</span></td>
+        <td><span id="scanner_status_manuf_3" class="accept-pill pending">-</span></td>
+      </tr>
+      <tr>
+        <td>4</td><td>{{ form.scanner_target_4 }}</td><td>{{ form.scanner_nominal_4_m }}</td><td>{{ form.scanner_measured_4_m }}</td>
+        <td><input id="scanner_error_abs_4" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_fixed_4" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_manuf_4" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="scanner_status_fixed_4" class="accept-pill pending">-</span></td>
+        <td><span id="scanner_status_manuf_4" class="accept-pill pending">-</span></td>
+      </tr>
+      <tr>
+        <td>5</td><td>{{ form.scanner_target_5 }}</td><td>{{ form.scanner_nominal_5_m }}</td><td>{{ form.scanner_measured_5_m }}</td>
+        <td><input id="scanner_error_abs_5" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_fixed_5" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_manuf_5" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="scanner_status_fixed_5" class="accept-pill pending">-</span></td>
+        <td><span id="scanner_status_manuf_5" class="accept-pill pending">-</span></td>
+      </tr>
+      <tr>
+        <td>6</td><td>{{ form.scanner_target_6 }}</td><td>{{ form.scanner_nominal_6_m }}</td><td>{{ form.scanner_measured_6_m }}</td>
+        <td><input id="scanner_error_abs_6" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_fixed_6" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="scanner_ca_manuf_6" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="scanner_status_fixed_6" class="accept-pill pending">-</span></td>
+        <td><span id="scanner_status_manuf_6" class="accept-pill pending">-</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Resultados da verificação e ajuste</h3>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
+    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+  </div>
+
+  <div id="uncert-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Comparação da incerteza expandida</strong>
+      <span id="uncert-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="uncert-detail" style="margin:0;">Preencha os parâmetros para calcular U(e).</p>
+  </div>
+
+  <div id="fixed-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Critério fixo (|erro máximo| + U(e) &lt;= limite fixo)</strong>
+      <span id="fixed-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="fixed-detail" style="margin:0;">Preencha ao menos um ponto de medição.</p>
+  </div>
+
+  <div id="manufacturer-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Critério do fabricante (|erro| + U(e) &lt;= 5 mm + ppm x D)</strong>
+      <span id="manufacturer-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="manufacturer-detail" style="margin:0;">Aguardando dados para comparar por ponto.</p>
+  </div>
+
+  <h3>Identificação e observação</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
+  </div>
+</form>
+
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>Pontos válidos: <span id="sum-points">0</span></p>
+<p>Erro máximo absoluto (mm): <span id="sum-error-max">-</span></p>
+<p>U(c) (mm): <span id="sum-u-combined">-</span></p>
+<p>U(e) calculada (mm): <span id="sum-u-expanded">-</span></p>
+<p>Soma final |erro| + U(e) (mm): <span id="sum-combined">-</span></p>
+<p>Status final critério fixo: <span id="sum-fixed-status">Pendente dados</span></p>
+<p>Status final critério fabricante: <span id="sum-manufacturer-status">Pendente dados</span></p>
+
+<script>
+(function () {
+  const form = document.getElementById('scanner-form');
+  if (!form) return;
+
+  function parseNum(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).replace(',', '.').trim();
+    if (!txt) return null;
+    const value = Number(txt);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return parseNum(el.value || '');
+  }
+
+  function fmt(value, decimals) {
+    if (value == null || !Number.isFinite(value)) return '-';
+    return value.toFixed(decimals).replace('.', ',');
+  }
+
+  function setField(id, value, decimals, forNumberInput) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null || !Number.isFinite(value)) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = forNumberInput ? fixed : fixed.replace('.', ',');
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value;
+  }
+
+  function setPill(id, status, fallbackText) {
+    const pill = document.getElementById(id);
+    if (!pill) return;
+    pill.classList.remove('ok', 'fail', 'pending');
+    pill.classList.add(status);
+    if (status === 'ok') pill.textContent = 'Aprovado';
+    else if (status === 'fail') pill.textContent = 'Reprovado';
+    else pill.textContent = fallbackText || 'Pendente';
+  }
+
+  function setBox(prefix, status, detail) {
+    const box = document.getElementById(`${prefix}-box`);
+    const pill = document.getElementById(`${prefix}-pill`);
+    const detailEl = document.getElementById(`${prefix}-detail`);
+    if (!box || !pill || !detailEl) return;
+    box.classList.remove('ok', 'fail', 'pending');
+    box.classList.add(status);
+    setPill(`${prefix}-pill`, status, 'Pendente dados');
+    detailEl.textContent = detail;
+  }
+
+  function recalc() {
+    let criterionFixed = getNum('id_acceptance_criterion_pct');
+    let uncertaintyRef = getNum('id_expanded_uncertainty_pct');
+    const ppm = getNum('id_scanner_manufacturer_ppm') ?? 10;
+    const kFactor = getNum('id_scanner_k_factor') ?? 2;
+
+    const uRef = getNum('id_scanner_u_ref_mm') ?? 0;
+    const uRep = getNum('id_scanner_u_rep_mm') ?? 0;
+    const uRes = getNum('id_scanner_u_res_mm') ?? 0;
+    const uSetup = getNum('id_scanner_u_setup_mm') ?? 0;
+    const uEnv = getNum('id_scanner_u_env_mm') ?? 0;
+
+    const uCombined = Math.sqrt(
+      (uRef * uRef) + (uRep * uRep) + (uRes * uRes) + (uSetup * uSetup) + (uEnv * uEnv)
+    );
+    const uExpanded = Math.abs(kFactor * uCombined);
+
+    setField('id_expanded_uncertainty_calc_pct', uExpanded, 3, true);
+
+    const validRows = [];
+    const fixedChecks = [];
+    const manufacturerChecks = [];
+
+    for (let idx = 1; idx <= 6; idx += 1) {
+      const nominal = getNum(`id_scanner_nominal_${idx}_m`);
+      const measured = getNum(`id_scanner_measured_${idx}_m`);
+
+      const errorAbsMm = (nominal == null || measured == null) ? null : Math.abs((measured - nominal) * 1000);
+      const criterionManufacturer = (criterionFixed == null || nominal == null)
+        ? null
+        : (criterionFixed + (ppm * 0.001 * nominal));
+      const fixedOk = (errorAbsMm == null || criterionFixed == null)
+        ? null
+        : ((errorAbsMm + uExpanded) <= criterionFixed);
+      const manufacturerOk = (errorAbsMm == null || criterionManufacturer == null)
+        ? null
+        : ((errorAbsMm + uExpanded) <= criterionManufacturer);
+
+      setField(`scanner_error_abs_${idx}`, errorAbsMm, 3, false);
+      setField(`scanner_ca_fixed_${idx}`, criterionFixed, 2, false);
+      setField(`scanner_ca_manuf_${idx}`, criterionManufacturer, 3, false);
+
+      if (fixedOk == null) setPill(`scanner_status_fixed_${idx}`, 'pending', '-');
+      else setPill(`scanner_status_fixed_${idx}`, fixedOk ? 'ok' : 'fail', '-');
+
+      if (manufacturerOk == null) setPill(`scanner_status_manuf_${idx}`, 'pending', '-');
+      else setPill(`scanner_status_manuf_${idx}`, manufacturerOk ? 'ok' : 'fail', '-');
+
+      if (errorAbsMm != null) {
+        validRows.push({ idx, nominal, errorAbsMm, criterionManufacturer, fixedOk, manufacturerOk });
+      }
+      if (fixedOk != null) fixedChecks.push(fixedOk);
+      if (manufacturerOk != null) manufacturerChecks.push(manufacturerOk);
+    }
+
+    const maxError = validRows.length
+      ? Math.max.apply(null, validRows.map((item) => item.errorAbsMm))
+      : null;
+    const combinedFixed = (maxError == null) ? null : (maxError + uExpanded);
+    const uncertaintyOk = uncertaintyRef == null ? null : (uExpanded <= uncertaintyRef);
+    const fixedOkFinal = (combinedFixed == null || criterionFixed == null)
+      ? null
+      : ((combinedFixed <= criterionFixed) && (uncertaintyOk == null || uncertaintyOk));
+    const manufacturerOkFinal = manufacturerChecks.length ? manufacturerChecks.every(Boolean) : null;
+
+    setText('sum-points', String(validRows.length));
+    setText('sum-error-max', fmt(maxError, 3));
+    setText('sum-u-combined', fmt(uCombined, 3));
+    setText('sum-u-expanded', fmt(uExpanded, 3));
+    setText('sum-combined', fmt(combinedFixed, 3));
+    setText(
+      'sum-fixed-status',
+      fixedOkFinal == null ? 'Pendente dados' : (fixedOkFinal ? 'Aprovado' : 'Reprovado')
+    );
+    setText(
+      'sum-manufacturer-status',
+      manufacturerOkFinal == null ? 'Pendente dados' : (manufacturerOkFinal ? 'Aprovado' : 'Reprovado')
+    );
+
+    if (uExpanded == null) {
+      setBox('uncert', 'pending', 'Preencha os parâmetros para calcular U(e).');
+    } else if (uncertaintyRef == null) {
+      setBox('uncert', 'pending', `U(e) calculada: ${fmt(uExpanded, 3)} mm. Sem referência cadastrada para comparar.`);
+    } else {
+      const ok = uExpanded <= uncertaintyRef;
+      setBox(
+        'uncert',
+        ok ? 'ok' : 'fail',
+        `U(e) calculada: ${fmt(uExpanded, 3)} mm | cadastrada: ${fmt(uncertaintyRef, 3)} mm.`
+      );
+    }
+
+    if (fixedOkFinal == null) {
+      setBox('fixed', 'pending', 'Preencha ao menos um ponto de medição para comparar com o critério fixo.');
+    } else {
+      setBox(
+        'fixed',
+        fixedOkFinal ? 'ok' : 'fail',
+        `|Erro máximo|: ${fmt(maxError, 3)} mm | U(e): ${fmt(uExpanded, 3)} mm | Soma: ${fmt(combinedFixed, 3)} mm (limite ${fmt(criterionFixed, 2)} mm).`
+      );
+    }
+
+    if (manufacturerOkFinal == null) {
+      setBox('manufacturer', 'pending', 'Preencha os pontos para comparar com o critério do fabricante.');
+    } else {
+      const detail = validRows.length
+        ? `Foram avaliados ${validRows.length} ponto(s) com parcela de ${ppm.toFixed(3).replace('.', ',')} ppm.`
+        : 'Sem pontos válidos.';
+      setBox('manufacturer', manufacturerOkFinal ? 'ok' : 'fail', detail);
+    }
+  }
+
+  form.addEventListener('input', recalc);
+  form.addEventListener('change', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}
