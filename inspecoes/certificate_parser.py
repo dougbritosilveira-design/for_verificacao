@@ -7,8 +7,6 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from pypdf import PdfReader
-
 
 def _normalize_ascii(text: str) -> str:
     text = unicodedata.normalize('NFKD', text or '')
@@ -61,6 +59,12 @@ def _parse_date(token: str) -> date | None:
 
 
 def _extract_text_from_pdf_bytes(pdf_bytes: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+    except Exception as exc:
+        raise RuntimeError(
+            'Biblioteca pypdf não instalada no ambiente. Execute: pip install -r requirements.txt'
+        ) from exc
     reader = PdfReader(io.BytesIO(pdf_bytes))
     chunks = []
     for page in reader.pages:
