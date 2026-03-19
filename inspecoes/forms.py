@@ -110,7 +110,7 @@ class TechnicalForm(forms.ModelForm):
             'abw_1', 'abw_2', 'abw_3', 'tare_1', 'tare_2', 'tare_3',
             'applied_weight', 'bridge_length', 'belt_length', 'belt_speed_v',
             'il_before_ti', 'il_before_tf', 'il_after_ti', 'il_after_tf',
-            'check_weight', 'kor', 'acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct',
+            'check_weight', 'kor', 'acceptance_criterion_pct', 'expanded_uncertainty_calc_pct',
             'calculated_flow_ic', 'error_before_pct', 'error_after_pct',
             'sector', 'sector_2', 'sector_3',
             'validator_registration',
@@ -152,7 +152,6 @@ class TechnicalForm(forms.ModelForm):
             'check_weight': 'CW (%)',
             'kor': 'KOR (%)',
             'acceptance_criterion_pct': 'Critério de aceitação (%)',
-            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada (%)',
             'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada (%)',
             'calculated_flow_ic': 'Vazão calculada Ic (ton/h)',
             'error_before_pct': 'Erro antes (%)',
@@ -183,7 +182,6 @@ class TechnicalForm(forms.ModelForm):
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
         self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.1'})
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.01'})
         self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.01'})
 
         for name in [
@@ -194,7 +192,6 @@ class TechnicalForm(forms.ModelForm):
             'error_before_pct',
             'error_after_pct',
             'acceptance_criterion_pct',
-            'expanded_uncertainty_pct',
             'expanded_uncertainty_calc_pct',
         ]:
             self.fields[name].disabled = True
@@ -204,9 +201,6 @@ class TechnicalForm(forms.ModelForm):
                     'title': 'Campo calculado automaticamente pelo sistema.',
                 }
             )
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update(
-            {'title': 'Campo vindo do cadastro do equipamento.'}
-        )
 
 
 
@@ -228,7 +222,6 @@ class LevelTechnicalForm(forms.ModelForm):
             'level_resolution_instrument_m',
             'level_coverage_factor_k',
             'acceptance_criterion_pct',
-            'expanded_uncertainty_pct',
             'expanded_uncertainty_calc_pct',
             'sector', 'sector_2', 'sector_3',
             'validator_registration',
@@ -260,7 +253,6 @@ class LevelTechnicalForm(forms.ModelForm):
             'level_resolution_instrument_m': 'Resolução do transmissor (m)',
             'level_coverage_factor_k': 'Fator de abrangência (k)',
             'acceptance_criterion_pct': 'Critério de aceitação (m)',
-            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada (m)',
             'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada (m)',
             'sector': 'Setor 1',
             'sector_2': 'Setor 2',
@@ -288,13 +280,12 @@ class LevelTechnicalForm(forms.ModelForm):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
 
         self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.001'})
         self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
         self.fields['level_resolution_tape_m'].widget = forms.HiddenInput()
         self.fields['level_resolution_instrument_m'].widget = forms.HiddenInput()
         self.fields['level_coverage_factor_k'].widget = forms.HiddenInput()
 
-        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct']:
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct']:
             self.fields[name].disabled = True
             self.fields[name].widget.attrs.update(
                 {
@@ -302,9 +293,6 @@ class LevelTechnicalForm(forms.ModelForm):
                     'title': 'Campo calculado/carregado automaticamente pelo sistema.',
                 }
             )
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update(
-            {'title': 'Campo vindo do cadastro do equipamento.'}
-        )
 
         if not self.instance.level_resolution_tape_m:
             self.initial.setdefault('level_resolution_tape_m', Decimal('0.001'))
@@ -319,15 +307,6 @@ class LevelTechnicalForm(forms.ModelForm):
         if criterion_value is not None:
             if self.initial.get('acceptance_criterion_pct') in (None, ''):
                 self.initial['acceptance_criterion_pct'] = criterion_value
-
-        uncertainty_ref = self.instance.expanded_uncertainty_pct
-        if uncertainty_ref is None and self.instance.equipment_id and self.instance.form_type_id:
-            criteria = self.instance.equipment.criteria_for_form(self.instance.form_type)
-            if criteria and criteria.expanded_uncertainty_value is not None:
-                uncertainty_ref = criteria.expanded_uncertainty_value
-        if uncertainty_ref is not None:
-            if self.initial.get('expanded_uncertainty_pct') in (None, ''):
-                self.initial['expanded_uncertainty_pct'] = uncertainty_ref
 
         uncertainty_calc = self.instance.expanded_uncertainty_calc_value
         if uncertainty_calc is not None:
@@ -349,7 +328,6 @@ class ScannerTechnicalForm(forms.ModelForm):
             'scanner_measurement_date',
             'scanner_release_date',
             'acceptance_criterion_pct',
-            'expanded_uncertainty_pct',
             'expanded_uncertainty_calc_pct',
             'scanner_manufacturer_ppm',
             'scanner_k_factor',
@@ -382,7 +360,6 @@ class ScannerTechnicalForm(forms.ModelForm):
             'scanner_measurement_date': 'Data da medição no certificado',
             'scanner_release_date': 'Data de emissão do certificado',
             'acceptance_criterion_pct': 'Critério de aceitação fixo (mm)',
-            'expanded_uncertainty_pct': 'Incerteza expandida cadastrada U(e) (mm)',
             'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (mm)',
             'scanner_manufacturer_ppm': 'Parcela do fabricante (ppm)',
             'scanner_k_factor': 'Fator de abrangência (k)',
@@ -438,12 +415,11 @@ class ScannerTechnicalForm(forms.ModelForm):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
 
         self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update({'step': '0.001'})
         self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
         self.fields['scanner_manufacturer_ppm'].widget.attrs.update({'step': '0.1'})
         self.fields['scanner_k_factor'].widget.attrs.update({'step': '0.1'})
 
-        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_pct', 'expanded_uncertainty_calc_pct']:
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct']:
             self.fields[name].disabled = True
             self.fields[name].widget.attrs.update(
                 {
@@ -451,9 +427,6 @@ class ScannerTechnicalForm(forms.ModelForm):
                     'title': 'Campo carregado/calculado automaticamente pelo sistema.',
                 }
             )
-        self.fields['expanded_uncertainty_pct'].widget.attrs.update(
-            {'title': 'Campo vindo do cadastro do equipamento.'}
-        )
 
         if not self.instance.scanner_manufacturer_ppm:
             self.initial.setdefault('scanner_manufacturer_ppm', Decimal('10.0'))

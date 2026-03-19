@@ -57,20 +57,17 @@ def _can_access_submission_for_equipment_scope(user, submission):
 def _resolve_criteria_defaults(equipment, form_type):
     acceptance_value = equipment.acceptance_criterion_pct
     acceptance_unit = EquipmentFormCriteria.Unit.PERCENT
-    uncertainty_value = equipment.expanded_uncertainty_pct
     uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
     if not form_type:
-        return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
+        return acceptance_value, acceptance_unit, uncertainty_unit
 
     criteria_config = _ensure_equipment_form_criteria(equipment, form_type)
     if criteria_config:
         if criteria_config.acceptance_criterion_value is not None:
             acceptance_value = criteria_config.acceptance_criterion_value
         acceptance_unit = criteria_config.acceptance_criterion_unit or acceptance_unit
-        if criteria_config.expanded_uncertainty_value is not None:
-            uncertainty_value = criteria_config.expanded_uncertainty_value
         uncertainty_unit = criteria_config.expanded_uncertainty_unit or acceptance_unit
-    return acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit
+    return acceptance_value, acceptance_unit, uncertainty_unit
 
 
 def _default_units_for_form(form_type):
@@ -88,15 +85,12 @@ def _latest_submission_criteria_values(equipment, form_type):
     latest_submission = (
         FormSubmission.objects.filter(equipment=equipment, form_type=form_type)
         .order_by('-created_at')
-        .only(
-            'acceptance_criterion_pct',
-            'expanded_uncertainty_pct',
-        )
+        .only('acceptance_criterion_pct')
         .first()
     )
     if not latest_submission:
         return None, None
-    return latest_submission.acceptance_criterion_pct, latest_submission.expanded_uncertainty_pct
+    return latest_submission.acceptance_criterion_pct, None
 
 
 def _ensure_equipment_form_criteria(equipment, form_type):
@@ -110,7 +104,7 @@ def _ensure_equipment_form_criteria(equipment, form_type):
         if latest_acceptance is not None
         else (equipment.acceptance_criterion_pct if equipment.acceptance_criterion_pct is not None else Decimal('1.0'))
     )
-    default_uncertainty = latest_uncertainty if latest_uncertainty is not None else equipment.expanded_uncertainty_pct
+    default_uncertainty = None
 
     criteria_config, _ = EquipmentFormCriteria.objects.get_or_create(
         equipment=equipment,
@@ -171,7 +165,7 @@ def _sync_submission_criteria_from_config(submission):
     if not submission.equipment_id:
         return
 
-    acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit = _resolve_criteria_defaults(
+    acceptance_value, acceptance_unit, uncertainty_unit = _resolve_criteria_defaults(
         submission.equipment,
         submission.form_type,
     )
@@ -183,8 +177,8 @@ def _sync_submission_criteria_from_config(submission):
     if acceptance_unit and submission.acceptance_criterion_unit != acceptance_unit:
         submission.acceptance_criterion_unit = acceptance_unit
         update_fields.append('acceptance_criterion_unit')
-    if submission.expanded_uncertainty_pct != uncertainty_value:
-        submission.expanded_uncertainty_pct = uncertainty_value
+    if submission.expanded_uncertainty_pct is not None:
+        submission.expanded_uncertainty_pct = None
         update_fields.append('expanded_uncertainty_pct')
     if uncertainty_unit and submission.expanded_uncertainty_unit != uncertainty_unit:
         submission.expanded_uncertainty_unit = uncertainty_unit
@@ -324,13 +318,12 @@ def selection_view(request):
         if form.is_valid():
             submission = form.save(commit=False)
             submission.created_by = request.user
-            acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit = _resolve_criteria_defaults(
+            acceptance_value, acceptance_unit, uncertainty_unit = _resolve_criteria_defaults(
                 submission.equipment,
                 submission.form_type,
             )
             submission.acceptance_criterion_pct = acceptance_value
             submission.acceptance_criterion_unit = acceptance_unit
-            submission.expanded_uncertainty_pct = uncertainty_value
             submission.expanded_uncertainty_unit = uncertainty_unit
             if not submission.location_snapshot:
                 submission.location_snapshot = submission.equipment.location
@@ -432,10 +425,6 @@ def form_edit_view(request, pk):
 
                 submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
                 submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
-                if submission.expanded_uncertainty_pct is None and submission.acceptance_limit_pct is not None:
-                    submission.expanded_uncertainty_pct = (submission.acceptance_limit_pct / Decimal('3')).quantize(
-                        Decimal('0.001')
-                    )
                 submission.save()
 
                 points_found = parsed.get('points_found', 0)

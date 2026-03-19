@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
 {% load l10n %}
-{% block title %}Formul√°rio t√©cnico{% endblock %}
+{% block title %}Formul·rio tÈcnico{% endblock %}
 {% block content %}
-<h2>2. Formul√°rio t√©cnico</h2>
-<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formul√°rio:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<h2>2. Formul·rio tÈcnico</h2>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formul·rio:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
 {% if submission.status == 'rework_required' %}
   <div class="accept-box fail" style="margin-top:8px;">
     <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
-    <p style="margin:0;"><strong>Observa√ß√£o do avaliador:</strong>
+    <p style="margin:0;"><strong>ObservaÁ„o do avaliador:</strong>
       {% if submission.validation_feedback %}
         {{ submission.validation_feedback|linebreaksbr }}
       {% else %}
-        Sem observa√ß√£o.
+        Sem observaÁ„o.
       {% endif %}
     </p>
   </div>
 {% endif %}
-<p><strong>Campos autom√°ticos:</strong> erro m√©dio absoluto, U(e), crit√©rio de aceita√ß√£o e crit√©rio final.</p>
+<p><strong>Campos autom·ticos:</strong> erro mÈdio absoluto, U(e), critÈrio de aceitaÁ„o e critÈrio final.</p>
 
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
@@ -53,7 +53,6 @@
   {{ form.level_coverage_factor_k }}
   <div id="level-defaults"
        data-criterion="{{ submission.acceptance_limit_pct|default_if_none:''|unlocalize }}"
-       data-uncert-ref="{{ submission.expanded_uncertainty_pct|default_if_none:''|unlocalize }}"
        data-uncert-calc="{{ submission.expanded_uncertainty_calc_value|default_if_none:''|unlocalize }}"
        hidden></div>
 
@@ -63,7 +62,7 @@
     <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
   </div>
 
-  <h3>Verifica√ß√£o antes do ajuste</h3>
+  <h3>VerificaÁ„o antes do ajuste</h3>
   <table class="level-table">
     <thead>
       <tr>
@@ -74,34 +73,14 @@
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>1</td>
-        <td>{{ form.level_before_vm_1 }}</td>
-        <td>{{ form.level_before_vl_1 }}</td>
-        <td><input id="id_before_err_abs_1" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
-      <tr>
-        <td>2</td>
-        <td>{{ form.level_before_vm_2 }}</td>
-        <td>{{ form.level_before_vl_2 }}</td>
-        <td><input id="id_before_err_abs_2" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
-      <tr>
-        <td>3</td>
-        <td>{{ form.level_before_vm_3 }}</td>
-        <td>{{ form.level_before_vl_3 }}</td>
-        <td><input id="id_before_err_abs_3" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
-      <tr>
-        <td>4</td>
-        <td>{{ form.level_before_vm_4 }}</td>
-        <td>{{ form.level_before_vl_4 }}</td>
-        <td><input id="id_before_err_abs_4" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
+      <tr><td>1</td><td>{{ form.level_before_vm_1 }}</td><td>{{ form.level_before_vl_1 }}</td><td><input id="id_before_err_abs_1" class="auto-locked" type="text" readonly disabled></td></tr>
+      <tr><td>2</td><td>{{ form.level_before_vm_2 }}</td><td>{{ form.level_before_vl_2 }}</td><td><input id="id_before_err_abs_2" class="auto-locked" type="text" readonly disabled></td></tr>
+      <tr><td>3</td><td>{{ form.level_before_vm_3 }}</td><td>{{ form.level_before_vl_3 }}</td><td><input id="id_before_err_abs_3" class="auto-locked" type="text" readonly disabled></td></tr>
+      <tr><td>4</td><td>{{ form.level_before_vm_4 }}</td><td>{{ form.level_before_vl_4 }}</td><td><input id="id_before_err_abs_4" class="auto-locked" type="text" readonly disabled></td></tr>
     </tbody>
   </table>
 
-  <h3>Verifica√ß√£o ap√≥s ajuste</h3>
+  <h3>VerificaÁ„o apÛs ajuste</h3>
   <table class="level-table">
     <thead>
       <tr>
@@ -112,64 +91,43 @@
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>1</td>
-        <td>{{ form.level_after_vm_1 }}</td>
-        <td>{{ form.level_after_vl_1 }}</td>
-        <td><input id="id_after_err_abs_1" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
-      <tr>
-        <td>2</td>
-        <td>{{ form.level_after_vm_2 }}</td>
-        <td>{{ form.level_after_vl_2 }}</td>
-        <td><input id="id_after_err_abs_2" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
-      <tr>
-        <td>3</td>
-        <td>{{ form.level_after_vm_3 }}</td>
-        <td>{{ form.level_after_vl_3 }}</td>
-        <td><input id="id_after_err_abs_3" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
-      <tr>
-        <td>4</td>
-        <td>{{ form.level_after_vm_4 }}</td>
-        <td>{{ form.level_after_vl_4 }}</td>
-        <td><input id="id_after_err_abs_4" class="auto-locked" type="text" readonly disabled></td>
-      </tr>
+      <tr><td>1</td><td>{{ form.level_after_vm_1 }}</td><td>{{ form.level_after_vl_1 }}</td><td><input id="id_after_err_abs_1" class="auto-locked" type="text" readonly disabled></td></tr>
+      <tr><td>2</td><td>{{ form.level_after_vm_2 }}</td><td>{{ form.level_after_vl_2 }}</td><td><input id="id_after_err_abs_2" class="auto-locked" type="text" readonly disabled></td></tr>
+      <tr><td>3</td><td>{{ form.level_after_vm_3 }}</td><td>{{ form.level_after_vl_3 }}</td><td><input id="id_after_err_abs_3" class="auto-locked" type="text" readonly disabled></td></tr>
+      <tr><td>4</td><td>{{ form.level_after_vm_4 }}</td><td>{{ form.level_after_vl_4 }}</td><td><input id="id_after_err_abs_4" class="auto-locked" type="text" readonly disabled></td></tr>
     </tbody>
   </table>
 
-  <h3>Resultados da verifica√ß√£o e ajuste</h3>
+  <h3>Resultados da verificaÁ„o e ajuste</h3>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
-    <p>{{ form.expanded_uncertainty_pct.label_tag }} {{ form.expanded_uncertainty_pct }}</p>
     <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
-    <p><label for="id_level_error_before_mean">Erro m√©dio absoluto antes (m)</label><input id="id_level_error_before_mean" class="auto-locked" type="text" readonly disabled></p>
-    <p><label for="id_level_error_after_mean">Erro m√©dio absoluto depois (m)</label><input id="id_level_error_after_mean" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_level_error_before_mean">Erro mÈdio absoluto antes (m)</label><input id="id_level_error_before_mean" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_level_error_after_mean">Erro mÈdio absoluto depois (m)</label><input id="id_level_error_after_mean" class="auto-locked" type="text" readonly disabled></p>
   </div>
 
   <div id="before-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Compara√ß√£o antes do ajuste</strong> <span id="before-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p style="margin:0 0 4px;"><strong>ComparaÁ„o antes do ajuste</strong> <span id="before-pill" class="accept-pill pending">Pendente dados</span></p>
     <p id="before-detail" style="margin:0;">Preencha VM e VL dos 4 pontos para calcular erro e U(e) antes.</p>
   </div>
 
   <div id="after-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Compara√ß√£o ap√≥s ajuste</strong> <span id="after-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p style="margin:0 0 4px;"><strong>ComparaÁ„o apÛs ajuste</strong> <span id="after-pill" class="accept-pill pending">Pendente dados</span></p>
     <p id="after-detail" style="margin:0;">Preencha os pontos para calcular erro e U(e) depois do ajuste.</p>
   </div>
 
   <div id="uncert-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Compara√ß√£o da incerteza expandida (fase final)</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
-    <p id="uncert-detail" style="margin:0;">Preencha as medi√ß√µes para calcular U(e).</p>
+    <p style="margin:0 0 4px;"><strong>Incerteza expandida calculada (fase final)</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="uncert-detail" style="margin:0;">Preencha as mediÁıes para calcular U(e).</p>
   </div>
 
   <div id="accept-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Crit√©rio final (|erro final| + U(e) &lt;= limite)</strong> <span id="accept-pill" class="accept-pill pending">Pendente dados</span></p>
-    <p id="accept-detail" style="margin:0;">Preencha os dados para avalia√ß√£o final.</p>
+    <p style="margin:0 0 4px;"><strong>CritÈrio final (|erro final| + U(e) &lt;= limite)</strong> <span id="accept-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="accept-detail" style="margin:0;">Preencha os dados para avaliaÁ„o final.</p>
     <p id="phase-detail" class="hint">Fase final considerada: -</p>
   </div>
 
-  <h3>Identifica√ß√£o e observa√ß√£o</h3>
+  <h3>IdentificaÁ„o e observaÁ„o</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
     <div>
       <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
@@ -191,7 +149,7 @@
 
   <div style="margin-top:12px; display:flex; gap:10px;">
     <button type="submit">Salvar</button>
-    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para valida√ß√£o</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validaÁ„o</button>
   </div>
 </form>
 
@@ -206,9 +164,7 @@
 <p>U(e) depois (m): <span id="sum-after-unc">-</span></p>
 <p>Soma depois |erro| + U(e) (m): <span id="sum-after-combined">-</span></p>
 <p>Status depois: <span id="sum-after-status">-</span></p>
-<p>Incerteza cadastrada (m): <span id="sum-unc-ref">-</span></p>
 <p>Incerteza calculada final (m): <span id="sum-unc-final">-</span></p>
-<p>Status incerteza final: <span id="sum-unc-status">-</span></p>
 <p>Soma final |erro| + U(e) (m): <span id="sum-final-combined">-</span></p>
 <p>Status final: <span id="sum-final-status">-</span></p>
 
@@ -323,14 +279,10 @@
     const afterMeanAbs = avg(afterRows.map((row) => row.abs));
 
     let criterion = getNum('id_acceptance_criterion_pct');
-    let uncertaintyRef = getNum('id_expanded_uncertainty_pct');
     let uncertaintyCalcStored = getNum('id_expanded_uncertainty_calc_pct');
 
     if (criterion == null && defaultsEl) {
       criterion = parseNum(defaultsEl.dataset.criterion);
-    }
-    if (uncertaintyRef == null && defaultsEl) {
-      uncertaintyRef = parseNum(defaultsEl.dataset.uncertRef);
     }
     if (uncertaintyCalcStored == null && defaultsEl) {
       uncertaintyCalcStored = parseNum(defaultsEl.dataset.uncertCalc);
@@ -344,7 +296,7 @@
     const afterUncertainty = calcExpandedUncertainty(afterRows, resolutionTape, resolutionInstrument, kFactor);
 
     const finalPhase = afterRows.length ? 'after' : 'before';
-    const finalPhaseLabel = finalPhase === 'after' ? 'Ap√≥s ajuste' : 'Antes do ajuste';
+    const finalPhaseLabel = finalPhase === 'after' ? 'ApÛs ajuste' : 'Antes do ajuste';
     const finalError = finalPhase === 'after' ? afterMeanAbs : beforeMeanAbs;
     let finalUncertainty = finalPhase === 'after' ? afterUncertainty : beforeUncertainty;
     if (finalUncertainty == null) {
@@ -357,16 +309,11 @@
 
     const beforeOk = (beforeCombined == null || criterion == null) ? null : beforeCombined <= criterion;
     const afterOk = (afterCombined == null || criterion == null) ? null : afterCombined <= criterion;
-    const uncertaintyOk = (finalUncertainty == null || uncertaintyRef == null) ? null : finalUncertainty <= uncertaintyRef;
-    const finalOk = (finalCombined == null || criterion == null)
-      ? null
-      : (finalCombined <= criterion && (uncertaintyOk == null || uncertaintyOk));
+    const finalOk = (finalCombined == null || criterion == null) ? null : (finalCombined <= criterion);
 
     setNum('id_level_error_before_mean', beforeMeanAbs, 3, true);
     setNum('id_level_error_after_mean', afterMeanAbs, 3, true);
-    // Campos NumberInput exigem ponto no "value". O browser exibe no formato regional.
     setNum('id_acceptance_criterion_pct', criterion, 2, false);
-    setNum('id_expanded_uncertainty_pct', uncertaintyRef, 3, false);
     setNum('id_expanded_uncertainty_calc_pct', finalUncertainty, 3, false);
 
     const phaseDetail = document.getElementById('phase-detail');
@@ -382,7 +329,7 @@
     }
 
     if (!afterRows.length) {
-      setBoxStatus('after', 'pending', 'Sem medi√ß√µes ap√≥s ajuste. Preencha os 4 pontos para comparar o resultado depois.');
+      setBoxStatus('after', 'pending', 'Sem mediÁıes apÛs ajuste. Preencha os 4 pontos para comparar o resultado depois.');
     } else if (afterCombined == null || criterion == null) {
       setBoxStatus('after', 'pending', 'Preencha VM e VL dos 4 pontos para calcular erro e U(e) depois.');
     } else {
@@ -391,16 +338,13 @@
     }
 
     if (finalUncertainty == null) {
-      setBoxStatus('uncert', 'pending', 'Preencha as medi√ß√µes da fase final para calcular a incerteza expandida.');
-    } else if (uncertaintyRef == null) {
-      setBoxStatus('uncert', 'pending', `U(e) final calculada: ${fmt(finalUncertainty, 3)} m. Sem refer√™ncia cadastrada para comparar.`);
+      setBoxStatus('uncert', 'pending', 'Preencha as mediÁıes da fase final para calcular a incerteza expandida.');
     } else {
-      const detail = `U(e) final calculada: ${fmt(finalUncertainty, 3)} m | cadastrada: ${fmt(uncertaintyRef, 3)} m.`;
-      setBoxStatus('uncert', uncertaintyOk ? 'ok' : 'fail', detail);
+      setBoxStatus('uncert', 'ok', `U(e) final calculada: ${fmt(finalUncertainty, 3)} m.`);
     }
 
     if (finalCombined == null || criterion == null) {
-      setBoxStatus('accept', 'pending', 'Preencha os dados para avalia√ß√£o final.');
+      setBoxStatus('accept', 'pending', 'Preencha os dados para avaliaÁ„o final.');
     } else {
       const detail = `Fase final: ${finalPhaseLabel} | |Erro final|: ${fmt(finalError, 3)} m | U(e): ${fmt(finalUncertainty, 3)} m | Soma: ${fmt(finalCombined, 3)} m (limite ${fmt(criterion, 2)} m).`;
       setBoxStatus('accept', finalOk ? 'ok' : 'fail', detail);
@@ -415,9 +359,7 @@
     setText('sum-after-unc', fmt(afterUncertainty, 3));
     setText('sum-after-combined', fmt(afterCombined, 3));
     setText('sum-after-status', afterRows.length ? statusLabelByBool(afterOk) : 'Sem dados');
-    setText('sum-unc-ref', fmt(uncertaintyRef, 3));
     setText('sum-unc-final', fmt(finalUncertainty, 3));
-    setText('sum-unc-status', statusLabelByBool(uncertaintyOk));
     setText('sum-final-combined', fmt(finalCombined, 3));
     setText('sum-final-status', statusLabelByBool(finalOk));
   }

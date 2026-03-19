@@ -19,8 +19,6 @@ class EquipmentFormCriteriaInline(admin.TabularInline):
         'form_type',
         'acceptance_criterion_value',
         'acceptance_criterion_unit',
-        'expanded_uncertainty_value',
-        'expanded_uncertainty_unit',
         'updated_at',
     )
     readonly_fields = ('updated_at',)
@@ -43,7 +41,6 @@ class EquipmentAdmin(admin.ModelAdmin):
         'enabled_form_types_admin',
         'revisit_interval_days',
         'acceptance_criterion_pct',
-        'expanded_uncertainty_pct',
         'deadline_status_admin',
         'next_visit_due_date_admin',
         'active',
@@ -60,7 +57,6 @@ class EquipmentAdmin(admin.ModelAdmin):
         'active',
         'revisit_interval_days',
         'acceptance_criterion_pct',
-        'expanded_uncertainty_pct',
         'notification_emails',
         'deadline_info_admin',
     )
@@ -113,13 +109,10 @@ class EquipmentFormCriteriaAdmin(admin.ModelAdmin):
         'form_type',
         'acceptance_criterion_value',
         'acceptance_criterion_unit',
-        'expanded_uncertainty_value',
-        'expanded_uncertainty_unit',
         'updated_at',
     )
     list_filter = (
         'acceptance_criterion_unit',
-        'expanded_uncertainty_unit',
         'form_type',
         'equipment__active',
     )

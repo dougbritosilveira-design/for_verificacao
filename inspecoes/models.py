@@ -456,6 +456,14 @@ class EquipmentFormCriteria(models.Model):
             f'criterio={self.acceptance_criterion_value}{self.acceptance_criterion_unit}'
         )
 
+    def save(self, *args, **kwargs):
+        # A referência de incerteza cadastrada foi descontinuada no fluxo.
+        # Mantemos apenas a unidade para exibição e cálculo de U(e) calculada.
+        self.expanded_uncertainty_value = None
+        if self.acceptance_criterion_unit:
+            self.expanded_uncertainty_unit = self.acceptance_criterion_unit
+        super().save(*args, **kwargs)
+
 
 class FormSubmission(models.Model):
     DEFAULT_ACCEPTANCE_LIMIT_PCT = Decimal('1.0')
@@ -1302,38 +1310,24 @@ class FormSubmission(models.Model):
 
     @property
     def expanded_uncertainty_is_evaluable(self):
-        return self.expanded_uncertainty_calc_value is not None and self.expanded_uncertainty_pct is not None
+        return self.expanded_uncertainty_calc_value is not None
 
     @property
     def expanded_uncertainty_ok(self):
-        if not self.expanded_uncertainty_is_evaluable:
-            return False
-        return self.expanded_uncertainty_calc_value <= self.expanded_uncertainty_pct
+        return self.expanded_uncertainty_calc_value is not None
 
     @property
     def expanded_uncertainty_status_label(self):
         if self.expanded_uncertainty_calc_value is None:
             return 'Pendente dados'
-        if self.expanded_uncertainty_pct is None:
-            return 'Sem referencia cadastrada'
-        return 'Aprovado' if self.expanded_uncertainty_ok else 'Reprovado'
+        return 'Calculada'
 
     @property
     def expanded_uncertainty_status_detail(self):
         unit = self.expanded_uncertainty_unit_label
         if self.expanded_uncertainty_calc_value is None:
             return 'Preencha as medicoes para calcular a incerteza expandida.'
-        if self.expanded_uncertainty_pct is None:
-            return 'Cadastre a incerteza expandida de referencia no equipamento para comparar.'
-        if self.expanded_uncertainty_ok:
-            return (
-                f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.2f}{unit}) '
-                f'dentro do limite cadastrado ({self.expanded_uncertainty_pct:.2f}{unit}).'
-            )
-        return (
-            f'Incerteza calculada ({self.expanded_uncertainty_calc_value:.2f}{unit}) '
-            f'acima do limite cadastrado ({self.expanded_uncertainty_pct:.2f}{unit}).'
-        )
+        return f'Incerteza expandida calculada: {self.expanded_uncertainty_calc_value:.2f}{unit}.'
 
     @property
     def acceptance_limit_pct(self):
@@ -1425,8 +1419,6 @@ class FormSubmission(models.Model):
         combined = self.acceptance_combined_value
         if combined is None:
             return False
-        if self.expanded_uncertainty_pct is not None and not self.expanded_uncertainty_ok:
-            return False
         return combined <= self.acceptance_limit_pct
 
     @property
@@ -1448,11 +1440,6 @@ class FormSubmission(models.Model):
                 'Validação final bloqueada: incerteza expandida calculada indisponível. '
                 'Preencha as medições para calcular U(e).'
             )
-        if self.expanded_uncertainty_pct is not None and not self.expanded_uncertainty_ok:
-            return (
-                'Validação final bloqueada: incerteza expandida calculada acima da referência cadastrada '
-                f'({self.expanded_uncertainty_calc_value:.2f}{unit} > {self.expanded_uncertainty_pct:.2f}{unit}).'
-            )
         if self.acceptance_ok:
             return ''
         combined = self.acceptance_combined_value
@@ -1472,13 +1459,10 @@ class FormSubmission(models.Model):
                 if configured_criteria.acceptance_criterion_value is not None:
                     self.acceptance_criterion_pct = configured_criteria.acceptance_criterion_value
                 self.acceptance_criterion_unit = configured_criteria.acceptance_criterion_unit
-                self.expanded_uncertainty_pct = configured_criteria.expanded_uncertainty_value
                 self.expanded_uncertainty_unit = configured_criteria.expanded_uncertainty_unit
             elif self._state.adding:
                 if self.acceptance_criterion_pct is None:
                     self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
-                if self.expanded_uncertainty_pct is None:
-                    self.expanded_uncertainty_pct = self.equipment.expanded_uncertainty_pct
                 self.acceptance_criterion_unit = self.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
                 self.expanded_uncertainty_unit = self.expanded_uncertainty_unit or EquipmentFormCriteria.Unit.PERCENT
         if self.is_scanner_form:

@@ -22,15 +22,14 @@
     border-radius: 8px;
     background: #fffdf7;
   }
-  .table-wrap table { min-width: 1420px; margin: 0; }
+  .table-wrap table { min-width: 1320px; margin: 0; }
   .table-wrap th, .table-wrap td { vertical-align: top; line-height: 1.35; }
 
   .col-tag { min-width: 110px; word-break: break-word; }
   .col-desc { min-width: 240px; }
   .col-local { min-width: 120px; }
   .col-periodicidade { min-width: 95px; text-align: center; }
-  .col-criterio { min-width: 110px; text-align: center; }
-  .col-incerteza { min-width: 120px; text-align: center; }
+  .col-criterio { min-width: 130px; text-align: center; }
   .col-data { min-width: 120px; }
   .col-status { min-width: 130px; }
   .col-detalhe { min-width: 280px; word-break: break-word; }
@@ -61,7 +60,7 @@
     <label>Status do prazo</label>
     <select name="deadline_status">
       <option value="">Todos</option>
-      {% for value,label in deadline_status_choices %}
+      {% for value, label in deadline_status_choices %}
         <option value="{{ value }}" {% if filters.deadline_status == value %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
@@ -85,8 +84,7 @@
       <th class="col-desc">Descrição</th>
       <th class="col-local">Local</th>
       <th class="col-periodicidade">Periodicidade (dias)</th>
-      <th class="col-criterio">Critério de aceitação (%)</th>
-      <th class="col-incerteza">Incerteza expandida (%)</th>
+      <th class="col-criterio">Critério padrão</th>
       <th class="col-data">Última visita</th>
       <th class="col-data">Próxima visita</th>
       <th class="col-status">Status prazo</th>
@@ -102,8 +100,7 @@
         <td class="col-desc">{{ e.description }}</td>
         <td class="col-local">{{ e.location }}</td>
         <td class="col-periodicidade">{{ e.revisit_interval_days|default:'-' }}</td>
-        <td class="col-criterio">{{ e.acceptance_criterion_pct|floatformat:2|default:'-' }}</td>
-        <td class="col-incerteza">{{ e.expanded_uncertainty_pct|floatformat:3|default:'-' }}</td>
+        <td class="col-criterio">{{ e.acceptance_criterion_pct|floatformat:2|default:'-' }}%</td>
         <td class="col-data">{{ e.last_visit_date|default:'-' }}</td>
         <td class="col-data">{{ e.next_visit_due_date|default:'-' }}</td>
         <td class="col-status"><span class="badge {{ e.deadline_badge_class }}">{{ e.deadline_status_label }}</span></td>
@@ -125,7 +122,7 @@
         </td>
       </tr>
     {% empty %}
-      <tr><td colspan="12">Nenhum equipamento encontrado.</td></tr>
+      <tr><td colspan="11">Nenhum equipamento encontrado.</td></tr>
     {% endfor %}
   </tbody>
 </table>
@@ -137,4 +134,3 @@
   </p>
 {% endif %}
 {% endblock %}
-

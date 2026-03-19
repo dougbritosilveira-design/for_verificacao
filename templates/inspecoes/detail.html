@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 {% load l10n %}
-{% block title %}Detalhe do formul√°rio{% endblock %}
+{% block title %}Detalhe do formul·rio{% endblock %}
 {% block content %}
-<h2>Detalhe do formul√°rio #{{ submission.id }}</h2>
+<h2>Detalhe do formul·rio #{{ submission.id }}</h2>
 <p><strong>OM:</strong> {{ submission.om_number }}</p>
-<p><strong>Formul√°rio:</strong> {{ submission.form_type_label }}</p>
+<p><strong>Formul·rio:</strong> {{ submission.form_type_label }}</p>
 <p><strong>Equipamento:</strong> {{ submission.equipment.tag }} - {{ submission.equipment.description }}</p>
 <p><strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}</p>
-<p><strong>Formul√°rio preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
+<p><strong>Formul·rio preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
 <p><strong>Criado por:</strong>
   {% if submission.created_by %}
     {{ submission.created_by.get_full_name|default:submission.created_by.username }}
@@ -20,19 +20,12 @@
 <p><strong>Status SAP:</strong> {{ submission.get_sap_status_display }}</p>
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
-<p><strong>Pr√≥xima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|date:"d/m/Y"|default:'-' }}</p>
-<p><strong>Crit√©rio de aceita√ß√£o (formul√°rio):</strong>
+<p><strong>PrÛxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|date:"d/m/Y"|default:'-' }}</p>
+<p><strong>CritÈrio de aceitaÁ„o (formul·rio):</strong>
   {% if submission.is_level_form or submission.is_scanner_form %}
     {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% else %}
     {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}{{ submission.acceptance_unit_label }}
-  {% endif %}
-</p>
-<p><strong>Incerteza expandida cadastrada:</strong>
-  {% if submission.is_level_form or submission.is_scanner_form %}
-    {{ submission.expanded_uncertainty_pct|floatformat:3|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
-  {% else %}
-    {{ submission.expanded_uncertainty_pct|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
   {% endif %}
 </p>
 <p><strong>Incerteza expandida calculada:</strong>
@@ -42,13 +35,7 @@
     {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
   {% endif %}
 </p>
-<p><strong>Status da incerteza expandida:</strong>
-  <span class="badge {% if submission.expanded_uncertainty_calc_value is None or submission.expanded_uncertainty_pct is None %}pending{% elif submission.expanded_uncertainty_ok %}ok{% else %}fail{% endif %}">
-    {{ submission.expanded_uncertainty_status_label }}
-  </span>
-  ({{ submission.expanded_uncertainty_status_detail }})
-</p>
-<p><strong>Status do erro final (|erro| &lt;= crit√©rio):</strong> {{ submission.instrument_error_status_label }}</p>
+<p><strong>Status do erro final (|erro| &lt;= critÈrio):</strong> {{ submission.instrument_error_status_label }}</p>
 <p><strong>Soma final |erro| + U(e):</strong>
   {% if submission.is_level_form or submission.is_scanner_form %}
     {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
@@ -61,7 +48,7 @@
     {{ submission.acceptance_status_label }}
   </span>
 </p>
-<p><strong>E-mails de notifica√ß√£o:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
+<p><strong>E-mails de notificaÁ„o:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
 {% if submission.sap_attachment_id %}<p><strong>ID anexo SAP:</strong> {{ submission.sap_attachment_id }}</p>{% endif %}
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
 <p><strong>Executor:</strong> {{ submission.executor_name }}</p>
@@ -73,15 +60,15 @@
       -
     {% endif %}
   </p>
-  <p><strong>N√∫mero do certificado:</strong> {{ submission.scanner_certificate_number|default:'-' }}</p>
-  <p><strong>Modelo:</strong> {{ submission.scanner_model|default:'-' }} | <strong>S√©rie:</strong> {{ submission.scanner_serial_number|default:'-' }}</p>
-  <p><strong>Laborat√≥rio/fornecedor:</strong> {{ submission.scanner_provider|default:'-' }}</p>
-  <p><strong>Data da medi√ß√£o no certificado:</strong> {{ submission.scanner_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+  <p><strong>N˙mero do certificado:</strong> {{ submission.scanner_certificate_number|default:'-' }}</p>
+  <p><strong>Modelo:</strong> {{ submission.scanner_model|default:'-' }} | <strong>SÈrie:</strong> {{ submission.scanner_serial_number|default:'-' }}</p>
+  <p><strong>LaboratÛrio/fornecedor:</strong> {{ submission.scanner_provider|default:'-' }}</p>
+  <p><strong>Data da mediÁ„o no certificado:</strong> {{ submission.scanner_measurement_date|date:"d/m/Y"|default:'-' }}</p>
 {% endif %}
 <p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
 <p><strong>Validado em:</strong> {{ submission.validated_at|date:"d/m/Y H:i"|default:'-' }}</p>
 {% if submission.validation_feedback %}
-  <p><strong>Observa√ß√£o do avaliador:</strong> {{ submission.validation_feedback }}</p>
+  <p><strong>ObservaÁ„o do avaliador:</strong> {{ submission.validation_feedback }}</p>
 {% endif %}
 
 <p>
@@ -97,7 +84,7 @@
     <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a> |
   {% endif %}
   <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
-  <a href="{% url 'inspecoes:history' %}">Voltar ao hist√≥rico</a>
+  <a href="{% url 'inspecoes:history' %}">Voltar ao histÛrico</a>
 </p>
 
 {% if portal_user_can_send_sap and portal_can_view_forms %}
@@ -113,108 +100,42 @@
       </button>
     </form>
   {% else %}
-    <p><em>Valide o formul√°rio para habilitar o envio ao SAP.</em></p>
+    <p><em>Valide o formul·rio para habilitar o envio ao SAP.</em></p>
   {% endif %}
 {% endif %}
 
 <hr>
-<h3>Medi√ß√µes (resumo)</h3>
+<h3>MediÁıes (resumo)</h3>
 {% if submission.is_level_form %}
   <ul>
     <li>Fase final considerada: {{ submission.level_final_phase_label }}</li>
-    <li>Erro m√©dio absoluto antes: {{ submission.level_before_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro mÈdio absoluto antes: {{ submission.level_before_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
     <li>U(e) antes: {{ submission.level_uncertainty_expanded_before_m|floatformat:3|localize|default:'-' }} m</li>
     <li>Soma antes |erro| + U(e): {{ submission.level_before_combined_value|floatformat:3|localize|default:'-' }} m</li>
     <li>Status antes: {% if submission.level_before_combined_ok is None %}Pendente dados{% elif submission.level_before_combined_ok %}Aprovado{% else %}Reprovado{% endif %}</li>
-    <li>Erro m√©dio absoluto depois: {{ submission.level_after_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro mÈdio absoluto depois: {{ submission.level_after_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
     <li>U(e) depois: {{ submission.level_uncertainty_expanded_after_m|floatformat:3|localize|default:'-' }} m</li>
     <li>Soma depois |erro| + U(e): {{ submission.level_after_combined_value|floatformat:3|localize|default:'-' }} m</li>
     <li>Status depois: {% if submission.level_after_combined_ok is None %}Pendente dados{% elif submission.level_after_combined_ok %}Aprovado{% else %}Reprovado{% endif %}</li>
-    <li>Erro m√©dio absoluto final: {{ submission.level_final_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro mÈdio absoluto final: {{ submission.level_final_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
     <li>U(e) calculada final: {{ submission.level_uncertainty_expanded_m|floatformat:3|localize|default:'-' }} m</li>
-    <li>Setor 1: {{ submission.sector|default:'-' }}</li>
-    <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
-    <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
-    <li>Nome 1 / Matr√≠cula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
-    <li>Nome 2 / Matr√≠cula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
-    <li>Nome 3 / Matr√≠cula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
   </ul>
-
-  <h4>Antes do ajuste</h4>
-  <table>
-    <thead>
-      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (m)</th></tr>
-    </thead>
-    <tbody>
-      {% for row in submission.level_before_rows %}
-        <tr>
-          <td>{{ row.index }}</td>
-          <td>{{ row.vm|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.vl|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.error_abs_m|floatformat:3|localize|default:'-' }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <h4>Ap√≥s ajuste</h4>
-  <table>
-    <thead>
-      <tr><th>Ponto</th><th>VM (m)</th><th>VL (m)</th><th>Erro abs (m)</th></tr>
-    </thead>
-    <tbody>
-      {% for row in submission.level_after_rows %}
-        <tr>
-          <td>{{ row.index }}</td>
-          <td>{{ row.vm|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.vl|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.error_abs_m|floatformat:3|localize|default:'-' }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
 {% elif submission.is_scanner_form %}
   <ul>
-    <li>Crit√©rio fixo: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }} mm</li>
-    <li>U(e) cadastrada: {{ submission.expanded_uncertainty_pct|floatformat:3|localize|default:'-' }} mm</li>
+    <li>CritÈrio fixo: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }} mm</li>
     <li>U(e) calculada: {{ submission.scanner_u_expanded_mm|floatformat:3|localize|default:'-' }} mm</li>
-    <li>Status crit√©rio fixo: {{ submission.scanner_status_fixed }}</li>
-    <li>Status crit√©rio fabricante: {{ submission.scanner_status_manufacturer }}</li>
+    <li>Status critÈrio fixo: {{ submission.scanner_status_fixed }}</li>
+    <li>Status critÈrio fabricante: {{ submission.scanner_status_manufacturer }}</li>
     <li>Parcela do fabricante (ppm): {{ submission.scanner_manufacturer_ppm_value|floatformat:3|localize|default:'-' }}</li>
-    <li>Fator de abrang√™ncia (k): {{ submission.scanner_k_factor_value|floatformat:3|localize|default:'-' }}</li>
-    <li>Erro m√°ximo absoluto: {{ submission.scanner_max_error_abs_mm|floatformat:3|localize|default:'-' }} mm</li>
-    <li>Setor 1: {{ submission.sector|default:'-' }}</li>
-    <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
-    <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
-    <li>Nome 1 / Matr√≠cula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
-    <li>Nome 2 / Matr√≠cula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
-    <li>Nome 3 / Matr√≠cula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
+    <li>Fator de abrangÍncia (k): {{ submission.scanner_k_factor_value|floatformat:3|localize|default:'-' }}</li>
+    <li>Erro m·ximo absoluto: {{ submission.scanner_max_error_abs_mm|floatformat:3|localize|default:'-' }} mm</li>
   </ul>
-  <table>
-    <thead>
-      <tr><th>Ponto</th><th>Alvo</th><th>Nominal (m)</th><th>Medido (m)</th><th>Erro abs (mm)</th><th>CA fabricante (mm)</th><th>Status fixo</th><th>Status fabricante</th></tr>
-    </thead>
-    <tbody>
-      {% for row in submission.scanner_points %}
-        <tr>
-          <td>{{ row.index }}</td>
-          <td>{{ row.target }}</td>
-          <td>{{ row.nominal_m|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.measured_m|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.error_abs_mm|floatformat:3|localize|default:'-' }}</td>
-          <td>{{ row.ca_manufacturer_mm|floatformat:3|localize|default:'-' }}</td>
-          <td>{% if row.ok_fixed is None %}Pendente dados{% elif row.ok_fixed %}Aprovado{% else %}Reprovado{% endif %}</td>
-          <td>{% if row.ok_manufacturer is None %}Pendente dados{% elif row.ok_manufacturer %}Aprovado{% else %}Reprovado{% endif %}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
 {% else %}
   <ul>
     <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
     <li>M1/M2/M3: {{ submission.m1|floatformat:2|localize|default:'-' }} / {{ submission.m2|floatformat:2|localize|default:'-' }} / {{ submission.m3|floatformat:2|localize|default:'-' }} (MD: {{ submission.md|floatformat:2|localize|default:'-' }})</li>
-    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}N√£o{% endif %}</li>
-    <li>Dist√¢ncia entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
+    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}N„o{% endif %}</li>
+    <li>Dist‚ncia entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
     <li>Pulsos por volta / IBM: {{ submission.pulses_per_turn_1|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_2|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_3|floatformat:2|localize|default:'-' }} (IBM: {{ submission.ibm|floatformat:2|localize|default:'-' }})</li>
     <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
     <li>IL depois: {{ submission.il_after|floatformat:2|localize|default:'-' }}</li>
@@ -223,21 +144,15 @@
     <li>L (comprimento da correia): {{ submission.belt_length|floatformat:2|localize|default:'-' }}</li>
     <li>B04 (IBM/L): {{ submission.speed_characteristic_b04|floatformat:2|localize|default:'-' }}</li>
     <li>Ic informado: {{ submission.calculated_flow_ic|floatformat:2|localize|default:'-' }}</li>
-    <li>Ic autom√°tico: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
+    <li>Ic autom·tico: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
     <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
     <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
     <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|localize|default:'-' }}</li>
     <li>U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|localize|default:'-' }}</li>
     <li>U(e) calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}</li>
     <li>Soma final |erro| + U(e) (%): {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}</li>
-    <li>Setor 1: {{ submission.sector|default:'-' }}</li>
-    <li>Setor 2: {{ submission.sector_2|default:'-' }}</li>
-    <li>Setor 3: {{ submission.sector_3|default:'-' }}</li>
-    <li>Nome 1 / Matr√≠cula 1: {{ submission.technician_1_name|default:'-' }} ({{ submission.validator_registration|default:'-' }})</li>
-    <li>Nome 2 / Matr√≠cula 2: {{ submission.technician_2_name|default:'-' }} ({{ submission.technician_2_registration|default:'-' }})</li>
-    <li>Nome 3 / Matr√≠cula 3: {{ submission.technician_3_name|default:'-' }} ({{ submission.technician_3_registration|default:'-' }})</li>
   </ul>
 {% endif %}
 
-<p><strong>Observa√ß√£o:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
+<p><strong>ObservaÁ„o:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
 {% endblock %}

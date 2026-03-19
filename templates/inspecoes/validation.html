@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}ValidaÃ§Ã£o{% endblock %}
+{% block title %}Validação{% endblock %}
 {% block extra_head %}
 <style>
   #signature-pad { border:1px solid #bfb7a3; border-radius:8px; background:#fff; touch-action:none; max-width:100%; }
@@ -19,35 +19,28 @@
 </style>
 {% endblock %}
 {% block content %}
-<h2>3. ValidaÃ§Ã£o e assinatura</h2>
-<p>Ao salvar a validaÃ§Ã£o, o sistema retorna ao histÃ³rico. O PDF e o envio ao SAP ficam disponÃ­veis separadamente no detalhe do formulÃ¡rio.</p>
+<h2>3. Validação e assinatura</h2>
+<p>Ao salvar a validação, o sistema retorna ao histórico. O PDF e o envio ao SAP ficam disponíveis separadamente no detalhe do formulário.</p>
 <ul>
-  <li>FormulÃ¡rio: {{ submission.form_type_label }}</li>
+  <li>Formulário: {{ submission.form_type_label }}</li>
   <li>Equipamento: {{ submission.equipment.tag }} - {{ submission.equipment.description }}</li>
   <li>Local: {{ submission.location_snapshot }}</li>
   <li>Data da visita: {{ submission.execution_date|date:"d/m/Y" }}</li>
   {% if submission.is_level_form %}
     <li>Fase final considerada: {{ submission.level_final_phase_label }}</li>
   {% elif submission.is_scanner_form %}
-    <li>Certificado: {% if submission.scanner_certificate_file %}<a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar anexo</a>{% else %}NÃ£o anexado{% endif %}</li>
-    <li>NÃºmero do certificado: {{ submission.scanner_certificate_number|default:'-' }}</li>
-    <li>Modelo/SÃ©rie: {{ submission.scanner_model|default:'-' }} / {{ submission.scanner_serial_number|default:'-' }}</li>
+    <li>Certificado: {% if submission.scanner_certificate_file %}<a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar anexo</a>{% else %}Não anexado{% endif %}</li>
+    <li>Número do certificado: {{ submission.scanner_certificate_number|default:'-' }}</li>
+    <li>Modelo/Série: {{ submission.scanner_model|default:'-' }} / {{ submission.scanner_serial_number|default:'-' }}</li>
   {% else %}
-    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}NÃ£o{% endif %}</li>
+    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   {% endif %}
   <li>Status atual: {{ submission.get_status_display }}</li>
-  <li>CritÃ©rio de aceitaÃ§Ã£o:
+  <li>Critério de aceitação:
     {% if submission.is_level_form or submission.is_scanner_form %}
       {{ submission.acceptance_limit_pct|floatformat:2 }}{{ submission.acceptance_unit_label }}
     {% else %}
       {{ submission.acceptance_limit_pct|floatformat:1 }}{{ submission.acceptance_unit_label }}
-    {% endif %}
-  </li>
-  <li>Incerteza expandida cadastrada:
-    {% if submission.is_level_form or submission.is_scanner_form %}
-      {{ submission.expanded_uncertainty_pct|floatformat:3|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
-    {% else %}
-      {{ submission.expanded_uncertainty_pct|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
     {% endif %}
   </li>
   <li>Incerteza expandida calculada:
@@ -58,14 +51,13 @@
     {% endif %}
   </li>
   {% if submission.is_scanner_form %}
-    <li>Status critÃ©rio fixo: {{ submission.scanner_status_fixed }}</li>
-    <li>Status critÃ©rio fabricante: {{ submission.scanner_status_manufacturer }}</li>
+    <li>Status critério fixo: {{ submission.scanner_status_fixed }}</li>
+    <li>Status critério fabricante: {{ submission.scanner_status_manufacturer }}</li>
   {% endif %}
-  <li>Status da incerteza expandida: {{ submission.expanded_uncertainty_status_label }}</li>
 </ul>
 <div class="criteria-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p>
-    <strong>CritÃ©rio final (|erro final| + U(e))</strong>:
+    <strong>Critério final (|erro final| + U(e))</strong>:
     <span class="criteria-status {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
       {{ submission.acceptance_status_label }}
     </span>
@@ -80,9 +72,7 @@
     <div><strong>Soma final |erro| + U(e):</strong> {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.acceptance_combined_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_combined_value|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
   </div>
   {% if not submission.acceptance_ok %}
-    <p style="margin-top:8px; color:#8a1d1d;">
-      {{ submission.acceptance_block_reason }}
-    </p>
+    <p style="margin-top:8px; color:#8a1d1d;">{{ submission.acceptance_block_reason }}</p>
   {% endif %}
 </div>
 <form method="post" id="validation-form">
@@ -101,7 +91,7 @@
     {{ form.confirm.label_tag }}
   </div>
   {% if form.errors %}<div style="color:#a12a2a;">{{ form.errors }}</div>{% endif %}
-  <button type="submit">Salvar validaÃ§Ã£o</button>
+  <button type="submit">Salvar validação</button>
 </form>
 <script>
 (function() {
