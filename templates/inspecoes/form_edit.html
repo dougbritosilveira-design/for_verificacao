@@ -1,23 +1,23 @@
 {% extends 'base.html' %}
-{% block title %}Formul·rio tÈcnico{% endblock %}
+{% block title %}Formul√°rio t√©cnico{% endblock %}
 {% block content %}
-<h2>2. Formul·rio tÈcnico</h2>
-<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formul·rio:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
+<h2>2. Formul√°rio t√©cnico</h2>
+<p><strong>OM:</strong> {{ submission.om_number }} | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }} | <strong>Equipamento:</strong> {{ submission.equipment.tag }} | <strong>Formul√°rio:</strong> {{ submission.form_type_label }} | <strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
 {% if submission.status == 'rework_required' %}
   <div class="accept-box fail" style="margin-top:8px;">
     <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
     <p style="margin:0;">
-      <strong>ObservaÁ„o do avaliador:</strong>
+      <strong>Observa√ß√£o do avaliador:</strong>
       {% if submission.validation_feedback %}
         {{ submission.validation_feedback|linebreaksbr }}
       {% else %}
-        Sem observaÁ„o.
+        Sem observa√ß√£o.
       {% endif %}
     </p>
   </div>
 {% endif %}
-<p><strong>Campos autom·ticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou Dist‚ncia entre marcas ser· campo manual.</p>
+<p><strong>Campos autom√°ticos:</strong> TM, MD, IBM, Comprimento da correia (L), B04, Ic e Erros (%). A troca de correia define se V ou Dist√¢ncia entre marcas ser√° campo manual.</p>
 
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
@@ -61,7 +61,7 @@
     <p>{{ form.t1.label_tag }} {{ form.t1 }}</p>
     <p>{{ form.t2.label_tag }} {{ form.t2 }}</p>
     <p>{{ form.t3.label_tag }} {{ form.t3 }}</p>
-    <p><label for="id_tm_display">TM - mÈdia do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p><label for="id_tm_display">TM - m√©dia do tempo (s)</label><input id="id_tm_display" class="auto-locked" type="text" readonly disabled value="{{ submission.tm|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
   </div>
 
   <h3>Tempo entre as marcas (s)</h3>
@@ -69,7 +69,7 @@
     <p>{{ form.m1.label_tag }} {{ form.m1 }}</p>
     <p>{{ form.m2.label_tag }} {{ form.m2 }}</p>
     <p>{{ form.m3.label_tag }} {{ form.m3 }}</p>
-    <p><label for="id_md_display">MD - mÈdia dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
+    <p><label for="id_md_display">MD - m√©dia dos tempos (s)</label><input id="id_md_display" class="auto-locked" type="text" readonly disabled value="{{ submission.md|default:'' }}" title="Campo calculado automaticamente pelo sistema."></p>
   </div>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.belt_replaced.label_tag }} {{ form.belt_replaced }}</p>
@@ -84,7 +84,7 @@
     <p>{{ form.ibm.label_tag }} {{ form.ibm }}</p>
   </div>
 
-  <h3>Par‚metros calculados (B05 / C02 / B04)</h3>
+  <h3>Par√¢metros calculados (B05 / C02 / B04)</h3>
   <div class="row">
     <p>{{ form.belt_speed_v.label_tag }} {{ form.belt_speed_v }}</p>
     <p>{{ form.belt_length.label_tag }} {{ form.belt_length }}</p>
@@ -111,7 +111,7 @@
     <p>{{ form.kor.label_tag }} {{ form.kor }}</p>
   </div>
 
-  <h3>Resultados da verificaÁ„o e ajuste</h3>
+  <h3>Resultados da verifica√ß√£o e ajuste</h3>
   <div class="row">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
     <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
@@ -120,7 +120,7 @@
     <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
   </div>
 
-  <h3>Dados do equipamento (vaz„o indicada)</h3>
+  <h3>Dados do equipamento (vaz√£o indicada)</h3>
   <div class="row">
     <p>{{ form.il_before_ti.label_tag }} {{ form.il_before_ti }}</p>
     <p>{{ form.il_before_tf.label_tag }} {{ form.il_before_tf }}</p>
@@ -128,7 +128,7 @@
     <p>{{ form.il_after_tf.label_tag }} {{ form.il_after_tf }}</p>
   </div>
 
-  <h3>IdentificaÁ„o e observaÁ„o</h3>
+  <h3>Identifica√ß√£o e observa√ß√£o</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
     <div>
       <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
@@ -150,24 +150,24 @@
 
   <div style="margin-top:12px; display:flex; gap:10px;">
     <button type="submit">Salvar</button>
-    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validaÁ„o</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para valida√ß√£o</button>
   </div>
 </form>
 
 <hr>
 <h3>Resumo calculado (MVP)</h3>
-<p>TM (mÈdia T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
-<p>MD (mÈdia M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
+<p>TM (m√©dia T1/T2/T3): {{ submission.tm|floatformat:2|default:'-' }}</p>
+<p>MD (m√©dia M1/M2/M3): {{ submission.md|floatformat:2|default:'-' }}</p>
 <p>IL antes: {{ submission.il_before|floatformat:2|default:'-' }}</p>
 <p>IL depois: {{ submission.il_after|floatformat:2|default:'-' }}</p>
 <p>Carregamento Q (P/D): {{ submission.loading_q|floatformat:2|default:'-' }}</p>
-<p>IBM autom·tico (mÈdia dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
-<p>Velocidade V autom·tica (B05 = Dist‚ncia/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
-<p>Comprimento L autom·tico (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
-<p>B04 autom·tico (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
-<p>Ic autom·tico (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
-<p>Erro antes autom·tico (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
-<p>Erro depois autom·tico (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
+<p>IBM autom√°tico (m√©dia dos pulsos): {{ submission.ibm_auto|floatformat:2|default:'-' }}</p>
+<p>Velocidade V autom√°tica (B05 = Dist√¢ncia/MD): {{ submission.belt_speed_v_auto|floatformat:4|default:'-' }}</p>
+<p>Comprimento L autom√°tico (TM x V): {{ submission.belt_length_auto|floatformat:2|default:'-' }}</p>
+<p>B04 autom√°tico (IBM/L): {{ submission.speed_characteristic_b04_auto|floatformat:2|default:'-' }}</p>
+<p>Ic autom√°tico (Q x V x 3,6): {{ submission.calculated_flow_ic_auto|floatformat:2|default:'-' }}</p>
+<p>Erro antes autom√°tico (%): {{ submission.error_before_pct_auto|floatformat:2|default:'-' }}</p>
+<p>Erro depois autom√°tico (%): {{ submission.error_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida U(e) depois (%): {{ submission.expanded_uncertainty_after_pct_auto|floatformat:2|default:'-' }}</p>
 <p>Incerteza expandida calculada (%): {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}</p>
@@ -184,7 +184,7 @@
 
 <div id="accept-box" class="accept-box {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
   <p style="margin:0 0 4px;">
-    <strong>CritÈrio final (|erro final| + U(e) <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
+    <strong>Crit√©rio final (|erro final| + U(e) <= {{ submission.acceptance_limit_pct|floatformat:1 }}%)</strong>
     <span id="accept-pill" class="accept-pill {% if submission.acceptance_ok %}ok{% elif submission.acceptance_is_evaluable %}fail{% else %}pending{% endif %}">
       {{ submission.acceptance_status_label }}
     </span>
@@ -220,7 +220,7 @@
       markDistanceInput.readOnly = !replaced;
       markDistanceInput.classList.toggle('auto-locked', !replaced);
       markDistanceInput.title = replaced
-        ? 'Informe a dist‚ncia entre marcas medida em campo.'
+        ? 'Informe a dist√¢ncia entre marcas medida em campo.'
         : 'Campo calculado automaticamente a partir de V x MD.';
     }
 
@@ -228,7 +228,7 @@
       beltSpeedInput.readOnly = replaced;
       beltSpeedInput.classList.toggle('auto-locked', replaced);
       beltSpeedInput.title = replaced
-        ? 'Campo calculado automaticamente a partir de Dist‚ncia/MD.'
+        ? 'Campo calculado automaticamente a partir de Dist√¢ncia/MD.'
         : 'Informe a velocidade lida no painel do instrumento.';
     }
   }
@@ -331,8 +331,8 @@
     if (erroFinalInput) {
       erroFinalInput.classList.add(instrumentOk ? 'erro-final-ok' : 'erro-final-fail');
       erroFinalInput.title = instrumentOk
-        ? `Erro final dentro do critÈrio (<= ${limit.toFixed(1)}%)`
-        : `Erro final fora do critÈrio (> ${limit.toFixed(1)}%)`;
+        ? `Erro final dentro do crit√©rio (<= ${limit.toFixed(1)}%)`
+        : `Erro final fora do crit√©rio (> ${limit.toFixed(1)}%)`;
     }
 
     if (uncertaintyCalc == null) {
@@ -366,8 +366,8 @@
     const aprovado = Math.abs(erroAntes) <= limit;
     erroAntesInput.classList.add(aprovado ? 'erro-inicial-ok' : 'erro-inicial-fail');
     erroAntesInput.title = aprovado
-      ? `Erro inicial dentro do critÈrio (<= ${limit.toFixed(1)}%)`
-      : `Erro inicial fora do critÈrio (> ${limit.toFixed(1)}%)`;
+      ? `Erro inicial dentro do crit√©rio (<= ${limit.toFixed(1)}%)`
+      : `Erro inicial fora do crit√©rio (> ${limit.toFixed(1)}%)`;
   }
 
   function updateUncertainty(uncertaintyCalc) {
@@ -383,7 +383,7 @@
       box.classList.add('pending');
       pill.classList.add('pending');
       pill.textContent = 'Pendente dados';
-      detail.textContent = 'Preencha as mediÁıes para calcular a incerteza expandida.';
+      detail.textContent = 'Preencha as medi√ß√µes para calcular a incerteza expandida.';
       return;
     }
 
