@@ -70,6 +70,23 @@ def _resolve_criteria_defaults(equipment, form_type):
     return acceptance_value, acceptance_unit, uncertainty_unit
 
 
+def _unpack_criteria_defaults(criteria_defaults):
+    """
+    Compatibilidade entre versões:
+    - formato novo: (acceptance_value, acceptance_unit, uncertainty_unit)
+    - formato legado: (acceptance_value, acceptance_unit, uncertainty_value, uncertainty_unit)
+    """
+    if not isinstance(criteria_defaults, (tuple, list)):
+        return Decimal('1.0'), EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
+    if len(criteria_defaults) >= 4:
+        return criteria_defaults[0], criteria_defaults[1], criteria_defaults[3]
+    if len(criteria_defaults) >= 3:
+        return criteria_defaults[0], criteria_defaults[1], criteria_defaults[2]
+    if len(criteria_defaults) == 2:
+        return criteria_defaults[0], criteria_defaults[1], EquipmentFormCriteria.Unit.PERCENT
+    return Decimal('1.0'), EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
+
+
 def _default_units_for_form(form_type):
     if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
         return EquipmentFormCriteria.Unit.METER, EquipmentFormCriteria.Unit.METER
@@ -165,9 +182,11 @@ def _sync_submission_criteria_from_config(submission):
     if not submission.equipment_id:
         return
 
-    acceptance_value, acceptance_unit, uncertainty_unit = _resolve_criteria_defaults(
+    acceptance_value, acceptance_unit, uncertainty_unit = _unpack_criteria_defaults(
+        _resolve_criteria_defaults(
         submission.equipment,
         submission.form_type,
+        )
     )
 
     update_fields = []
@@ -318,9 +337,11 @@ def selection_view(request):
         if form.is_valid():
             submission = form.save(commit=False)
             submission.created_by = request.user
-            acceptance_value, acceptance_unit, uncertainty_unit = _resolve_criteria_defaults(
+            acceptance_value, acceptance_unit, uncertainty_unit = _unpack_criteria_defaults(
+                _resolve_criteria_defaults(
                 submission.equipment,
                 submission.form_type,
+                )
             )
             submission.acceptance_criterion_pct = acceptance_value
             submission.acceptance_criterion_unit = acceptance_unit
