@@ -1,10 +1,48 @@
 ﻿from decimal import Decimal
 
 from django import forms
+from django.contrib.auth import get_user_model
 
-from .models import Equipment, FormSubmission, InspectionFormType
+from .models import Equipment, FormSubmission, InspectionFormType, PortalUserAccess
 
 DATE_INPUT_FORMATS = ['%Y-%m-%d', '%d/%m/%Y']
+
+
+def _validator_users_queryset():
+    user_ids = PortalUserAccess.objects.filter(
+        role__in=[PortalUserAccess.Role.VALIDATOR, PortalUserAccess.Role.MASTER],
+        user__is_active=True,
+    ).values_list('user_id', flat=True)
+    return (
+        get_user_model()
+        .objects.filter(pk__in=user_ids, is_active=True)
+        .select_related('portal_access')
+        .order_by('first_name', 'last_name', 'username')
+    )
+
+
+def _validator_label(user):
+    full_name = user.get_full_name().strip() or user.username
+    access = getattr(user, 'portal_access', None)
+    registration = access.registration_display if access else user.username
+    return f'{full_name} ({registration})'
+
+
+def _configure_assigned_validator_field(form_instance):
+    field = form_instance.fields.get('assigned_validator')
+    if not field:
+        return
+    field.queryset = _validator_users_queryset()
+    field.empty_label = 'Selecione o validador'
+    field.label_from_instance = _validator_label
+    field.widget.attrs.update(
+        {
+            'title': 'Selecione o usuário responsável por validar este formulário.',
+        }
+    )
+    assigned_validator_id = getattr(form_instance.instance, 'assigned_validator_id', None)
+    if assigned_validator_id and not form_instance.is_bound:
+        form_instance.initial.setdefault('assigned_validator', assigned_validator_id)
 
 
 class SelectionForm(forms.ModelForm):
@@ -90,6 +128,11 @@ class SelectionForm(forms.ModelForm):
 
 
 class TechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
     belt_replaced = forms.TypedChoiceField(
         label='Houve troca de correia?',
         choices=((False, 'Não'), (True, 'Sim')),
@@ -174,6 +217,7 @@ class TechnicalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
         self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
         self.fields['execution_date'].localize = False
         if not self.is_bound:
@@ -205,6 +249,12 @@ class TechnicalForm(forms.ModelForm):
 
 
 class LevelTechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
+
     class Meta:
         model = FormSubmission
         fields = [
@@ -272,6 +322,7 @@ class LevelTechnicalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
         self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
         self.fields['execution_date'].localize = False
 
@@ -315,6 +366,12 @@ class LevelTechnicalForm(forms.ModelForm):
 
 
 class ScannerTechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
+
     class Meta:
         model = FormSubmission
         fields = [
@@ -406,6 +463,7 @@ class ScannerTechnicalForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
         for date_field in ['execution_date', 'scanner_measurement_date', 'scanner_release_date']:
             self.fields[date_field].input_formats = DATE_INPUT_FORMATS
             self.fields[date_field].localize = False

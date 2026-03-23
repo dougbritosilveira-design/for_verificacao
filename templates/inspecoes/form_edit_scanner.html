@@ -180,6 +180,9 @@
     </div>
   </div>
   <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+    <p>{{ form.assigned_validator.label_tag }} {{ form.assigned_validator }}</p>
+  </div>
 
   <div style="margin-top:12px; display:flex; gap:10px;">
     <button type="submit">Salvar</button>

@@ -528,6 +528,14 @@ class FormSubmission(models.Model):
         related_name='created_submissions',
         verbose_name='Criado por',
     )
+    assigned_validator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_submissions_to_validate',
+        verbose_name='Validador designado',
+    )
     location_snapshot = models.CharField(max_length=255)
     om_number = models.CharField('Nº OM', max_length=50)
     execution_date = models.DateField(default=timezone.localdate)
@@ -732,6 +740,15 @@ class FormSubmission(models.Model):
         if self.form_type_id and self.form_type:
             return self.form_type.full_label
         return InspectionFormType.default_label()
+
+    @property
+    def assigned_validator_label(self):
+        if not self.assigned_validator_id or not self.assigned_validator:
+            return '-'
+        full_name = self.assigned_validator.get_full_name().strip() or self.assigned_validator.username
+        access = getattr(self.assigned_validator, 'portal_access', None)
+        registration = access.registration_display if access else self.assigned_validator.username
+        return f'{full_name} ({registration})'
 
     @property
     def form_code(self):

@@ -17,6 +17,7 @@
   {% endif %}
 </p>
 <p><strong>Status:</strong> {{ submission.get_status_display }}</p>
+<p><strong>Validador designado:</strong> {{ submission.assigned_validator_label }}</p>
 <p><strong>Status SAP:</strong> {{ submission.get_sap_status_display }}</p>
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>

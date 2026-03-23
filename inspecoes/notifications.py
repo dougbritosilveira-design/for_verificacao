@@ -87,12 +87,16 @@ def create_portal_notification(*, user, category, title, message, submission=Non
 
 
 def notify_validators_submission_pending(submission: FormSubmission, actor_user=None):
-    accesses = PortalUserAccess.objects.select_related('user').filter(
-        role__in=[PortalUserAccess.Role.VALIDATOR, PortalUserAccess.Role.MASTER],
-        user__is_active=True,
-    )
-    for access in accesses:
-        recipient = access.user
+    designated_user = submission.assigned_validator
+    if designated_user and designated_user.is_active:
+        recipients = [designated_user]
+    else:
+        accesses = PortalUserAccess.objects.select_related('user').filter(
+            role__in=[PortalUserAccess.Role.VALIDATOR, PortalUserAccess.Role.MASTER],
+            user__is_active=True,
+        )
+        recipients = [access.user for access in accesses]
+    for recipient in recipients:
         if actor_user and recipient.pk == actor_user.pk:
             continue
         title = f'Novo formulário pendente de validação - OM {submission.om_number}'
@@ -102,6 +106,7 @@ def notify_validators_submission_pending(submission: FormSubmission, actor_user=
             f'Local: {submission.location_snapshot}\n'
             f'Executor: {submission.executor_name}\n'
             f'Data da visita: {submission.execution_date}\n'
+            f'Validador designado: {submission.assigned_validator_label}\n'
         )
         dedupe_key = f'form_pending_validation:{submission.id}:{recipient.pk}:{submission.updated_at:%Y%m%d%H%M%S}'
         create_portal_notification(

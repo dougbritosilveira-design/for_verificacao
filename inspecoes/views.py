@@ -231,6 +231,23 @@ def _can_validate_forms(user):
     return access.can_validate_forms_portal
 
 
+def _is_master_user(user):
+    access = _access_for_user(user)
+    if not access:
+        return user.is_superuser
+    return access.is_master_portal
+
+
+def _can_validate_specific_submission(user, submission):
+    if not _can_validate_forms(user):
+        return False
+    if _is_master_user(user):
+        return True
+    if submission.assigned_validator_id:
+        return submission.assigned_validator_id == user.id
+    return True
+
+
 def _can_send_sap(user):
     access = _access_for_user(user)
     if not access:
@@ -372,7 +389,16 @@ def form_edit_view(request, pk):
     if not _can_edit_forms(request.user):
         return _deny_edit_access(request)
 
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
+    submission = get_object_or_404(
+        FormSubmission.objects.select_related(
+            'equipment',
+            'created_by',
+            'form_type',
+            'assigned_validator',
+            'assigned_validator__portal_access',
+        ),
+        pk=pk,
+    )
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
     if submission.status == FormSubmission.Status.PENDING_VALIDATION:
@@ -404,6 +430,8 @@ def form_edit_view(request, pk):
         if form.is_valid():
             previous_status = submission.status
             submission = form.save(commit=False)
+            selected_validator = form.cleaned_data.get('assigned_validator')
+            submission.assigned_validator = selected_validator
 
             if submission.is_scanner_form and 'parse_certificate' in request.POST:
                 submission.save()
@@ -477,6 +505,12 @@ def form_edit_view(request, pk):
                 return redirect('inspecoes:form-edit', pk=submission.pk)
 
             if 'go_validate' in request.POST and submission.status in [FormSubmission.Status.DRAFT, FormSubmission.Status.REWORK_REQUIRED]:
+                if not selected_validator:
+                    form.add_error(
+                        'assigned_validator',
+                        'Selecione o validador responsável para enviar o formulário.',
+                    )
+                    return render(request, template_name, {'form': form, 'submission': submission})
                 submission.status = FormSubmission.Status.PENDING_VALIDATION
             submission.save()
 
@@ -502,9 +536,27 @@ def form_validate_view(request, pk):
     if not _can_validate_forms(request.user):
         return _deny_validate_access(request)
 
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
+    submission = get_object_or_404(
+        FormSubmission.objects.select_related(
+            'equipment',
+            'created_by',
+            'form_type',
+            'assigned_validator',
+            'assigned_validator__portal_access',
+        ),
+        pk=pk,
+    )
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
+    if not _can_validate_specific_submission(request.user, submission):
+        designated = submission.assigned_validator_label
+        messages.warning(
+            request,
+            f'Este formulário está direcionado para validação por {designated}.',
+        )
+        if _can_view(request.user, 'history'):
+            return redirect('inspecoes:history')
+        return redirect('inspecoes:detail', pk=submission.pk)
     if submission.status in [FormSubmission.Status.APPROVED, FormSubmission.Status.SENT_TO_SAP]:
         messages.info(request, 'Formulário já validado.')
         return redirect('inspecoes:detail', pk=submission.pk)
@@ -764,7 +816,16 @@ def notifications_view(request):
 def detail_view(request, pk):
     if not (_can_view(request.user, 'forms') or _can_view(request.user, 'history')):
         return _deny_screen_access(request, 'Detalhe do formulário')
-    submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'created_by', 'form_type'), pk=pk)
+    submission = get_object_or_404(
+        FormSubmission.objects.select_related(
+            'equipment',
+            'created_by',
+            'form_type',
+            'assigned_validator',
+            'assigned_validator__portal_access',
+        ),
+        pk=pk,
+    )
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
     return render(request, 'inspecoes/detail.html', {'submission': submission})

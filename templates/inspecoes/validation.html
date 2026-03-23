@@ -36,6 +36,7 @@
     <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   {% endif %}
   <li>Status atual: {{ submission.get_status_display }}</li>
+  <li>Validador designado: {{ submission.assigned_validator_label }}</li>
   <li>Critério de aceitação:
     {% if submission.is_level_form or submission.is_scanner_form %}
       {{ submission.acceptance_limit_pct|floatformat:2 }}{{ submission.acceptance_unit_label }}
