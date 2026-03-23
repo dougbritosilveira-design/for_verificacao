@@ -40,13 +40,13 @@ class EquipmentAdmin(admin.ModelAdmin):
         'location',
         'enabled_form_types_admin',
         'revisit_interval_days',
-        'acceptance_criterion_pct',
+        'acceptance_criterion_admin',
         'deadline_status_admin',
         'next_visit_due_date_admin',
         'active',
     )
     search_fields = ('tag', 'description', 'location')
-    list_filter = ('active',)
+    list_filter = ('active', 'acceptance_criterion_unit')
     readonly_fields = ('deadline_info_admin',)
     filter_horizontal = ('inspection_form_types',)
     fields = (
@@ -57,6 +57,7 @@ class EquipmentAdmin(admin.ModelAdmin):
         'active',
         'revisit_interval_days',
         'acceptance_criterion_pct',
+        'acceptance_criterion_unit',
         'notification_emails',
         'deadline_info_admin',
     )
@@ -74,6 +75,10 @@ class EquipmentAdmin(admin.ModelAdmin):
     def enabled_form_types_admin(self, obj):
         labels = [form_type.code for form_type in obj.available_form_types]
         return ', '.join(labels) if labels else '-'
+
+    @admin.display(description='Critério padrão')
+    def acceptance_criterion_admin(self, obj):
+        return obj.acceptance_criterion_display
 
     @admin.display(description='Resumo do prazo')
     def deadline_info_admin(self, obj):

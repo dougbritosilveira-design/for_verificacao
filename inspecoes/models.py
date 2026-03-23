@@ -11,6 +11,12 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.functional import cached_property
 
+CRITERION_UNIT_CHOICES = [
+    ('%', '%'),
+    ('m', 'm'),
+    ('mm', 'mm'),
+]
+
 
 class PortalUserAccess(models.Model):
     class Role(models.TextChoices):
@@ -251,12 +257,19 @@ class Equipment(models.Model):
         help_text='Informe um ou mais e-mails separados por vírgula, ponto e vírgula ou quebra de linha.',
     )
     acceptance_criterion_pct = models.DecimalField(
-        'Critério de aceitação (%)',
+        'Critério padrão',
         max_digits=6,
         decimal_places=3,
         default=Decimal('1.0'),
         validators=[MinValueValidator(Decimal('0.001'))],
-        help_text='Limite de aceitação para o erro final (%). Ex.: 1,0',
+        help_text='Limite padrão de aceitação do equipamento. Ex.: 1,0 (%, m ou mm).',
+    )
+    acceptance_criterion_unit = models.CharField(
+        'Unidade do critério padrão',
+        max_length=8,
+        choices=CRITERION_UNIT_CHOICES,
+        default='%',
+        help_text='Unidade do critério padrão do equipamento (% , m ou mm).',
     )
     expanded_uncertainty_pct = models.DecimalField(
         'Incerteza expandida (%)',
@@ -278,6 +291,18 @@ class Equipment(models.Model):
     @property
     def available_form_types(self):
         return self.inspection_form_types.filter(active=True).order_by('code')
+
+    @property
+    def acceptance_criterion_display(self):
+        if self.acceptance_criterion_pct is None:
+            return '-'
+        unit = self.acceptance_criterion_unit or '%'
+        decimals = 2 if unit == '%' else 3
+        with localcontext() as ctx:
+            ctx.prec = 18
+            quant = Decimal('1').scaleb(-decimals)
+            value = Decimal(str(self.acceptance_criterion_pct)).quantize(quant)
+        return f'{value:.{decimals}f}{unit}'.replace('.', ',')
 
     def criteria_for_form(self, form_type):
         if not form_type:
@@ -1463,8 +1488,9 @@ class FormSubmission(models.Model):
             elif self._state.adding:
                 if self.acceptance_criterion_pct is None:
                     self.acceptance_criterion_pct = self.equipment.acceptance_criterion_pct
-                self.acceptance_criterion_unit = self.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
-                self.expanded_uncertainty_unit = self.expanded_uncertainty_unit or EquipmentFormCriteria.Unit.PERCENT
+                default_unit = self.equipment.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
+                self.acceptance_criterion_unit = self.acceptance_criterion_unit or default_unit
+                self.expanded_uncertainty_unit = self.expanded_uncertainty_unit or default_unit
         if self.is_scanner_form:
             if self.acceptance_criterion_unit == EquipmentFormCriteria.Unit.PERCENT:
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER

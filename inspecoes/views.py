@@ -56,8 +56,8 @@ def _can_access_submission_for_equipment_scope(user, submission):
 
 def _resolve_criteria_defaults(equipment, form_type):
     acceptance_value = equipment.acceptance_criterion_pct
-    acceptance_unit = EquipmentFormCriteria.Unit.PERCENT
-    uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
+    acceptance_unit = equipment.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
+    uncertainty_unit = equipment.acceptance_criterion_unit or EquipmentFormCriteria.Unit.PERCENT
     if not form_type:
         return acceptance_value, acceptance_unit, uncertainty_unit
 
@@ -87,7 +87,7 @@ def _unpack_criteria_defaults(criteria_defaults):
     return Decimal('1.0'), EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
 
 
-def _default_units_for_form(form_type):
+def _default_units_for_form(form_type, equipment=None):
     if form_type and (form_type.code or '').strip().upper().startswith(FormSubmission.FORM_CODE_LEVEL):
         return EquipmentFormCriteria.Unit.METER, EquipmentFormCriteria.Unit.METER
     if form_type:
@@ -95,7 +95,12 @@ def _default_units_for_form(form_type):
         title = (form_type.title or '').strip().upper()
         if FormSubmission.FORM_CODE_SCANNER in code or 'SCANNER' in code or 'SCANNER' in title:
             return EquipmentFormCriteria.Unit.MILLIMETER, EquipmentFormCriteria.Unit.MILLIMETER
-    return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
+    equipment_unit = (
+        equipment.acceptance_criterion_unit
+        if equipment and getattr(equipment, 'acceptance_criterion_unit', None)
+        else EquipmentFormCriteria.Unit.PERCENT
+    )
+    return equipment_unit, equipment_unit
 
 
 def _latest_submission_criteria_values(equipment, form_type):
@@ -114,7 +119,7 @@ def _ensure_equipment_form_criteria(equipment, form_type):
     if not equipment or not form_type:
         return None
 
-    default_acceptance_unit, default_uncertainty_unit = _default_units_for_form(form_type)
+    default_acceptance_unit, default_uncertainty_unit = _default_units_for_form(form_type, equipment=equipment)
     latest_acceptance, latest_uncertainty = _latest_submission_criteria_values(equipment, form_type)
     default_acceptance = (
         latest_acceptance
@@ -147,29 +152,11 @@ def _ensure_equipment_form_criteria(equipment, form_type):
     if criteria_config.expanded_uncertainty_value is None and default_uncertainty is not None:
         criteria_config.expanded_uncertainty_value = default_uncertainty
         update_fields.append('expanded_uncertainty_value')
-    if (
-        default_acceptance_unit == EquipmentFormCriteria.Unit.METER
-        and criteria_config.acceptance_criterion_unit != EquipmentFormCriteria.Unit.METER
-    ):
-        criteria_config.acceptance_criterion_unit = EquipmentFormCriteria.Unit.METER
+    if default_acceptance_unit and criteria_config.acceptance_criterion_unit != default_acceptance_unit:
+        criteria_config.acceptance_criterion_unit = default_acceptance_unit
         update_fields.append('acceptance_criterion_unit')
-    if (
-        default_uncertainty_unit == EquipmentFormCriteria.Unit.METER
-        and criteria_config.expanded_uncertainty_unit != EquipmentFormCriteria.Unit.METER
-    ):
-        criteria_config.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.METER
-        update_fields.append('expanded_uncertainty_unit')
-    if (
-        default_acceptance_unit == EquipmentFormCriteria.Unit.MILLIMETER
-        and criteria_config.acceptance_criterion_unit != EquipmentFormCriteria.Unit.MILLIMETER
-    ):
-        criteria_config.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
-        update_fields.append('acceptance_criterion_unit')
-    if (
-        default_uncertainty_unit == EquipmentFormCriteria.Unit.MILLIMETER
-        and criteria_config.expanded_uncertainty_unit != EquipmentFormCriteria.Unit.MILLIMETER
-    ):
-        criteria_config.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
+    if default_uncertainty_unit and criteria_config.expanded_uncertainty_unit != default_uncertainty_unit:
+        criteria_config.expanded_uncertainty_unit = default_uncertainty_unit
         update_fields.append('expanded_uncertainty_unit')
 
     if update_fields:
@@ -184,8 +171,8 @@ def _sync_submission_criteria_from_config(submission):
 
     acceptance_value, acceptance_unit, uncertainty_unit = _unpack_criteria_defaults(
         _resolve_criteria_defaults(
-        submission.equipment,
-        submission.form_type,
+            submission.equipment,
+            submission.form_type,
         )
     )
 
@@ -339,8 +326,8 @@ def selection_view(request):
             submission.created_by = request.user
             acceptance_value, acceptance_unit, uncertainty_unit = _unpack_criteria_defaults(
                 _resolve_criteria_defaults(
-                submission.equipment,
-                submission.form_type,
+                    submission.equipment,
+                    submission.form_type,
                 )
             )
             submission.acceptance_criterion_pct = acceptance_value
