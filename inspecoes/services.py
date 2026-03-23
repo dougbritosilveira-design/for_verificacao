@@ -207,7 +207,11 @@ def build_submission_pdf_filename(submission: FormSubmission) -> str:
     return f'{form_code}_OM_{om}_{tag}.pdf'
 
 
-def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
+def _generate_submission_report_pdf_bytes(
+    submission: FormSubmission,
+    *,
+    include_signature: bool = True,
+) -> bytes:
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.utils import ImageReader
@@ -415,40 +419,152 @@ def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
         pdf.drawString(40, y, line[:120])
         y -= line_height
 
-    signature_reader = _decode_signature_image(submission.validator_signature_data, ImageReader)
-    signature_block_height = 108
-    if y < 60 + signature_block_height:
-        pdf.showPage()
-        y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
+    if include_signature:
+        signature_reader = _decode_signature_image(submission.validator_signature_data, ImageReader)
+        signature_block_height = 108
+        if y < 60 + signature_block_height:
+            pdf.showPage()
+            y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
 
-    pdf.setFont('Helvetica-Bold', 10)
-    pdf.drawString(40, y, 'Assinatura do validador:')
-    y -= 12
-    box_w = 240
-    box_h = 90
+        pdf.setFont('Helvetica-Bold', 10)
+        pdf.drawString(40, y, 'Assinatura do validador:')
+        y -= 12
+        box_w = 240
+        box_h = 90
+        box_x = 40
+        box_y = y - box_h
+        pdf.rect(box_x, box_y, box_w, box_h)
+        if signature_reader is not None:
+            try:
+                pdf.drawImage(
+                    signature_reader,
+                    box_x + 4,
+                    box_y + 4,
+                    width=box_w - 8,
+                    height=box_h - 8,
+                    preserveAspectRatio=True,
+                    mask='auto',
+                )
+            except Exception:
+                pdf.setFont('Helvetica', 9)
+                pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Falha ao renderizar assinatura')
+        else:
+            pdf.setFont('Helvetica', 9)
+            pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Assinatura não disponível')
+
+    pdf.save()
+    return buffer.getvalue()
+
+
+def _build_scanner_signature_page_pdf_bytes(submission: FormSubmission) -> bytes | None:
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.utils import ImageReader
+        from reportlab.pdfgen import canvas
+    except Exception:
+        return None
+
+    buffer = io.BytesIO()
+    page_width, page_height = A4
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
+
+    pdf.setFont('Helvetica-Bold', 12)
+    pdf.drawString(40, y, 'Assinatura do validador (página final)')
+    y -= 20
+    pdf.setFont('Helvetica', 10)
+    pdf.drawString(40, y, f'Formulário: {submission.form_type_label}')
+    y -= 14
+    pdf.drawString(40, y, f'OM: {submission.om_number} | Equipamento: {submission.equipment.tag}')
+    y -= 14
+    pdf.drawString(40, y, f'Validador: {submission.validator_name or "-"}')
+    y -= 14
+    pdf.drawString(40, y, f'Validado em: {_format_datetime(submission.validated_at)}')
+    y -= 22
+
+    signature_reader = _decode_signature_image(submission.validator_signature_data, ImageReader)
+    box_w = 420
+    box_h = 180
     box_x = 40
-    box_y = y - box_h
+    box_y = max(80, y - box_h)
     pdf.rect(box_x, box_y, box_w, box_h)
     if signature_reader is not None:
         try:
             pdf.drawImage(
                 signature_reader,
-                box_x + 4,
-                box_y + 4,
-                width=box_w - 8,
-                height=box_h - 8,
+                box_x + 6,
+                box_y + 6,
+                width=box_w - 12,
+                height=box_h - 12,
                 preserveAspectRatio=True,
                 mask='auto',
             )
         except Exception:
-            pdf.setFont('Helvetica', 9)
-            pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Falha ao renderizar assinatura')
+            pdf.setFont('Helvetica', 10)
+            pdf.drawString(box_x + 10, box_y + (box_h / 2), 'Falha ao renderizar assinatura')
     else:
-        pdf.setFont('Helvetica', 9)
-        pdf.drawString(box_x + 8, box_y + (box_h / 2), 'Assinatura não disponível')
+        pdf.setFont('Helvetica', 10)
+        pdf.drawString(box_x + 10, box_y + (box_h / 2), 'Assinatura não disponível')
 
     pdf.save()
     return buffer.getvalue()
+
+
+def _merge_scanner_report_with_certificate(
+    report_pdf_bytes: bytes,
+    submission: FormSubmission,
+) -> bytes | None:
+    if not submission.scanner_certificate_file:
+        return None
+
+    try:
+        from pypdf import PdfReader, PdfWriter
+    except Exception:
+        return None
+
+    try:
+        writer = PdfWriter()
+
+        report_reader = PdfReader(io.BytesIO(report_pdf_bytes))
+        for page in report_reader.pages:
+            writer.add_page(page)
+
+        with submission.scanner_certificate_file.open('rb') as certificate_file:
+            cert_reader = PdfReader(certificate_file)
+            if cert_reader.is_encrypted:
+                try:
+                    cert_reader.decrypt('')
+                except Exception:
+                    pass
+            for page in cert_reader.pages:
+                writer.add_page(page)
+
+        signature_page = _build_scanner_signature_page_pdf_bytes(submission)
+        if signature_page:
+            signature_reader = PdfReader(io.BytesIO(signature_page))
+            for page in signature_reader.pages:
+                writer.add_page(page)
+
+        output = io.BytesIO()
+        writer.write(output)
+        return output.getvalue()
+    except Exception:
+        return None
+
+
+def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
+    if submission.scanner_certificate_file:
+        report_without_signature = _generate_submission_report_pdf_bytes(
+            submission,
+            include_signature=False,
+        )
+        merged_pdf = _merge_scanner_report_with_certificate(report_without_signature, submission)
+        if merged_pdf:
+            return merged_pdf
+        # fallback seguro caso merge falhe
+        return _generate_submission_report_pdf_bytes(submission, include_signature=True)
+
+    return _generate_submission_report_pdf_bytes(submission, include_signature=True)
 
 
 def upload_pdf_to_sap(submission: FormSubmission, pdf_bytes: bytes) -> Tuple[bool, str, str]:
