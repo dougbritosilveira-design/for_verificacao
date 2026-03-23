@@ -6,6 +6,7 @@ import unicodedata
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from statistics import StatisticsError, stdev
 
 
 def _normalize_ascii(text: str) -> str:
@@ -142,6 +143,44 @@ def _extract_precision_rep_mm(text: str) -> Decimal | None:
     return _to_decimal(match.group(1))
 
 
+def _extract_residual_rep_mm(text: str) -> tuple[Decimal | None, int]:
+    normalized = _normalize_ascii(text)
+    start_idx = normalized.find('RESIDUOS  COM RELACAO A CADA ALVO')
+    if start_idx < 0:
+        start_idx = normalized.find('RESIDUOS COM RELACAO A CADA ALVO')
+    if start_idx < 0:
+        start_idx = normalized.find('RESIDUOS')
+    if start_idx < 0:
+        return None, 0
+
+    section = text[start_idx : start_idx + 40000]
+    delta_r_mm_values: list[float] = []
+
+    # Linhas esperadas: índice + 8 valores numéricos (X, Y, Z, Range, ΔX, ΔY, ΔZ, ΔR).
+    for raw_line in section.splitlines():
+        line = raw_line.strip()
+        if not line or not re.match(r'^\d+\s+', line):
+            continue
+        numeric_tokens = re.findall(r'[-+]?\d+[.,]\d+', line)
+        if len(numeric_tokens) < 8:
+            continue
+        delta_r_m = _to_decimal(numeric_tokens[-1])
+        if delta_r_m is None:
+            continue
+        delta_r_mm_values.append(float(delta_r_m * Decimal('1000')))
+
+    if len(delta_r_mm_values) < 2:
+        return None, len(delta_r_mm_values)
+
+    try:
+        sample_std_mm = stdev(delta_r_mm_values)
+    except StatisticsError:
+        return None, len(delta_r_mm_values)
+
+    u_rep_mm = sample_std_mm / (len(delta_r_mm_values) ** 0.5)
+    return Decimal(str(u_rep_mm)), len(delta_r_mm_values)
+
+
 def _extract_metadata(text: str, filename: str = '') -> dict:
     data: dict = {}
 
@@ -207,6 +246,7 @@ def parse_scanner_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
     text = _extract_text_from_pdf_bytes(pdf_bytes)
     metadata = _extract_metadata(text, filename=filename)
     points, default_fixed_mm = _extract_linear_accuracy_points(text)
+    residual_rep_mm, residual_count = _extract_residual_rep_mm(text)
     precision_rep_mm = _extract_precision_rep_mm(text)
 
     values: dict = {}
@@ -215,7 +255,9 @@ def parse_scanner_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
     if default_fixed_mm is not None:
         values['acceptance_criterion_pct'] = default_fixed_mm
         values['acceptance_criterion_unit'] = 'mm'
-    if precision_rep_mm is not None:
+    if residual_rep_mm is not None:
+        values['scanner_u_rep_mm'] = residual_rep_mm
+    elif precision_rep_mm is not None:
         values['scanner_u_rep_mm'] = precision_rep_mm
 
     for index, point in enumerate(points, start=1):
@@ -227,6 +269,8 @@ def parse_scanner_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
         'values': values,
         'points_found': len(points),
         'default_fixed_mm': default_fixed_mm,
+        'residual_count': residual_count,
+        'residual_rep_mm': residual_rep_mm,
         'precision_rep_mm': precision_rep_mm,
         'raw_text': text,
     }

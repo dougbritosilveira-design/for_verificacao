@@ -38,8 +38,11 @@
   .scanner-table th, .scanner-table td { border: 1px solid #ded6c4; padding: 8px; text-align: left; vertical-align: top; }
   .scanner-table th { background:#f6f2e8; }
   .auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
-  .inline-actions { margin-top: 6px; display:flex; gap:8px; flex-wrap: wrap; align-items: center; }
-  .inline-actions a { text-decoration: none; color: #204a7a; }
+  .cert-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:6px 0 10px; }
+  .cert-controls a { text-decoration:none; color:#204a7a; }
+  .cert-current { margin: 4px 0 8px; color:#4f4a3a; }
+  .cert-current a { word-break: break-all; }
+  .cert-upload { max-width:640px; }
 </style>
 
 <form method="post" enctype="multipart/form-data" id="scanner-form">
@@ -62,15 +65,36 @@
   </div>
 
   <h3>Certificado de calibração</h3>
-  <div class="row" style="grid-template-columns:repeat(2,minmax(260px,1fr));">
-    <p>{{ form.scanner_certificate_file.label_tag }} {{ form.scanner_certificate_file }}</p>
-    <div class="inline-actions">
+  <div class="cert-upload">
+    <p>
+      <label for="{{ form.scanner_certificate_file.id_for_label }}">{{ form.scanner_certificate_file.label }}</label>
+      <input
+        type="file"
+        name="{{ form.scanner_certificate_file.html_name }}"
+        id="{{ form.scanner_certificate_file.id_for_label }}"
+        accept="application/pdf"
+      >
+      {% if submission.scanner_certificate_file %}
+        <input type="checkbox" name="{{ form.scanner_certificate_file.html_name }}-clear" id="id_scanner_certificate_file-clear" style="display:none;">
+      {% endif %}
+    </p>
+    {% if submission.scanner_certificate_file %}
+      <p class="cert-current">
+        <strong>Atualmente:</strong>
+        <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">
+          {{ submission.scanner_certificate_file.name }}
+        </a>
+      </p>
+    {% endif %}
+    <div class="cert-controls">
       <button type="submit" name="parse_certificate" value="1" class="secondary">Ler certificado e preencher</button>
       {% if submission.scanner_certificate_file %}
+        <button type="button" class="secondary" id="btn-clear-certificate">Limpar</button>
         <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado atual</a>
       {% endif %}
     </div>
   </div>
+
   <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
     <p>{{ form.scanner_certificate_number.label_tag }} {{ form.scanner_certificate_number }}</p>
     <p>{{ form.scanner_provider.label_tag }} {{ form.scanner_provider }}</p>
@@ -178,6 +202,21 @@
   const form = document.getElementById('scanner-form');
   if (!form) return;
 
+  const clearButton = document.getElementById('btn-clear-certificate');
+  if (clearButton) {
+    clearButton.addEventListener('click', function () {
+      const clearCheckbox = document.getElementById('id_scanner_certificate_file-clear');
+      if (clearCheckbox) {
+        clearCheckbox.checked = true;
+      }
+      const fileInput = document.getElementById('id_scanner_certificate_file');
+      if (fileInput) {
+        fileInput.value = '';
+      }
+      form.requestSubmit();
+    });
+  }
+
   function parseNum(raw) {
     if (raw == null) return null;
     const txt = String(raw).replace(',', '.').trim();
@@ -273,7 +312,7 @@
       else setPill(`scanner_status_manuf_${idx}`, manufacturerOk ? 'ok' : 'fail', '-');
 
       if (errorAbsMm != null) {
-        validRows.push({ idx, nominal, errorAbsMm, criterionManufacturer, fixedOk, manufacturerOk });
+        validRows.push({ nominal, errorAbsMm });
       }
       if (manufacturerOk != null) manufacturerChecks.push(manufacturerOk);
     }

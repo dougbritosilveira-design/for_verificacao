@@ -419,7 +419,17 @@ class ScannerTechnicalForm(forms.ModelForm):
         self.fields['scanner_manufacturer_ppm'].widget.attrs.update({'step': '0.1'})
         self.fields['scanner_k_factor'].widget.attrs.update({'step': '0.1'})
 
-        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct']:
+        for name in [
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_calc_pct',
+            'scanner_u_ref_mm',
+            'scanner_u_rep_mm',
+            'scanner_u_res_mm',
+            'scanner_u_setup_mm',
+            'scanner_u_env_mm',
+            'scanner_k_factor',
+            'scanner_manufacturer_ppm',
+        ]:
             self.fields[name].disabled = True
             self.fields[name].widget.attrs.update(
                 {

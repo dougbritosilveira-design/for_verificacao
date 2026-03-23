@@ -422,12 +422,33 @@ def form_edit_view(request, pk):
                     return redirect('inspecoes:form-edit', pk=submission.pk)
 
                 parsed_values = parsed.get('values', {})
+                always_update_fields = {
+                    'acceptance_criterion_pct',
+                    'acceptance_criterion_unit',
+                    'scanner_certificate_number',
+                    'scanner_provider',
+                    'scanner_model',
+                    'scanner_serial_number',
+                    'scanner_measurement_date',
+                    'scanner_release_date',
+                    'scanner_u_ref_mm',
+                    'scanner_u_rep_mm',
+                    'scanner_u_res_mm',
+                    'scanner_u_setup_mm',
+                    'scanner_u_env_mm',
+                    'scanner_k_factor',
+                    'scanner_manufacturer_ppm',
+                }
                 for field_name, value in parsed_values.items():
                     if not hasattr(submission, field_name):
                         continue
                     current_value = getattr(submission, field_name)
                     is_measurement_field = field_name.startswith('scanner_target_') or field_name.startswith('scanner_nominal_') or field_name.startswith('scanner_measured_')
-                    should_update = is_measurement_field or current_value in (None, '')
+                    should_update = (
+                        is_measurement_field
+                        or field_name in always_update_fields
+                        or current_value in (None, '')
+                    )
                     if should_update:
                         setattr(submission, field_name, value)
 
@@ -437,9 +458,15 @@ def form_edit_view(request, pk):
 
                 points_found = parsed.get('points_found', 0)
                 if points_found:
+                    residual_count = parsed.get('residual_count') or 0
+                    residual_rep_mm = parsed.get('residual_rep_mm')
+                    if residual_count >= 2 and residual_rep_mm is not None:
+                        detail_u_rep = f'u_rep calculado pelos resíduos ΔR ({residual_count} pontos): {residual_rep_mm:.3f} mm.'
+                    else:
+                        detail_u_rep = 'u_rep carregado do valor de precisão do certificado.'
                     messages.success(
                         request,
-                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
+                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente. {detail_u_rep}',
                     )
                 else:
                     messages.warning(
