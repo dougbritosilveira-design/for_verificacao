@@ -160,6 +160,7 @@ class TechnicalForm(forms.ModelForm):
             'technician_1_name',
             'technician_2_name', 'technician_2_registration',
             'technician_3_name', 'technician_3_registration',
+            'standards_used',
             'observation',
         ]
         labels = {
@@ -208,10 +209,12 @@ class TechnicalForm(forms.ModelForm):
             'technician_2_registration': 'Matrícula 2',
             'technician_3_name': 'Nome 3',
             'technician_3_registration': 'Matrícula 3',
+            'standards_used': 'Padrões utilizados',
             'observation': 'Observação',
         }
         widgets = {
             'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'standards_used': forms.Textarea(attrs={'rows': 2}),
             'observation': forms.Textarea(attrs={'rows': 4}),
         }
 
@@ -278,6 +281,7 @@ class LevelTechnicalForm(forms.ModelForm):
             'technician_1_name',
             'technician_2_name', 'technician_2_registration',
             'technician_3_name', 'technician_3_registration',
+            'standards_used',
             'observation',
         ]
         labels = {
@@ -313,10 +317,12 @@ class LevelTechnicalForm(forms.ModelForm):
             'technician_2_registration': 'Matrícula 2',
             'technician_3_name': 'Nome 3',
             'technician_3_registration': 'Matrícula 3',
+            'standards_used': 'Padrões utilizados',
             'observation': 'Observação',
         }
         widgets = {
             'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'standards_used': forms.Textarea(attrs={'rows': 2}),
             'observation': forms.Textarea(attrs={'rows': 4}),
         }
 

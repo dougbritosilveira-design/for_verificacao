@@ -53,6 +53,7 @@
 {% if submission.sap_attachment_id %}<p><strong>ID anexo SAP:</strong> {{ submission.sap_attachment_id }}</p>{% endif %}
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
 <p><strong>Executor:</strong> {{ submission.executor_name }}</p>
+<p><strong>Padrões utilizados:</strong> {{ submission.standards_used|default:'-' }}</p>
 {% if submission.is_scanner_form %}
   <p><strong>Certificado anexado:</strong>
     {% if submission.scanner_certificate_file %}
