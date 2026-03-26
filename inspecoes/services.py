@@ -250,7 +250,60 @@ def _generate_submission_report_pdf_bytes(
     acceptance_unit = submission.acceptance_unit_label or '%'
     uncertainty_unit = submission.expanded_uncertainty_unit_label or acceptance_unit
 
-    if submission.is_scanner_form:
+    if submission.is_flow_form:
+        lines = [
+            f'{form_code} - {form_title}',
+            f'Data da visita: {submission.execution_date}',
+            f'OM: {submission.om_number}',
+            f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
+            f'Local: {submission.location_snapshot}',
+            f'Executor: {submission.executor_name}',
+            f'Certificado: {Path(submission.flow_certificate_file.name).name if submission.flow_certificate_file else "-"}',
+            f'Número do certificado: {submission.flow_certificate_number or "-"}',
+            f'TAG no certificado: {submission.flow_tag_on_certificate or "-"}',
+            f'Modelo medidor: {submission.flow_meter_model or "-"}',
+            f'Série medidor: {submission.flow_meter_serial_number or "-"}',
+            f'Modelo conversor: {submission.flow_converter_model or "-"}',
+            f'Série conversor: {submission.flow_converter_serial_number or "-"}',
+            f'Laboratório/fornecedor: {submission.flow_provider or "-"}',
+            f'Data da calibração no certificado: {submission.flow_measurement_date or "-"}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
+            f'Incerteza calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
+            f'Status da incerteza: {uncertainty_status}',
+            f'Erro máximo absoluto ({acceptance_unit}): {_format_num(submission.flow_max_error_abs_pct, 4)}',
+            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 4)}',
+            f'Status final: {combined_status}',
+            '',
+            'Pontos avaliados (calibração/indicado/referência/tendência/U(e)):',
+        ]
+        for row in submission.flow_points:
+            lines.append(
+                f'Ponto {row["index"]} ({row["target"]}): '
+                f'Cal={_format_num(row["calibration_m3h"], 4)} m3/h | '
+                f'Ind={_format_num(row["indicated_m3h"], 4)} m3/h | '
+                f'Ref={_format_num(row["reference_m3h"], 4)} m3/h | '
+                f'Tend={_format_num(row["tendency_pct"], 4)}% | '
+                f'U={_format_num(row["uncertainty_pct"], 4)}% | '
+                f'Soma={_format_num(row["combined_pct"], 4)}% | '
+                f'Status={"OK" if row["ok"] else ("N/A" if row["ok"] is None else "NOK")}'
+            )
+        lines.extend(
+            [
+                '',
+                f'Setor 1: {submission.sector or ""}',
+                f'Setor 2: {submission.sector_2 or ""}',
+                f'Setor 3: {submission.sector_3 or ""}',
+                f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
+                f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
+                f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
+                f'Padrões utilizados: {submission.standards_used or ""}',
+                f'Observação: {submission.observation or ""}',
+                '',
+                f'Validado por: {submission.validator_name or "-"}',
+                f'Validado em: {_format_datetime(submission.validated_at)}',
+            ]
+        )
+    elif submission.is_scanner_form:
         lines = [
             f'{form_code} - {form_title}',
             f'Data da visita: {submission.execution_date}',
@@ -516,7 +569,8 @@ def _merge_scanner_report_with_certificate(
     report_pdf_bytes: bytes,
     submission: FormSubmission,
 ) -> bytes | None:
-    if not submission.scanner_certificate_file:
+    certificate_file_ref = submission.attached_certificate_file
+    if not certificate_file_ref:
         return None
 
     try:
@@ -531,7 +585,7 @@ def _merge_scanner_report_with_certificate(
         for page in report_reader.pages:
             writer.add_page(page)
 
-        with submission.scanner_certificate_file.open('rb') as certificate_file:
+        with certificate_file_ref.open('rb') as certificate_file:
             cert_reader = PdfReader(certificate_file)
             if cert_reader.is_encrypted:
                 try:
@@ -555,7 +609,7 @@ def _merge_scanner_report_with_certificate(
 
 
 def generate_submission_pdf_bytes(submission: FormSubmission) -> bytes:
-    if submission.scanner_certificate_file:
+    if submission.attached_certificate_file:
         report_without_signature = _generate_submission_report_pdf_bytes(
             submission,
             include_signature=False,

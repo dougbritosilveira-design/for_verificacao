@@ -44,6 +44,12 @@
     <li>Certificado: {% if submission.scanner_certificate_file %}<a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar anexo</a>{% else %}Não anexado{% endif %}</li>
     <li>Número do certificado: {{ submission.scanner_certificate_number|default:'-' }}</li>
     <li>Modelo/Série: {{ submission.scanner_model|default:'-' }} / {{ submission.scanner_serial_number|default:'-' }}</li>
+  {% elif submission.is_flow_form %}
+    <li>Certificado: {% if submission.flow_certificate_file %}<a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar anexo</a>{% else %}Não anexado{% endif %}</li>
+    <li>Número do certificado: {{ submission.flow_certificate_number|default:'-' }}</li>
+    <li>TAG no certificado: {{ submission.flow_tag_on_certificate|default:'-' }}</li>
+    <li>Modelo/Série medidor: {{ submission.flow_meter_model|default:'-' }} / {{ submission.flow_meter_serial_number|default:'-' }}</li>
+    <li>Modelo/Série conversor: {{ submission.flow_converter_model|default:'-' }} / {{ submission.flow_converter_serial_number|default:'-' }}</li>
   {% else %}
     <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   {% endif %}
@@ -60,14 +66,14 @@
     ({{ submission.validation_deadline_detail }})
   </li>
   <li>Critério de aceitação:
-    {% if submission.is_level_form or submission.is_scanner_form %}
+    {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}
       {{ submission.acceptance_limit_pct|floatformat:2 }}{{ submission.acceptance_unit_label }}
     {% else %}
       {{ submission.acceptance_limit_pct|floatformat:1 }}{{ submission.acceptance_unit_label }}
     {% endif %}
   </li>
   <li>Incerteza expandida calculada:
-    {% if submission.is_level_form or submission.is_scanner_form %}
+    {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}
       {{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
     {% else %}
       {{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
@@ -86,13 +92,13 @@
     </span>
   </p>
   <div class="criteria-grid">
-    <div><strong>Limite:</strong> soma final <= {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.acceptance_limit_pct|floatformat:2 }}{% else %}{{ submission.acceptance_limit_pct|floatformat:1 }}{% endif %}{{ submission.acceptance_unit_label }}</div>
-    <div><strong>Erro antes ({{ submission.acceptance_unit_label }}):</strong> {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.acceptance_error_before_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_before_value|floatformat:2|default:'-' }}{% endif %}</div>
-    <div><strong>Erro final ({{ submission.acceptance_unit_label }}):</strong> {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.acceptance_error_after_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_after_value|floatformat:2|default:'-' }}{% endif %}</div>
-    <div><strong>Valor absoluto do erro final:</strong> {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.acceptance_error_after_abs|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
+    <div><strong>Limite:</strong> soma final <= {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}{{ submission.acceptance_limit_pct|floatformat:2 }}{% else %}{{ submission.acceptance_limit_pct|floatformat:1 }}{% endif %}{{ submission.acceptance_unit_label }}</div>
+    <div><strong>Erro antes ({{ submission.acceptance_unit_label }}):</strong> {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}{{ submission.acceptance_error_before_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_before_value|floatformat:2|default:'-' }}{% endif %}</div>
+    <div><strong>Erro final ({{ submission.acceptance_unit_label }}):</strong> {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}{{ submission.acceptance_error_after_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_after_value|floatformat:2|default:'-' }}{% endif %}</div>
+    <div><strong>Valor absoluto do erro final:</strong> {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}{{ submission.acceptance_error_after_abs|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_error_after_abs|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
     <div><strong>Status do erro final:</strong> {{ submission.instrument_error_status_label }}</div>
-    <div><strong>Incerteza calculada:</strong> {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}{% else %}{{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{% endif %}{{ submission.expanded_uncertainty_unit_label }}</div>
-    <div><strong>Soma final |erro| + U(e):</strong> {% if submission.is_level_form or submission.is_scanner_form %}{{ submission.acceptance_combined_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_combined_value|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
+    <div><strong>Incerteza calculada:</strong> {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}{{ submission.expanded_uncertainty_calc_value|floatformat:3|default:'-' }}{% else %}{{ submission.expanded_uncertainty_calc_value|floatformat:2|default:'-' }}{% endif %}{{ submission.expanded_uncertainty_unit_label }}</div>
+    <div><strong>Soma final |erro| + U(e):</strong> {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}{{ submission.acceptance_combined_value|floatformat:3|default:'-' }}{% else %}{{ submission.acceptance_combined_value|floatformat:2|default:'-' }}{% endif %}{{ submission.acceptance_unit_label }}</div>
   </div>
   {% if not submission.acceptance_ok %}
     <p style="margin-top:8px; color:#8a1d1d;">{{ submission.acceptance_block_reason }}</p>

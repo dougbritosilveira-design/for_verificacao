@@ -521,6 +521,149 @@ class ScannerTechnicalForm(forms.ModelForm):
             self.initial.setdefault('scanner_u_env_mm', Decimal('0.000'))
 
 
+class FlowTechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
+
+    class Meta:
+        model = FormSubmission
+        fields = [
+            'om_number',
+            'execution_date',
+            'flow_certificate_file',
+            'flow_certificate_number',
+            'flow_provider',
+            'flow_tag_on_certificate',
+            'flow_meter_model',
+            'flow_meter_serial_number',
+            'flow_converter_model',
+            'flow_converter_serial_number',
+            'flow_measurement_date',
+            'flow_release_date',
+            'flow_calibration_range_min_m3h',
+            'flow_calibration_range_max_m3h',
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_calc_pct',
+            'flow_point_label_1', 'flow_calibration_1_m3h', 'flow_indicated_1_m3h', 'flow_reference_1_m3h', 'flow_tendency_1_pct', 'flow_uncertainty_1_pct', 'flow_k_1',
+            'flow_point_label_2', 'flow_calibration_2_m3h', 'flow_indicated_2_m3h', 'flow_reference_2_m3h', 'flow_tendency_2_pct', 'flow_uncertainty_2_pct', 'flow_k_2',
+            'flow_point_label_3', 'flow_calibration_3_m3h', 'flow_indicated_3_m3h', 'flow_reference_3_m3h', 'flow_tendency_3_pct', 'flow_uncertainty_3_pct', 'flow_k_3',
+            'flow_point_label_4', 'flow_calibration_4_m3h', 'flow_indicated_4_m3h', 'flow_reference_4_m3h', 'flow_tendency_4_pct', 'flow_uncertainty_4_pct', 'flow_k_4',
+            'flow_point_label_5', 'flow_calibration_5_m3h', 'flow_indicated_5_m3h', 'flow_reference_5_m3h', 'flow_tendency_5_pct', 'flow_uncertainty_5_pct', 'flow_k_5',
+            'flow_point_label_6', 'flow_calibration_6_m3h', 'flow_indicated_6_m3h', 'flow_reference_6_m3h', 'flow_tendency_6_pct', 'flow_uncertainty_6_pct', 'flow_k_6',
+            'sector', 'sector_2', 'sector_3',
+            'validator_registration',
+            'technician_1_name',
+            'technician_2_name', 'technician_2_registration',
+            'technician_3_name', 'technician_3_registration',
+            'standards_used',
+            'observation',
+        ]
+        labels = {
+            'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
+            'flow_certificate_file': 'Certificado de calibração (PDF)',
+            'flow_certificate_number': 'Número do certificado',
+            'flow_provider': 'Laboratório / fornecedor',
+            'flow_tag_on_certificate': 'TAG no certificado',
+            'flow_meter_model': 'Modelo do medidor',
+            'flow_meter_serial_number': 'Série do medidor',
+            'flow_converter_model': 'Modelo do conversor',
+            'flow_converter_serial_number': 'Série do conversor',
+            'flow_measurement_date': 'Data da calibração',
+            'flow_release_date': 'Data de emissão do certificado',
+            'flow_calibration_range_min_m3h': 'Faixa calibrada mínima (m³/h)',
+            'flow_calibration_range_max_m3h': 'Faixa calibrada máxima (m³/h)',
+            'acceptance_criterion_pct': 'Critério de aceitação (%)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (%)',
+            'flow_point_label_1': 'Ponto 1',
+            'flow_calibration_1_m3h': 'Vazão de calibração 1 (m³/h)',
+            'flow_indicated_1_m3h': 'Valor indicado 1 (m³/h)',
+            'flow_reference_1_m3h': 'Valor de referência 1 (m³/h)',
+            'flow_tendency_1_pct': 'Tendência 1 (%)',
+            'flow_uncertainty_1_pct': 'U(e) 1 (%)',
+            'flow_k_1': 'k 1',
+            'flow_point_label_2': 'Ponto 2',
+            'flow_calibration_2_m3h': 'Vazão de calibração 2 (m³/h)',
+            'flow_indicated_2_m3h': 'Valor indicado 2 (m³/h)',
+            'flow_reference_2_m3h': 'Valor de referência 2 (m³/h)',
+            'flow_tendency_2_pct': 'Tendência 2 (%)',
+            'flow_uncertainty_2_pct': 'U(e) 2 (%)',
+            'flow_k_2': 'k 2',
+            'flow_point_label_3': 'Ponto 3',
+            'flow_calibration_3_m3h': 'Vazão de calibração 3 (m³/h)',
+            'flow_indicated_3_m3h': 'Valor indicado 3 (m³/h)',
+            'flow_reference_3_m3h': 'Valor de referência 3 (m³/h)',
+            'flow_tendency_3_pct': 'Tendência 3 (%)',
+            'flow_uncertainty_3_pct': 'U(e) 3 (%)',
+            'flow_k_3': 'k 3',
+            'flow_point_label_4': 'Ponto 4',
+            'flow_calibration_4_m3h': 'Vazão de calibração 4 (m³/h)',
+            'flow_indicated_4_m3h': 'Valor indicado 4 (m³/h)',
+            'flow_reference_4_m3h': 'Valor de referência 4 (m³/h)',
+            'flow_tendency_4_pct': 'Tendência 4 (%)',
+            'flow_uncertainty_4_pct': 'U(e) 4 (%)',
+            'flow_k_4': 'k 4',
+            'flow_point_label_5': 'Ponto 5',
+            'flow_calibration_5_m3h': 'Vazão de calibração 5 (m³/h)',
+            'flow_indicated_5_m3h': 'Valor indicado 5 (m³/h)',
+            'flow_reference_5_m3h': 'Valor de referência 5 (m³/h)',
+            'flow_tendency_5_pct': 'Tendência 5 (%)',
+            'flow_uncertainty_5_pct': 'U(e) 5 (%)',
+            'flow_k_5': 'k 5',
+            'flow_point_label_6': 'Ponto 6',
+            'flow_calibration_6_m3h': 'Vazão de calibração 6 (m³/h)',
+            'flow_indicated_6_m3h': 'Valor indicado 6 (m³/h)',
+            'flow_reference_6_m3h': 'Valor de referência 6 (m³/h)',
+            'flow_tendency_6_pct': 'Tendência 6 (%)',
+            'flow_uncertainty_6_pct': 'U(e) 6 (%)',
+            'flow_k_6': 'k 6',
+            'sector': 'Setor 1',
+            'sector_2': 'Setor 2',
+            'sector_3': 'Setor 3',
+            'validator_registration': 'Matrícula 1',
+            'technician_1_name': 'Nome 1',
+            'technician_2_name': 'Nome 2',
+            'technician_2_registration': 'Matrícula 2',
+            'technician_3_name': 'Nome 3',
+            'technician_3_registration': 'Matrícula 3',
+            'standards_used': 'Padrões utilizados',
+            'observation': 'Observação',
+        }
+        widgets = {
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'flow_measurement_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'flow_release_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'standards_used': forms.Textarea(attrs={'rows': 2}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
+        for date_field in ['execution_date', 'flow_measurement_date', 'flow_release_date']:
+            self.fields[date_field].input_formats = DATE_INPUT_FORMATS
+            self.fields[date_field].localize = False
+
+        for field in self.fields.values():
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
+
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct']:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo carregado/calculado automaticamente pelo sistema.',
+                }
+            )
+
+
 class ValidationForm(forms.Form):
     class DecisionChoices:
         APPROVE = 'approve'

@@ -30,14 +30,14 @@
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
 <p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|date:"d/m/Y"|default:'-' }}</p>
 <p><strong>Critério de aceitação (formulário):</strong>
-  {% if submission.is_level_form or submission.is_scanner_form %}
+  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}
     {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% else %}
     {{ submission.acceptance_criterion_pct|floatformat:1|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% endif %}
 </p>
 <p><strong>Incerteza expandida calculada:</strong>
-  {% if submission.is_level_form or submission.is_scanner_form %}
+  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}
     {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
   {% else %}
     {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
@@ -45,7 +45,7 @@
 </p>
 <p><strong>Status do erro final (|erro| &lt;= critério):</strong> {{ submission.instrument_error_status_label }}</p>
 <p><strong>Soma final |erro| + U(e):</strong>
-  {% if submission.is_level_form or submission.is_scanner_form %}
+  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}
     {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% else %}
     {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
@@ -61,18 +61,27 @@
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
 <p><strong>Executor:</strong> {{ submission.executor_name }}</p>
 <p><strong>Padrões utilizados:</strong> {{ submission.standards_used|default:'-' }}</p>
-{% if submission.is_scanner_form %}
+{% if submission.is_scanner_form or submission.is_flow_form %}
   <p><strong>Certificado anexado:</strong>
-    {% if submission.scanner_certificate_file %}
+    {% if submission.attached_certificate_file %}
       <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a>
     {% else %}
       -
     {% endif %}
   </p>
-  <p><strong>Número do certificado:</strong> {{ submission.scanner_certificate_number|default:'-' }}</p>
-  <p><strong>Modelo:</strong> {{ submission.scanner_model|default:'-' }} | <strong>Série:</strong> {{ submission.scanner_serial_number|default:'-' }}</p>
-  <p><strong>Laboratório/fornecedor:</strong> {{ submission.scanner_provider|default:'-' }}</p>
-  <p><strong>Data da medição no certificado:</strong> {{ submission.scanner_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+  {% if submission.is_scanner_form %}
+    <p><strong>Número do certificado:</strong> {{ submission.scanner_certificate_number|default:'-' }}</p>
+    <p><strong>Modelo:</strong> {{ submission.scanner_model|default:'-' }} | <strong>Série:</strong> {{ submission.scanner_serial_number|default:'-' }}</p>
+    <p><strong>Laboratório/fornecedor:</strong> {{ submission.scanner_provider|default:'-' }}</p>
+    <p><strong>Data da medição no certificado:</strong> {{ submission.scanner_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+  {% elif submission.is_flow_form %}
+    <p><strong>Número do certificado:</strong> {{ submission.flow_certificate_number|default:'-' }}</p>
+    <p><strong>TAG no certificado:</strong> {{ submission.flow_tag_on_certificate|default:'-' }}</p>
+    <p><strong>Modelo medidor:</strong> {{ submission.flow_meter_model|default:'-' }} | <strong>Série:</strong> {{ submission.flow_meter_serial_number|default:'-' }}</p>
+    <p><strong>Modelo conversor:</strong> {{ submission.flow_converter_model|default:'-' }} | <strong>Série:</strong> {{ submission.flow_converter_serial_number|default:'-' }}</p>
+    <p><strong>Laboratório/fornecedor:</strong> {{ submission.flow_provider|default:'-' }}</p>
+    <p><strong>Data da calibração no certificado:</strong> {{ submission.flow_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+  {% endif %}
 {% endif %}
 <p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
 <p><strong>Validado em:</strong> {{ submission.validated_at|date:"d/m/Y H:i"|default:'-' }}</p>
@@ -89,7 +98,7 @@
   {% if portal_user_can_validate_forms and portal_can_view_forms %}
     <a href="{% url 'inspecoes:form-validate' submission.pk %}">Validar</a> |
   {% endif %}
-  {% if submission.is_scanner_form and submission.scanner_certificate_file %}
+  {% if (submission.is_scanner_form and submission.scanner_certificate_file) or (submission.is_flow_form and submission.flow_certificate_file) %}
     <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a> |
   {% endif %}
   <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
@@ -138,6 +147,15 @@
     <li>Parcela do fabricante (ppm): {{ submission.scanner_manufacturer_ppm_value|floatformat:3|localize|default:'-' }}</li>
     <li>Fator de abrangência (k): {{ submission.scanner_k_factor_value|floatformat:3|localize|default:'-' }}</li>
     <li>Erro máximo absoluto: {{ submission.scanner_max_error_abs_mm|floatformat:3|localize|default:'-' }} mm</li>
+  </ul>
+
+{% elif submission.is_flow_form %}
+  <ul>
+    <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }}%</li>
+    <li>Erro máximo absoluto: {{ submission.flow_max_error_abs_pct|floatformat:4|localize|default:'-' }}%</li>
+    <li>U(e) final (maior U do certificado): {{ submission.flow_max_uncertainty_pct|floatformat:4|localize|default:'-' }}%</li>
+    <li>Soma final |erro| + U(e): {{ submission.acceptance_combined_value|floatformat:4|localize|default:'-' }}%</li>
+    <li>Status final: {{ submission.acceptance_status_label }}</li>
   </ul>
 {% else %}
   <ul>

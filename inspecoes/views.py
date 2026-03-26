@@ -9,8 +9,15 @@ from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .certificate_parser import parse_scanner_certificate
-from .forms import LevelTechnicalForm, ScannerTechnicalForm, SelectionForm, TechnicalForm, ValidationForm
+from .certificate_parser import parse_flow_certificate, parse_scanner_certificate
+from .forms import (
+    FlowTechnicalForm,
+    LevelTechnicalForm,
+    ScannerTechnicalForm,
+    SelectionForm,
+    TechnicalForm,
+    ValidationForm,
+)
 from .models import Equipment, EquipmentFormCriteria, FormSubmission, PortalNotification, PortalUserAccess
 from .notifications import (
     notify_technician_validation_result,
@@ -95,6 +102,13 @@ def _default_units_for_form(form_type, equipment=None):
         title = (form_type.title or '').strip().upper()
         if FormSubmission.FORM_CODE_SCANNER in code or 'SCANNER' in code or 'SCANNER' in title:
             return EquipmentFormCriteria.Unit.MILLIMETER, EquipmentFormCriteria.Unit.MILLIMETER
+        if (
+            FormSubmission.FORM_CODE_FLOW in code
+            or 'VAZAO' in code
+            or 'VAZAO' in title
+            or 'MEDIDOR DE VAZAO' in title
+        ):
+            return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
     equipment_unit = (
         equipment.acceptance_criterion_unit
         if equipment and getattr(equipment, 'acceptance_criterion_unit', None)
@@ -415,6 +429,9 @@ def form_edit_view(request, pk):
     if submission.is_scanner_form:
         form_class = ScannerTechnicalForm
         template_name = 'inspecoes/form_edit_scanner.html'
+    elif submission.is_flow_form:
+        form_class = FlowTechnicalForm
+        template_name = 'inspecoes/form_edit_flow.html'
     elif submission.is_level_form:
         form_class = LevelTechnicalForm
         template_name = 'inspecoes/form_edit_level.html'
@@ -423,7 +440,7 @@ def form_edit_view(request, pk):
         template_name = 'inspecoes/form_edit.html'
 
     if request.method == 'POST':
-        if submission.is_scanner_form:
+        if submission.is_scanner_form or submission.is_flow_form:
             form = form_class(request.POST, request.FILES, instance=submission)
         else:
             form = form_class(request.POST, instance=submission)
@@ -495,6 +512,67 @@ def form_edit_view(request, pk):
                     messages.success(
                         request,
                         f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente. {detail_u_rep}',
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        'Certificado lido, mas não foram encontrados pontos de medição automáticos. '
+                        'Preencha os pontos manualmente.',
+                    )
+                return redirect('inspecoes:form-edit', pk=submission.pk)
+
+            if submission.is_flow_form and 'parse_certificate' in request.POST:
+                submission.save()
+                if not submission.flow_certificate_file:
+                    messages.warning(request, 'Anexe o certificado em PDF para fazer a leitura automática.')
+                    return redirect('inspecoes:form-edit', pk=submission.pk)
+
+                try:
+                    with submission.flow_certificate_file.open('rb') as certificate_file:
+                        parsed = parse_flow_certificate(
+                            certificate_file.read(),
+                            filename=Path(submission.flow_certificate_file.name).name,
+                        )
+                except Exception as exc:
+                    messages.error(request, f'Não foi possível ler o certificado: {exc}')
+                    return redirect('inspecoes:form-edit', pk=submission.pk)
+
+                parsed_values = parsed.get('values', {})
+                always_update_fields = {
+                    'flow_certificate_number',
+                    'flow_provider',
+                    'flow_tag_on_certificate',
+                    'flow_meter_model',
+                    'flow_meter_serial_number',
+                    'flow_converter_model',
+                    'flow_converter_serial_number',
+                    'flow_measurement_date',
+                    'flow_release_date',
+                    'flow_calibration_range_min_m3h',
+                    'flow_calibration_range_max_m3h',
+                }
+                for field_name, value in parsed_values.items():
+                    if not hasattr(submission, field_name):
+                        continue
+                    current_value = getattr(submission, field_name)
+                    is_measurement_field = field_name.startswith('flow_point_label_') or field_name.startswith('flow_calibration_') or field_name.startswith('flow_indicated_') or field_name.startswith('flow_reference_') or field_name.startswith('flow_tendency_') or field_name.startswith('flow_uncertainty_') or field_name.startswith('flow_k_')
+                    should_update = (
+                        is_measurement_field
+                        or field_name in always_update_fields
+                        or current_value in (None, '')
+                    )
+                    if should_update:
+                        setattr(submission, field_name, value)
+
+                submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
+                submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
+                submission.save()
+
+                points_found = parsed.get('points_found', 0)
+                if points_found:
+                    messages.success(
+                        request,
+                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
                     )
                 else:
                     messages.warning(
@@ -656,15 +734,17 @@ def form_download_certificate_view(request, pk):
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
-    if not submission.is_scanner_form:
+    if not (submission.is_scanner_form or submission.is_flow_form):
         messages.warning(request, 'Este formulário não possui certificado vinculado.')
         return redirect('inspecoes:detail', pk=submission.pk)
-    if not submission.scanner_certificate_file:
+
+    certificate_file = submission.attached_certificate_file
+    if not certificate_file:
         messages.warning(request, 'Nenhum certificado anexado neste formulário.')
         return redirect('inspecoes:detail', pk=submission.pk)
 
-    filename = Path(submission.scanner_certificate_file.name).name or f'certificado_formulario_{submission.pk}.pdf'
-    response = FileResponse(submission.scanner_certificate_file.open('rb'), content_type='application/pdf')
+    filename = Path(certificate_file.name).name or f'certificado_formulario_{submission.pk}.pdf'
+    response = FileResponse(certificate_file.open('rb'), content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
 

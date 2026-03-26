@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% block title %}Formulário técnico - Medidor de vazão{% endblock %}
+{% block content %}
+<h2>2. Formulário técnico</h2>
+<p>
+  <strong>OM:</strong> {{ submission.om_number }}
+  | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}
+  | <strong>Equipamento:</strong> {{ submission.equipment.tag }}
+  | <strong>Formulário:</strong> {{ submission.form_type_label }}
+  | <strong>Local:</strong> {{ submission.location_snapshot }}
+</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
+    <p style="margin:0;">
+      <strong>Observação do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observação.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+<p><strong>Campos automáticos:</strong> erro absoluto (%), U(e) final (maior U entre os pontos) e comparação com critério de aceitação.</p>
+
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  .flow-table { width:100%; border-collapse: collapse; margin-bottom: 12px; }
+  .flow-table th, .flow-table td { border: 1px solid #ded6c4; padding: 8px; text-align: left; vertical-align: top; }
+  .flow-table th { background:#f6f2e8; }
+  .auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
+  .cert-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:6px 0 10px; }
+  .cert-controls a { text-decoration:none; color:#204a7a; }
+  .cert-current { margin: 4px 0 8px; color:#4f4a3a; }
+  .cert-current a { word-break: break-all; }
+  .cert-upload { max-width:760px; }
+</style>
+
+<form method="post" enctype="multipart/form-data" id="flow-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Dados iniciais</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
+  </div>
+
+  <h3>Certificado de calibração</h3>
+  <div class="cert-upload">
+    <p>
+      <label for="{{ form.flow_certificate_file.id_for_label }}">{{ form.flow_certificate_file.label }}</label>
+      <input
+        type="file"
+        name="{{ form.flow_certificate_file.html_name }}"
+        id="{{ form.flow_certificate_file.id_for_label }}"
+        accept="application/pdf"
+      >
+      {% if submission.flow_certificate_file %}
+        <input type="checkbox" name="{{ form.flow_certificate_file.html_name }}-clear" id="id_flow_certificate_file-clear" style="display:none;">
+      {% endif %}
+    </p>
+    {% if submission.flow_certificate_file %}
+      <p class="cert-current">
+        <strong>Atualmente:</strong>
+        <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">
+          {{ submission.flow_certificate_file.name }}
+        </a>
+      </p>
+    {% endif %}
+    <div class="cert-controls">
+      <button type="submit" name="parse_certificate" value="1" class="secondary">Ler certificado e preencher</button>
+      {% if submission.flow_certificate_file %}
+        <button type="button" class="secondary" id="btn-clear-certificate">Limpar</button>
+        <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado atual</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.flow_certificate_number.label_tag }} {{ form.flow_certificate_number }}</p>
+    <p>{{ form.flow_provider.label_tag }} {{ form.flow_provider }}</p>
+    <p>{{ form.flow_tag_on_certificate.label_tag }} {{ form.flow_tag_on_certificate }}</p>
+    <p>{{ form.flow_measurement_date.label_tag }} {{ form.flow_measurement_date }}</p>
+    <p>{{ form.flow_release_date.label_tag }} {{ form.flow_release_date }}</p>
+    <p>{{ form.flow_meter_model.label_tag }} {{ form.flow_meter_model }}</p>
+    <p>{{ form.flow_meter_serial_number.label_tag }} {{ form.flow_meter_serial_number }}</p>
+    <p>{{ form.flow_converter_model.label_tag }} {{ form.flow_converter_model }}</p>
+    <p>{{ form.flow_converter_serial_number.label_tag }} {{ form.flow_converter_serial_number }}</p>
+    <p>{{ form.flow_calibration_range_min_m3h.label_tag }} {{ form.flow_calibration_range_min_m3h }}</p>
+    <p>{{ form.flow_calibration_range_max_m3h.label_tag }} {{ form.flow_calibration_range_max_m3h }}</p>
+  </div>
+
+  <h3>Pontos de medição (certificado)</h3>
+  <table class="flow-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Ponto</th>
+        <th>Vazão calibração (m³/h)</th>
+        <th>Valor indicado (m³/h)</th>
+        <th>Valor referência (m³/h)</th>
+        <th>Tendência (%)</th>
+        <th>|Erro| (%)</th>
+        <th>U(e) (%)</th>
+        <th>k</th>
+        <th>|Erro| + U(e) (%)</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>{{ form.flow_point_label_1 }}</td><td>{{ form.flow_calibration_1_m3h }}</td><td>{{ form.flow_indicated_1_m3h }}</td><td>{{ form.flow_reference_1_m3h }}</td><td>{{ form.flow_tendency_1_pct }}</td><td><input id="flow_error_abs_1" type="text" readonly disabled class="auto-locked"></td><td>{{ form.flow_uncertainty_1_pct }}</td><td>{{ form.flow_k_1 }}</td><td><input id="flow_sum_1" type="text" readonly disabled class="auto-locked"></td><td><span id="flow_status_1" class="accept-pill pending">-</span></td></tr>
+      <tr><td>2</td><td>{{ form.flow_point_label_2 }}</td><td>{{ form.flow_calibration_2_m3h }}</td><td>{{ form.flow_indicated_2_m3h }}</td><td>{{ form.flow_reference_2_m3h }}</td><td>{{ form.flow_tendency_2_pct }}</td><td><input id="flow_error_abs_2" type="text" readonly disabled class="auto-locked"></td><td>{{ form.flow_uncertainty_2_pct }}</td><td>{{ form.flow_k_2 }}</td><td><input id="flow_sum_2" type="text" readonly disabled class="auto-locked"></td><td><span id="flow_status_2" class="accept-pill pending">-</span></td></tr>
+      <tr><td>3</td><td>{{ form.flow_point_label_3 }}</td><td>{{ form.flow_calibration_3_m3h }}</td><td>{{ form.flow_indicated_3_m3h }}</td><td>{{ form.flow_reference_3_m3h }}</td><td>{{ form.flow_tendency_3_pct }}</td><td><input id="flow_error_abs_3" type="text" readonly disabled class="auto-locked"></td><td>{{ form.flow_uncertainty_3_pct }}</td><td>{{ form.flow_k_3 }}</td><td><input id="flow_sum_3" type="text" readonly disabled class="auto-locked"></td><td><span id="flow_status_3" class="accept-pill pending">-</span></td></tr>
+      <tr><td>4</td><td>{{ form.flow_point_label_4 }}</td><td>{{ form.flow_calibration_4_m3h }}</td><td>{{ form.flow_indicated_4_m3h }}</td><td>{{ form.flow_reference_4_m3h }}</td><td>{{ form.flow_tendency_4_pct }}</td><td><input id="flow_error_abs_4" type="text" readonly disabled class="auto-locked"></td><td>{{ form.flow_uncertainty_4_pct }}</td><td>{{ form.flow_k_4 }}</td><td><input id="flow_sum_4" type="text" readonly disabled class="auto-locked"></td><td><span id="flow_status_4" class="accept-pill pending">-</span></td></tr>
+      <tr><td>5</td><td>{{ form.flow_point_label_5 }}</td><td>{{ form.flow_calibration_5_m3h }}</td><td>{{ form.flow_indicated_5_m3h }}</td><td>{{ form.flow_reference_5_m3h }}</td><td>{{ form.flow_tendency_5_pct }}</td><td><input id="flow_error_abs_5" type="text" readonly disabled class="auto-locked"></td><td>{{ form.flow_uncertainty_5_pct }}</td><td>{{ form.flow_k_5 }}</td><td><input id="flow_sum_5" type="text" readonly disabled class="auto-locked"></td><td><span id="flow_status_5" class="accept-pill pending">-</span></td></tr>
+      <tr><td>6</td><td>{{ form.flow_point_label_6 }}</td><td>{{ form.flow_calibration_6_m3h }}</td><td>{{ form.flow_indicated_6_m3h }}</td><td>{{ form.flow_reference_6_m3h }}</td><td>{{ form.flow_tendency_6_pct }}</td><td><input id="flow_error_abs_6" type="text" readonly disabled class="auto-locked"></td><td>{{ form.flow_uncertainty_6_pct }}</td><td>{{ form.flow_k_6 }}</td><td><input id="flow_sum_6" type="text" readonly disabled class="auto-locked"></td><td><span id="flow_status_6" class="accept-pill pending">-</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Resultados da verificação e ajuste</h3>
+  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+  </div>
+
+  <div id="uncert-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Incerteza expandida calculada</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="uncert-detail" style="margin:0;">Aguardando pontos de medição para definir U(e) final.</p>
+  </div>
+
+  <div id="final-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Critério final (|erro máximo| + U(e) &lt;= limite)</strong> <span id="final-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="final-detail" style="margin:0;">Preencha os pontos com tendência e incerteza.</p>
+  </div>
+
+  <h3>Identificação e observação</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.standards_used.label_tag }} {{ form.standards_used }}</p>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+
+  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+    <p>{{ form.assigned_validator.label_tag }} {{ form.assigned_validator }}</p>
+  </div>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
+  </div>
+</form>
+
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>Pontos válidos: <span id="sum-points">0</span></p>
+<p>Maior |erro| (%): <span id="sum-error-max">-</span></p>
+<p>Maior U(e) (%): <span id="sum-u-max">-</span></p>
+<p>Soma final |erro| + U(e) (%): <span id="sum-combined">-</span></p>
+<p>Status final: <span id="sum-status">Pendente dados</span></p>
+
+<script>
+(function () {
+  const form = document.getElementById('flow-form');
+  if (!form) return;
+
+  const clearButton = document.getElementById('btn-clear-certificate');
+  if (clearButton) {
+    clearButton.addEventListener('click', function () {
+      const clearCheckbox = document.getElementById('id_flow_certificate_file-clear');
+      if (clearCheckbox) clearCheckbox.checked = true;
+      const fileInput = document.getElementById('id_flow_certificate_file');
+      if (fileInput) fileInput.value = '';
+      form.requestSubmit();
+    });
+  }
+
+  function parseNum(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).replace(',', '.').trim();
+    if (!txt) return null;
+    const value = Number(txt);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return parseNum(el.value || '');
+  }
+
+  function fmt(value, decimals) {
+    if (value == null || !Number.isFinite(value)) return '-';
+    return value.toFixed(decimals).replace('.', ',');
+  }
+
+  function setField(id, value, decimals, forNumberInput) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null || !Number.isFinite(value)) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = forNumberInput ? fixed : fixed.replace('.', ',');
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function setPill(id, status, pendingText) {
+    const pill = document.getElementById(id);
+    if (!pill) return;
+    pill.classList.remove('ok', 'fail', 'pending');
+    pill.classList.add(status);
+    if (status === 'ok') pill.textContent = 'Aprovado';
+    else if (status === 'fail') pill.textContent = 'Reprovado';
+    else pill.textContent = pendingText || 'Pendente';
+  }
+
+  function setBox(prefix, status, detail) {
+    const box = document.getElementById(`${prefix}-box`);
+    const detailEl = document.getElementById(`${prefix}-detail`);
+    if (!box || !detailEl) return;
+    box.classList.remove('ok', 'fail', 'pending');
+    box.classList.add(status);
+    setPill(`${prefix}-pill`, status, 'Pendente dados');
+    detailEl.textContent = detail;
+  }
+
+  function recalc() {
+    const criterion = getNum('id_acceptance_criterion_pct');
+    let points = 0;
+    let maxError = null;
+    let maxU = null;
+
+    for (let idx = 1; idx <= 6; idx += 1) {
+      const indicated = getNum(`id_flow_indicated_${idx}_m3h`);
+      const reference = getNum(`id_flow_reference_${idx}_m3h`);
+      let tendency = getNum(`id_flow_tendency_${idx}_pct`);
+      const uncertainty = getNum(`id_flow_uncertainty_${idx}_pct`);
+
+      if (tendency == null && indicated != null && reference != null && reference !== 0) {
+        tendency = ((indicated / reference) - 1) * 100;
+        setField(`id_flow_tendency_${idx}_pct`, tendency, 4, true);
+      }
+
+      const errorAbs = tendency == null ? null : Math.abs(tendency);
+      const combined = (errorAbs == null || uncertainty == null) ? null : (errorAbs + Math.abs(uncertainty));
+      const ok = (combined == null || criterion == null) ? null : (combined <= criterion);
+
+      setField(`flow_error_abs_${idx}`, errorAbs, 4, false);
+      setField(`flow_sum_${idx}`, combined, 4, false);
+
+      if (ok == null) setPill(`flow_status_${idx}`, 'pending', '-');
+      else setPill(`flow_status_${idx}`, ok ? 'ok' : 'fail', '-');
+
+      if (errorAbs != null && uncertainty != null) {
+        points += 1;
+        maxError = maxError == null ? errorAbs : Math.max(maxError, errorAbs);
+        maxU = maxU == null ? Math.abs(uncertainty) : Math.max(maxU, Math.abs(uncertainty));
+      }
+    }
+
+    setField('id_expanded_uncertainty_calc_pct', maxU, 3, true);
+
+    const finalCombined = (maxError == null || maxU == null) ? null : (maxError + maxU);
+    const finalOk = (finalCombined == null || criterion == null) ? null : (finalCombined <= criterion);
+
+    setText('sum-points', String(points));
+    setText('sum-error-max', fmt(maxError, 4));
+    setText('sum-u-max', fmt(maxU, 4));
+    setText('sum-combined', fmt(finalCombined, 4));
+    setText('sum-status', finalOk == null ? 'Pendente dados' : (finalOk ? 'Aprovado' : 'Reprovado'));
+
+    if (maxU == null) {
+      setBox('uncert', 'pending', 'Aguardando pontos de medição para definir U(e) final.');
+    } else {
+      setBox('uncert', 'ok', `U(e) final definida pelo maior valor do certificado: ${fmt(maxU, 4)}%.`);
+    }
+
+    if (finalOk == null) {
+      setBox('final', 'pending', 'Preencha os pontos com tendência e incerteza.');
+    } else {
+      setBox('final', finalOk ? 'ok' : 'fail', `|Erro máximo|: ${fmt(maxError, 4)}% | U(e): ${fmt(maxU, 4)}% | Soma: ${fmt(finalCombined, 4)}% (limite ${fmt(criterion, 2)}%).`);
+    }
+  }
+
+  form.addEventListener('input', recalc);
+  form.addEventListener('change', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}

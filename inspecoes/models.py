@@ -523,6 +523,7 @@ class FormSubmission(models.Model):
     FORM_CODE_BELT = 'FOR 08.05.003'
     FORM_CODE_LEVEL = 'FOR 07.04.01.002'
     FORM_CODE_SCANNER = 'FOR SCANNER'
+    FORM_CODE_FLOW = 'FOR VAZAO'
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -647,6 +648,72 @@ class FormSubmission(models.Model):
     scanner_target_6 = models.CharField(max_length=120, blank=True, default='Refletor 6')
     scanner_nominal_6_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     scanner_measured_6_m = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    flow_certificate_file = models.FileField(
+        upload_to='flow_certificates/',
+        null=True,
+        blank=True,
+        verbose_name='Certificado de calibração (PDF)',
+    )
+    flow_certificate_number = models.CharField(max_length=120, blank=True)
+    flow_provider = models.CharField(max_length=255, blank=True)
+    flow_meter_model = models.CharField(max_length=255, blank=True)
+    flow_meter_serial_number = models.CharField(max_length=120, blank=True)
+    flow_converter_model = models.CharField(max_length=255, blank=True)
+    flow_converter_serial_number = models.CharField(max_length=120, blank=True)
+    flow_tag_on_certificate = models.CharField(max_length=120, blank=True)
+    flow_measurement_date = models.DateField(null=True, blank=True)
+    flow_release_date = models.DateField(null=True, blank=True)
+    flow_calibration_range_min_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_calibration_range_max_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_point_label_1 = models.CharField(max_length=120, blank=True, default='Ponto 1')
+    flow_calibration_1_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_indicated_1_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_reference_1_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_tendency_1_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_uncertainty_1_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_k_1 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_point_label_2 = models.CharField(max_length=120, blank=True, default='Ponto 2')
+    flow_calibration_2_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_indicated_2_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_reference_2_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_tendency_2_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_uncertainty_2_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_k_2 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_point_label_3 = models.CharField(max_length=120, blank=True, default='Ponto 3')
+    flow_calibration_3_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_indicated_3_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_reference_3_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_tendency_3_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_uncertainty_3_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_k_3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_point_label_4 = models.CharField(max_length=120, blank=True, default='Ponto 4')
+    flow_calibration_4_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_indicated_4_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_reference_4_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_tendency_4_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_uncertainty_4_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_k_4 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_point_label_5 = models.CharField(max_length=120, blank=True, default='Ponto 5')
+    flow_calibration_5_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_indicated_5_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_reference_5_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_tendency_5_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_uncertainty_5_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_k_5 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_point_label_6 = models.CharField(max_length=120, blank=True, default='Ponto 6')
+    flow_calibration_6_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_indicated_6_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_reference_6_m3h = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_tendency_6_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_uncertainty_6_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    flow_k_6 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
 
     level_before_vm_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     level_before_vl_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -936,8 +1003,21 @@ class FormSubmission(models.Model):
         return 'SCANNER' in code or 'SCANNER' in title
 
     @property
+    def is_flow_form(self):
+        code = self.form_code
+        title = ''
+        if self.form_type_id and self.form_type:
+            title = (self.form_type.title or '').strip().upper()
+        return (
+            self.FORM_CODE_FLOW in code
+            or 'VAZAO' in code
+            or 'VAZAO' in title
+            or 'MEDIDOR DE VAZAO' in title
+        )
+
+    @property
     def is_belt_form(self):
-        return not self.is_level_form and not self.is_scanner_form
+        return not self.is_level_form and not self.is_scanner_form and not self.is_flow_form
 
     @staticmethod
     def _avg(*values):
@@ -1086,6 +1166,94 @@ class FormSubmission(models.Model):
         if all(row['ok_manufacturer'] for row in valid_rows):
             return 'Aprovado'
         return 'Reprovado'
+
+    @property
+    def flow_points(self):
+        rows = []
+        for index in range(1, 7):
+            target = (getattr(self, f'flow_point_label_{index}', '') or '').strip() or f'Ponto {index}'
+            calibration = getattr(self, f'flow_calibration_{index}_m3h', None)
+            indicated = getattr(self, f'flow_indicated_{index}_m3h', None)
+            reference = getattr(self, f'flow_reference_{index}_m3h', None)
+            tendency = getattr(self, f'flow_tendency_{index}_pct', None)
+            uncertainty = getattr(self, f'flow_uncertainty_{index}_pct', None)
+            k_value = getattr(self, f'flow_k_{index}', None)
+
+            if tendency is None and indicated is not None and reference not in (None, 0):
+                try:
+                    tendency = ((indicated / reference) - Decimal('1')) * Decimal('100')
+                except Exception:
+                    tendency = None
+
+            error_abs = abs(tendency) if tendency is not None else None
+            combined = None
+            ok = None
+            if error_abs is not None and uncertainty is not None:
+                combined = error_abs + abs(uncertainty)
+                if self.acceptance_limit_pct is not None:
+                    ok = combined <= self.acceptance_limit_pct
+
+            rows.append(
+                {
+                    'index': index,
+                    'target': target,
+                    'calibration_m3h': calibration,
+                    'indicated_m3h': indicated,
+                    'reference_m3h': reference,
+                    'tendency_pct': tendency,
+                    'error_abs_pct': error_abs,
+                    'uncertainty_pct': uncertainty,
+                    'k_value': k_value,
+                    'combined_pct': combined,
+                    'ok': ok,
+                }
+            )
+        return rows
+
+    @property
+    def flow_valid_points(self):
+        return [
+            row
+            for row in self.flow_points
+            if row['tendency_pct'] is not None and row['uncertainty_pct'] is not None
+        ]
+
+    @property
+    def flow_error_abs_values_pct(self):
+        return [row['error_abs_pct'] for row in self.flow_valid_points if row['error_abs_pct'] is not None]
+
+    @property
+    def flow_uncertainty_values_pct(self):
+        return [abs(row['uncertainty_pct']) for row in self.flow_valid_points if row['uncertainty_pct'] is not None]
+
+    @property
+    def flow_max_error_abs_pct(self):
+        values = self.flow_error_abs_values_pct
+        return max(values) if values else None
+
+    @property
+    def flow_max_uncertainty_pct(self):
+        values = self.flow_uncertainty_values_pct
+        return max(values) if values else None
+
+    @property
+    def flow_status(self):
+        valid_rows = self.flow_valid_points
+        if not valid_rows:
+            return 'Pendente dados'
+        if all(row['ok'] for row in valid_rows if row['ok'] is not None):
+            return 'Aprovado'
+        if any(row['ok'] is False for row in valid_rows):
+            return 'Reprovado'
+        return 'Pendente dados'
+
+    @property
+    def attached_certificate_file(self):
+        if self.is_scanner_form:
+            return self.scanner_certificate_file
+        if self.is_flow_form:
+            return self.flow_certificate_file
+        return None
 
     def _level_points(self, phase='before'):
         if phase == 'after':
@@ -1505,6 +1673,8 @@ class FormSubmission(models.Model):
             return self.level_uncertainty_expanded_m
         if self.is_scanner_form:
             return self.scanner_u_expanded_mm
+        if self.is_flow_form:
+            return self.flow_max_uncertainty_pct
         return self.expanded_uncertainty_after_pct_auto
 
     @property
@@ -1513,6 +1683,8 @@ class FormSubmission(models.Model):
             return self.expanded_uncertainty_calc_pct
         if self.is_level_form:
             return self.level_uncertainty_expanded_m
+        if self.is_flow_form:
+            return self.flow_max_uncertainty_pct
         return self.expanded_uncertainty_calc_pct_auto
 
     @property
@@ -1583,6 +1755,8 @@ class FormSubmission(models.Model):
             return self.level_before_mean_abs_m
         if self.is_scanner_form:
             return self.scanner_max_error_abs_mm
+        if self.is_flow_form:
+            return self.flow_max_error_abs_pct
         return self.error_before_pct if self.error_before_pct is not None else self.error_before_pct_auto
 
     @property
@@ -1591,6 +1765,8 @@ class FormSubmission(models.Model):
             return self.level_final_mean_abs_m
         if self.is_scanner_form:
             return self.scanner_max_error_abs_mm
+        if self.is_flow_form:
+            return self.flow_max_error_abs_pct
         return self.error_after_pct if self.error_after_pct is not None else self.error_after_pct_auto
 
     @property
@@ -1678,6 +1854,11 @@ class FormSubmission(models.Model):
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
             if self.expanded_uncertainty_unit == EquipmentFormCriteria.Unit.PERCENT:
                 self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
+        if self.is_flow_form:
+            if not self.acceptance_criterion_unit:
+                self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
+            if not self.expanded_uncertainty_unit:
+                self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
         if self.is_level_form:
             self.error_before_pct = self.level_before_mean_abs_m
             self.error_after_pct = self.level_final_mean_abs_m
@@ -1686,6 +1867,10 @@ class FormSubmission(models.Model):
             self.error_before_pct = self.scanner_max_error_abs_mm
             self.error_after_pct = self.scanner_max_error_abs_mm
             self.expanded_uncertainty_calc_pct = self.scanner_u_expanded_mm
+        elif self.is_flow_form:
+            self.error_before_pct = self.flow_max_error_abs_pct
+            self.error_after_pct = self.flow_max_error_abs_pct
+            self.expanded_uncertainty_calc_pct = self.flow_max_uncertainty_pct
         else:
             self.ibm = self.ibm_auto
             self.mark_distance = self.mark_distance_auto

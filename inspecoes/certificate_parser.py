@@ -274,3 +274,190 @@ def parse_scanner_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
         'precision_rep_mm': precision_rep_mm,
         'raw_text': text,
     }
+
+
+MONTH_MAP_PT = {
+    'JAN': 1,
+    'FEV': 2,
+    'MAR': 3,
+    'ABR': 4,
+    'MAI': 5,
+    'JUN': 6,
+    'JUL': 7,
+    'AGO': 8,
+    'SET': 9,
+    'OUT': 10,
+    'NOV': 11,
+    'DEZ': 12,
+}
+
+
+def _parse_date_flexible(token: str) -> date | None:
+    parsed = _parse_date(token)
+    if parsed:
+        return parsed
+    if not token:
+        return None
+    text = _normalize_ascii(token)
+    match = re.search(r'(\d{2})[-/](JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[-/](\d{4})', text)
+    if not match:
+        return None
+    day, month_abbr, year = match.groups()
+    month = MONTH_MAP_PT.get(month_abbr)
+    if not month:
+        return None
+    try:
+        return date(int(year), int(month), int(day))
+    except ValueError:
+        return None
+
+
+def _extract_flow_metadata(text: str, filename: str = '') -> dict:
+    data: dict = {}
+    normalized = _normalize_ascii(text)
+
+    cert_match = re.search(
+        r'NUMERO\s+DO\s+CERTIFICADO\s*:\s*([A-Z0-9._/-]+?)(?=MEDIDOR|SERVICO|CERTIFICADO|\s|$)',
+        normalized,
+    )
+    if cert_match:
+        data['flow_certificate_number'] = cert_match.group(1).strip()
+
+    tag_match = re.search(r'TAG\s+DO\s+MEDIDOR\s*:\s*([A-Z0-9._/-]+)', normalized)
+    if tag_match:
+        data['flow_tag_on_certificate'] = tag_match.group(1).strip()
+
+    model_meter_match = re.search(
+        r'MODELO\s+DO\s+MEDIDOR\s*:\s*([A-Z0-9._/-]+)\s+S\w*RIE\s*:\s*([A-Z0-9._/-]+)',
+        normalized,
+    )
+    if model_meter_match:
+        data['flow_meter_model'] = model_meter_match.group(1).strip()
+        data['flow_meter_serial_number'] = model_meter_match.group(2).strip()
+
+    model_converter_match = re.search(
+        r'MODELO\s+DO\s+CONVERSOR\s*:\s*([A-Z0-9._/-]+)\s+S\w*RIE\s*:\s*([A-Z0-9._/-]+)',
+        normalized,
+    )
+    if model_converter_match:
+        data['flow_converter_model'] = model_converter_match.group(1).strip()
+        data['flow_converter_serial_number'] = model_converter_match.group(2).strip()
+
+    range_match = re.search(
+        r'FAIXA\s+CALIBRADA\s*:\s*\(\s*([0-9.,]+)\s+A\s+([0-9.,]+)\s*\)\s*M',
+        normalized,
+    )
+    if range_match:
+        data['flow_calibration_range_min_m3h'] = _to_decimal(range_match.group(1))
+        data['flow_calibration_range_max_m3h'] = _to_decimal(range_match.group(2))
+
+    calibration_date_match = re.search(
+        r'DATA\s+DA\s+CALIBRACAO\s*:\s*([0-9]{2}[-/][A-Z]{3}[-/][0-9]{4}|[0-9./-]{8,10})',
+        normalized,
+    )
+    if calibration_date_match:
+        parsed = _parse_date_flexible(calibration_date_match.group(1))
+        if parsed:
+            data['flow_measurement_date'] = parsed
+
+    release_date_match = re.search(
+        r'DATA\s+DA\s+EMISSAO\s+DO\s+CERTIFICADO\s*:\s*([0-9]{2}[-/][A-Z]{3}[-/][0-9]{4}|[0-9./-]{8,10})',
+        normalized,
+    )
+    if release_date_match:
+        parsed = _parse_date_flexible(release_date_match.group(1))
+        if parsed:
+            data['flow_release_date'] = parsed
+
+    provider_match = re.search(r'LABORATORIO\s+DA\s+([A-Z0-9 ._-]+)', normalized)
+    if provider_match:
+        provider = re.sub(r'\s+', ' ', provider_match.group(1)).strip(' .')
+        if provider:
+            data['flow_provider'] = provider.title()
+
+    if 'flow_provider' not in data:
+        data['flow_provider'] = 'Emerson Process Management Ltda.'
+
+    name = Path(filename or '').name
+    if name and 'flow_tag_on_certificate' not in data:
+        stem = _normalize_ascii(Path(name).stem)
+        tag_name_match = re.search(r'(FIT[-_][0-9A-Z-]+)', stem)
+        if tag_name_match:
+            data['flow_tag_on_certificate'] = tag_name_match.group(1).replace('_', '-')
+
+    return data
+
+
+def _extract_flow_points(text: str) -> list[dict]:
+    points: list[dict] = []
+    seen_rows: set[tuple[str, str, str, str, str]] = set()
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or not re.match(r'^\d+[.,]\d+', line):
+            continue
+
+        numeric_tokens = re.findall(r'[+-]?\d+[.,]\d+', line)
+        if len(numeric_tokens) < 7:
+            continue
+
+        calibration_m3h = _to_decimal(numeric_tokens[0])
+        indicated_m3h = _to_decimal(numeric_tokens[1])
+        reference_m3h = _to_decimal(numeric_tokens[2])
+        tendency_pct = _to_decimal(numeric_tokens[3])
+        uncertainty_pct = _to_decimal(numeric_tokens[5])
+        k_factor = _to_decimal(numeric_tokens[6])
+
+        if calibration_m3h is None or indicated_m3h is None or reference_m3h is None:
+            continue
+        if tendency_pct is None or uncertainty_pct is None:
+            continue
+
+        row_key = (
+            str(calibration_m3h),
+            str(indicated_m3h),
+            str(reference_m3h),
+            str(tendency_pct),
+            str(uncertainty_pct),
+        )
+        if row_key in seen_rows:
+            continue
+        seen_rows.add(row_key)
+
+        points.append(
+            {
+                'calibration_m3h': calibration_m3h,
+                'indicated_m3h': indicated_m3h,
+                'reference_m3h': reference_m3h,
+                'tendency_pct': tendency_pct,
+                'uncertainty_pct': uncertainty_pct,
+                'k_factor': k_factor,
+            }
+        )
+        if len(points) >= 6:
+            break
+
+    return points
+
+
+def parse_flow_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
+    text = _extract_text_from_pdf_bytes(pdf_bytes)
+    metadata = _extract_flow_metadata(text, filename=filename)
+    points = _extract_flow_points(text)
+
+    values: dict = {}
+    values.update(metadata)
+    for index, point in enumerate(points, start=1):
+        values[f'flow_point_label_{index}'] = f'Ponto {index}'
+        values[f'flow_calibration_{index}_m3h'] = point['calibration_m3h']
+        values[f'flow_indicated_{index}_m3h'] = point['indicated_m3h']
+        values[f'flow_reference_{index}_m3h'] = point['reference_m3h']
+        values[f'flow_tendency_{index}_pct'] = point['tendency_pct']
+        values[f'flow_uncertainty_{index}_pct'] = point['uncertainty_pct']
+        values[f'flow_k_{index}'] = point['k_factor']
+
+    return {
+        'values': values,
+        'points_found': len(points),
+        'raw_text': text,
+    }
