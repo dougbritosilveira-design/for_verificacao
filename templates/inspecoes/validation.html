@@ -2,7 +2,15 @@
 {% block title %}Validação{% endblock %}
 {% block extra_head %}
 <style>
-  #signature-pad { border:1px solid #bfb7a3; border-radius:8px; background:#fff; touch-action:none; max-width:100%; }
+  #signature-pad {
+    border:1px solid #bfb7a3;
+    border-radius:8px;
+    background:#fff;
+    touch-action:none;
+    max-width:100%;
+    width:100%;
+    height:220px;
+  }
   .sig-tools { margin: 8px 0 12px; display:flex; gap:8px; }
   .criteria-box { border:1px solid #d9d1bf; border-radius:8px; padding:12px; margin: 12px 0; background:#faf8f2; }
   .criteria-box.ok { border-color:#6baa82; background:#eef8f1; }
@@ -16,6 +24,10 @@
   .confirm-row { display:flex; align-items:center; gap:8px; margin: 8px 0 12px; }
   .confirm-row input[type="checkbox"] { width:auto; margin:0; }
   .confirm-row label { margin:0; }
+  @media (max-width: 900px) {
+    #signature-pad { height:180px; }
+    .sig-tools { flex-wrap: wrap; }
+  }
 </style>
 {% endblock %}
 {% block content %}
@@ -100,9 +112,41 @@
   const ctx = canvas.getContext('2d');
   const hidden = document.getElementById('id_signature_data');
   let drawing = false;
-  ctx.lineWidth = 2;
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = '#222';
+  const baseLineWidth = 2;
+
+  function configureContext() {
+    ctx.lineWidth = baseLineWidth;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#222';
+  }
+
+  function resizeCanvas() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const previous = canvas.toDataURL('image/png');
+    const rect = canvas.getBoundingClientRect();
+    const displayWidth = Math.max(Math.floor(rect.width || 700), 280);
+    const displayHeight = window.innerWidth <= 900 ? 180 : 220;
+
+    canvas.width = Math.floor(displayWidth * ratio);
+    canvas.height = Math.floor(displayHeight * ratio);
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(ratio, ratio);
+    configureContext();
+
+    if (previous && previous !== 'data:,') {
+      const image = new Image();
+      image.onload = function() {
+        ctx.drawImage(image, 0, 0, displayWidth, displayHeight);
+      };
+      image.src = previous;
+    }
+  }
+  configureContext();
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
 
   function pos(e) {
     const rect = canvas.getBoundingClientRect();

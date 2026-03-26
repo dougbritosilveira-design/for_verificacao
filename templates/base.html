@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
@@ -11,8 +11,21 @@
     body { min-height: 100vh; font-family: Segoe UI, sans-serif; background: linear-gradient(180deg,#efe8d5,#f8f6ef); color: var(--text); }
     body > header { margin: 0 !important; padding: 14px 20px; background: #1f2f2a; color: #f7f4ea; display: block; }
     .header-top { display: flex; gap: 12px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-    nav { margin-top: 8px; display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
-    nav a { color: #d3f5de; text-decoration: none; }
+    .header-brand-row { display: flex; align-items: center; gap: 10px; }
+    .app-title { display: block; }
+    .nav-toggle {
+      display: none;
+      width: auto;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid #98c1b3;
+      background: transparent;
+      color: #f7f4ea;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .main-nav { margin-top: 8px; display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
+    .main-nav a { color: #d3f5de; text-decoration: none; }
     .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; flex-wrap: wrap; }
     .user-box .logout-form { margin: 0; }
     .user-box .logout-form button {
@@ -55,13 +68,58 @@
       padding: 0 5px;
       margin-left: 4px;
     }
+
+    @media (max-width: 900px) {
+      body > header { padding: 12px 14px; }
+      .header-top { align-items: flex-start; }
+      .header-brand-row { width: 100%; justify-content: space-between; }
+      .app-title { font-size: 20px; line-height: 1.2; }
+      .nav-toggle { display: inline-flex; align-items: center; justify-content: center; }
+      .main-nav {
+        display: none;
+        margin-top: 10px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+        width: 100%;
+      }
+      .main-nav.open { display: flex; }
+      .main-nav a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+      }
+      .user-box {
+        width: 100%;
+        font-size: 12px;
+        gap: 6px;
+      }
+      .user-box .logout-form button { min-height: 36px; }
+      .wrap { margin: 8px auto 14px; padding: 0 10px; }
+      .panel { padding: 12px; }
+      .row { grid-template-columns: 1fr !important; gap: 10px; }
+      form p { margin: 0 0 8px; }
+      input, select, textarea, button { min-height: 40px; }
+      table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    }
+
+    @media (max-width: 560px) {
+      .app-title { font-size: 16px; }
+      .panel { padding: 10px; border-radius: 8px; }
+      h2 { font-size: 30px; margin-top: 6px; }
+      h3 { font-size: 22px; }
+      th, td { font-size: 13px; padding: 6px; }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
   <header>
     <div class="header-top">
-      <strong>Portal de Verificação Metrológica MPSA</strong>
+      <div class="header-brand-row">
+        <strong class="app-title">Portal de Verificação Metrológica MPSA</strong>
+        <button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="main-nav">Menu</button>
+      </div>
       <div class="user-box">
         {% if user.is_authenticated %}
           <span>Usuário: <strong>{{ portal_user_name }}</strong></span>
@@ -77,7 +135,7 @@
         {% endif %}
       </div>
     </div>
-    <nav>
+    <nav id="main-nav" class="main-nav">
       {% if user.is_authenticated and portal_can_view_forms and portal_user_can_create_forms %}
         <a href="{% url 'inspecoes:selection' %}">Novo formulário</a>
       {% endif %}
@@ -110,6 +168,38 @@
       {% block content %}{% endblock %}
     </div>
   </main>
+  <script>
+    (function () {
+      const toggle = document.getElementById('nav-toggle');
+      const nav = document.getElementById('main-nav');
+      if (!toggle || !nav) return;
+
+      function closeMenu() {
+        nav.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.textContent = 'Menu';
+      }
+
+      toggle.addEventListener('click', function () {
+        const isOpen = nav.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        toggle.textContent = isOpen ? 'Fechar' : 'Menu';
+      });
+
+      nav.querySelectorAll('a').forEach(function (link) {
+        link.addEventListener('click', function () {
+          if (window.innerWidth <= 900) {
+            closeMenu();
+          }
+        });
+      });
+
+      window.addEventListener('resize', function () {
+        if (window.innerWidth > 900) {
+          closeMenu();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
-
