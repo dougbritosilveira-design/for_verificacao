@@ -25,7 +25,12 @@ def _validator_label(user):
     full_name = user.get_full_name().strip() or user.username
     access = getattr(user, 'portal_access', None)
     registration = access.registration_display if access else user.username
-    return f'{full_name} ({registration})'
+    deadline_days = (
+        access.validator_deadline_days_effective
+        if access
+        else PortalUserAccess.default_validator_deadline_days()
+    )
+    return f'{full_name} ({registration}) - prazo {deadline_days} dia(s)'
 
 
 def _configure_assigned_validator_field(form_instance):

@@ -44,6 +44,16 @@ class PortalUserAccess(models.Model):
         default=Role.VIEWER,
         help_text='Perfil operacional no portal: Técnico, Validador, Visualizador ou Master.',
     )
+    validator_deadline_days = models.PositiveIntegerField(
+        'Prazo para validação (dias)',
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text=(
+            'Prazo em dias para validar formulários atribuídos a este usuário '
+            '(perfil Validador). Se vazio, usa o padrão do sistema.'
+        ),
+    )
     visible_equipments = models.ManyToManyField(
         'Equipment',
         blank=True,
@@ -169,6 +179,21 @@ class PortalUserAccess(models.Model):
         if self.is_master_portal:
             return self.Role.MASTER.label
         return dict(self.Role.choices).get(self.role, 'Sem acesso')
+
+    @staticmethod
+    def default_validator_deadline_days():
+        configured_days = getattr(settings, 'PORTAL_VALIDATOR_DEADLINE_DAYS', 2)
+        try:
+            parsed = int(configured_days)
+        except (TypeError, ValueError):
+            parsed = 2
+        return max(parsed, 1)
+
+    @property
+    def validator_deadline_days_effective(self):
+        if self.validator_deadline_days:
+            return int(self.validator_deadline_days)
+        return self.default_validator_deadline_days()
 
     @classmethod
     def for_user(cls, user):
@@ -718,6 +743,22 @@ class FormSubmission(models.Model):
     validator_signature_data = models.TextField(blank=True)
     validation_feedback = models.TextField(blank=True)
     validated_at = models.DateTimeField(null=True, blank=True)
+    validation_requested_at = models.DateTimeField(
+        'Enviado para validação em',
+        null=True,
+        blank=True,
+    )
+    validation_due_at = models.DateTimeField(
+        'Prazo de validação até',
+        null=True,
+        blank=True,
+    )
+    validation_deadline_days = models.PositiveIntegerField(
+        'Prazo de validação (dias)',
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+    )
 
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.DRAFT)
 
@@ -749,6 +790,130 @@ class FormSubmission(models.Model):
         access = getattr(self.assigned_validator, 'portal_access', None)
         registration = access.registration_display if access else self.assigned_validator.username
         return f'{full_name} ({registration})'
+
+    @property
+    def resolved_validation_deadline_days(self):
+        if self.validation_deadline_days:
+            return int(self.validation_deadline_days)
+        if self.assigned_validator_id and self.assigned_validator:
+            access = getattr(self.assigned_validator, 'portal_access', None)
+            if access:
+                return access.validator_deadline_days_effective
+        return PortalUserAccess.default_validator_deadline_days()
+
+    @property
+    def validation_deadline_days_display(self):
+        if self.validation_deadline_days:
+            return int(self.validation_deadline_days)
+        if self.status == self.Status.PENDING_VALIDATION or self.validation_requested_at:
+            return self.resolved_validation_deadline_days
+        return None
+
+    @property
+    def validation_due_at_effective(self):
+        if self.validation_due_at:
+            return self.validation_due_at
+        if self.validation_requested_at:
+            return self.validation_requested_at + timedelta(days=self.resolved_validation_deadline_days)
+        return None
+
+    @property
+    def validation_requested_date_local(self):
+        if not self.validation_requested_at:
+            return None
+        return timezone.localtime(self.validation_requested_at).date()
+
+    @property
+    def validation_due_date_local(self):
+        due_at = self.validation_due_at_effective
+        if not due_at:
+            return None
+        return timezone.localtime(due_at).date()
+
+    @property
+    def validation_deadline_days_remaining(self):
+        due_date = self.validation_due_date_local
+        if not due_date:
+            return None
+        return (due_date - timezone.localdate()).days
+
+    @property
+    def validation_deadline_status_code(self):
+        due_date = self.validation_due_date_local
+        if not due_date:
+            if self.status == self.Status.PENDING_VALIDATION:
+                return 'pending_no_deadline'
+            return 'not_pending'
+        if self.validated_at:
+            validated_date = timezone.localtime(self.validated_at).date()
+            return 'validated_on_time' if validated_date <= due_date else 'validated_overdue'
+        if self.status != self.Status.PENDING_VALIDATION:
+            return 'not_pending'
+        days = self.validation_deadline_days_remaining
+        if days is None:
+            return 'pending_no_deadline'
+        return 'pending_on_time' if days >= 0 else 'pending_overdue'
+
+    @property
+    def validation_deadline_status_label(self):
+        labels = {
+            'pending_on_time': 'Dentro do prazo',
+            'pending_overdue': 'Prazo vencido',
+            'validated_on_time': 'Validado no prazo',
+            'validated_overdue': 'Validado em atraso',
+            'pending_no_deadline': 'Sem prazo',
+            'not_pending': 'Não pendente',
+        }
+        return labels.get(self.validation_deadline_status_code, 'Indefinido')
+
+    @property
+    def validation_deadline_badge_class(self):
+        badge = {
+            'pending_on_time': 'ok',
+            'pending_overdue': 'fail',
+            'validated_on_time': 'ok',
+            'validated_overdue': 'warn',
+            'pending_no_deadline': 'pending',
+            'not_pending': 'pending',
+        }
+        return badge.get(self.validation_deadline_status_code, 'pending')
+
+    @property
+    def validation_deadline_detail(self):
+        status = self.validation_deadline_status_code
+        due_date = self.validation_due_date_local
+        if status == 'pending_no_deadline':
+            return 'Prazo de validação não configurado para este envio.'
+        if status == 'not_pending':
+            if due_date:
+                return f'Prazo definido para {due_date.strftime("%d/%m/%Y")}.'
+            return 'Ainda não enviado para validação.'
+        if status == 'pending_on_time':
+            remaining = self.validation_deadline_days_remaining
+            if remaining == 0:
+                return f'Vence hoje ({due_date.strftime("%d/%m/%Y")}).'
+            return f'Faltam {remaining} dia(s). Vence em {due_date.strftime("%d/%m/%Y")}.'
+        if status == 'pending_overdue':
+            overdue = abs(self.validation_deadline_days_remaining or 0)
+            return f'Atrasado há {overdue} dia(s). Venceu em {due_date.strftime("%d/%m/%Y")}.'
+        if status == 'validated_on_time':
+            return f'Validação concluída no prazo (limite {due_date.strftime("%d/%m/%Y")}).'
+        if status == 'validated_overdue':
+            validated_date = timezone.localtime(self.validated_at).date() if self.validated_at else None
+            if validated_date:
+                delay_days = (validated_date - due_date).days
+                return (
+                    f'Validação concluída com {delay_days} dia(s) de atraso '
+                    f'(limite {due_date.strftime("%d/%m/%Y")}).'
+                )
+        return 'Prazo de validação calculado.'
+
+    def schedule_validation_deadline(self, requested_at=None):
+        requested_at = requested_at or timezone.now()
+        deadline_days = self.resolved_validation_deadline_days
+        self.validation_requested_at = requested_at
+        self.validation_deadline_days = deadline_days
+        self.validation_due_at = requested_at + timedelta(days=deadline_days)
 
     @property
     def form_code(self):

@@ -512,6 +512,7 @@ def form_edit_view(request, pk):
                     )
                     return render(request, template_name, {'form': form, 'submission': submission})
                 submission.status = FormSubmission.Status.PENDING_VALIDATION
+                submission.schedule_validation_deadline()
             submission.save()
 
             if previous_status != FormSubmission.Status.PENDING_VALIDATION and submission.status == FormSubmission.Status.PENDING_VALIDATION:
@@ -704,7 +705,12 @@ def history_view(request):
     if not _can_view(request.user, 'history'):
         return _deny_screen_access(request, 'Histórico')
 
-    qs = FormSubmission.objects.select_related('equipment', 'form_type').all()
+    qs = FormSubmission.objects.select_related(
+        'equipment',
+        'form_type',
+        'assigned_validator',
+        'assigned_validator__portal_access',
+    ).all()
     scoped_equipment_ids = _technician_scoped_equipment_ids(request.user)
     if scoped_equipment_ids:
         qs = qs.filter(equipment_id__in=scoped_equipment_ids)

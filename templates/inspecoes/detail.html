@@ -18,6 +18,13 @@
 </p>
 <p><strong>Status:</strong> {{ submission.get_status_display }}</p>
 <p><strong>Validador designado:</strong> {{ submission.assigned_validator_label }}</p>
+<p><strong>Enviado para validação em:</strong> {{ submission.validation_requested_at|date:"d/m/Y H:i"|default:'-' }}</p>
+<p><strong>Prazo para validar:</strong> {% if submission.validation_deadline_days_display %}{{ submission.validation_deadline_days_display }} dia(s){% else %}-{% endif %}</p>
+<p><strong>Validar até:</strong> {{ submission.validation_due_date_local|date:"d/m/Y"|default:'-' }}</p>
+<p><strong>Status do prazo de validação:</strong>
+  <span class="badge {{ submission.validation_deadline_badge_class }}">{{ submission.validation_deadline_status_label }}</span>
+  ({{ submission.validation_deadline_detail }})
+</p>
 <p><strong>Status SAP:</strong> {{ submission.get_sap_status_display }}</p>
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>

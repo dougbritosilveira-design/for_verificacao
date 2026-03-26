@@ -86,6 +86,16 @@ def create_portal_notification(*, user, category, title, message, submission=Non
     return notification
 
 
+def _validation_deadline_message_line(submission: FormSubmission):
+    due_date = submission.validation_due_date_local
+    if not due_date:
+        return 'Prazo de validação: não configurado.'
+    return (
+        f'Prazo de validação: até {due_date.strftime("%d/%m/%Y")} '
+        f'({submission.validation_deadline_status_label.lower()}).'
+    )
+
+
 def notify_validators_submission_pending(submission: FormSubmission, actor_user=None):
     designated_user = submission.assigned_validator
     if designated_user and designated_user.is_active:
@@ -107,6 +117,7 @@ def notify_validators_submission_pending(submission: FormSubmission, actor_user=
             f'Executor: {submission.executor_name}\n'
             f'Data da visita: {submission.execution_date}\n'
             f'Validador designado: {submission.assigned_validator_label}\n'
+            f'{_validation_deadline_message_line(submission)}\n'
         )
         dedupe_key = f'form_pending_validation:{submission.id}:{recipient.pk}:{submission.updated_at:%Y%m%d%H%M%S}'
         create_portal_notification(
@@ -139,6 +150,7 @@ def notify_technician_validation_result(
             f'Equipamento: {submission.equipment.tag}\n'
             f'Validador: {submission.validator_name or "-"}\n'
             f'Status: Aprovado\n'
+            f'{_validation_deadline_message_line(submission)}\n'
         )
     else:
         category = PortalNotification.Category.FORM_REWORK
@@ -148,6 +160,7 @@ def notify_technician_validation_result(
             f'Equipamento: {submission.equipment.tag}\n'
             f'Validador: {submission.validator_name or "-"}\n'
             f'Motivo: {feedback or "Sem observação."}\n'
+            f'{_validation_deadline_message_line(submission)}\n'
         )
 
     dedupe_key = f'form_validation_result:{submission.id}:{submission.updated_at:%Y%m%d%H%M%S}'

@@ -143,6 +143,7 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
         'full_name_admin',
         'registration_display_admin',
         'role',
+        'validator_deadline_days_admin',
         'equipment_scope_admin',
         'can_create_admin',
         'can_validate_admin',
@@ -165,6 +166,7 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
         'user',
         'registration',
         'role',
+        'validator_deadline_days',
         'visible_equipments',
         'legacy_flags_info',
     )
@@ -185,6 +187,14 @@ class PortalUserAccessAdmin(admin.ModelAdmin):
     @admin.display(description='Matrícula')
     def registration_display_admin(self, obj):
         return obj.registration_display
+
+    @admin.display(description='Prazo validador (dias)', ordering='validator_deadline_days')
+    def validator_deadline_days_admin(self, obj):
+        if obj.role not in {PortalUserAccess.Role.VALIDATOR, PortalUserAccess.Role.MASTER}:
+            return '-'
+        if obj.validator_deadline_days:
+            return obj.validator_deadline_days
+        return f'Padrão ({obj.validator_deadline_days_effective})'
 
     @admin.display(description='Pode criar/editar')
     def can_create_admin(self, obj):

@@ -49,6 +49,16 @@
   {% endif %}
   <li>Status atual: {{ submission.get_status_display }}</li>
   <li>Validador designado: {{ submission.assigned_validator_label }}</li>
+  <li>Enviado para validação em: {{ submission.validation_requested_at|date:"d/m/Y H:i"|default:'-' }}</li>
+  <li>Prazo para validar: {% if submission.validation_deadline_days_display %}{{ submission.validation_deadline_days_display }} dia(s){% else %}-{% endif %}</li>
+  <li>Validar até: {{ submission.validation_due_date_local|date:"d/m/Y"|default:'-' }}</li>
+  <li>
+    Status do prazo de validação:
+    <span class="criteria-status {% if submission.validation_deadline_badge_class == 'ok' %}ok{% elif submission.validation_deadline_badge_class == 'fail' %}fail{% else %}pending{% endif %}">
+      {{ submission.validation_deadline_status_label }}
+    </span>
+    ({{ submission.validation_deadline_detail }})
+  </li>
   <li>Critério de aceitação:
     {% if submission.is_level_form or submission.is_scanner_form %}
       {{ submission.acceptance_limit_pct|floatformat:2 }}{{ submission.acceptance_unit_label }}
