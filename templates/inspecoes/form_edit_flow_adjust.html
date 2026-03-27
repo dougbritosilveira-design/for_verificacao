@@ -109,7 +109,7 @@
   </div>
 
   <h3>Parâmetros da incerteza</h3>
-  <div class="row">
+  <div class="row" style="grid-template-columns:minmax(220px,320px);">
     <p>{{ form.flow_adjust_k_factor.label_tag }} {{ form.flow_adjust_k_factor }}</p>
     {{ form.flow_adjust_u_ci_mm }}
     {{ form.flow_adjust_u_inst_t_mm }}
@@ -384,7 +384,7 @@
     const criterion = getNum('id_acceptance_criterion_pct');
     if (criterion != null) setNum('id_acceptance_criterion_pct', criterion, 1, true);
     setNum('id_error_before_pct', beforeError, 2, true);
-    setNum('id_error_after_pct', finalError, 3, true);
+    setNum('id_error_after_pct', finalError, 2, true);
     setNum('id_expanded_uncertainty_calc_pct', uExpanded, 2, true);
 
     setNum('id_flow_adjust_vm_display', vm, 3, false);
@@ -401,8 +401,8 @@
     setText('sum-vm', fmt(vm, 3));
     setText('sum-de', fmt(de, 3));
     setText('sum-di', fmt(di, 3));
-    setText('sum-err-before', fmt(beforeError, 3));
-    setText('sum-err-final', fmt(finalError, 3));
+    setText('sum-err-before', fmt(beforeError, 2));
+    setText('sum-err-final', fmt(finalError, 2));
     setText('sum-u-geom', fmt(uRelGeom, 3));
     setText('sum-u-time', fmt(uRelTempo, 3));
     setText('sum-u-ref', fmt(uRefTotal, 3));
