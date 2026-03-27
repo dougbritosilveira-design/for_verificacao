@@ -98,7 +98,7 @@
   {% if portal_user_can_validate_forms and portal_can_view_forms %}
     <a href="{% url 'inspecoes:form-validate' submission.pk %}">Validar</a> |
   {% endif %}
-  {% if (submission.is_scanner_form and submission.scanner_certificate_file) or (submission.is_flow_form and submission.flow_certificate_file) %}
+  {% if submission.is_scanner_form and submission.scanner_certificate_file or submission.is_flow_form and submission.flow_certificate_file %}
     <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a> |
   {% endif %}
   <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
