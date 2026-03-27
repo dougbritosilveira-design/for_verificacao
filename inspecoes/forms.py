@@ -661,6 +661,158 @@ class FlowTechnicalForm(forms.ModelForm):
             )
 
 
+class FlowAdjustTechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
+
+    class Meta:
+        model = FormSubmission
+        fields = [
+            'om_number',
+            'execution_date',
+            'flow_adjust_thickness_1_mm',
+            'flow_adjust_thickness_2_mm',
+            'flow_adjust_thickness_3_mm',
+            'flow_adjust_thickness_4_mm',
+            'flow_adjust_circumference_ci_mm',
+            'flow_adjust_pipe_nominal_in',
+            'flow_adjust_before_totmv_m3',
+            'flow_adjust_before_totsup_m3',
+            'flow_adjust_before_totmv_start_time',
+            'flow_adjust_before_totmv_end_time',
+            'flow_adjust_before_totsup_start_time',
+            'flow_adjust_before_totsup_end_time',
+            'flow_adjust_after_totmv_m3',
+            'flow_adjust_after_totsup_m3',
+            'flow_adjust_after_totmv_start_time',
+            'flow_adjust_after_totmv_end_time',
+            'flow_adjust_after_totsup_start_time',
+            'flow_adjust_after_totsup_end_time',
+            'flow_adjust_u_ci_mm',
+            'flow_adjust_u_inst_t_mm',
+            'flow_adjust_u_delta_t_s',
+            'flow_adjust_u_dut_repeat_pct',
+            'flow_adjust_u_dut_res_pct',
+            'flow_adjust_k_factor',
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_calc_pct',
+            'error_before_pct',
+            'error_after_pct',
+            'sector',
+            'sector_2',
+            'sector_3',
+            'validator_registration',
+            'technician_1_name',
+            'technician_2_name',
+            'technician_2_registration',
+            'technician_3_name',
+            'technician_3_registration',
+            'standards_used',
+            'observation',
+        ]
+        labels = {
+            'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
+            'flow_adjust_thickness_1_mm': 'Espessura 1 (mm)',
+            'flow_adjust_thickness_2_mm': 'Espessura 2 (mm)',
+            'flow_adjust_thickness_3_mm': 'Espessura 3 (mm)',
+            'flow_adjust_thickness_4_mm': 'Espessura 4 (mm)',
+            'flow_adjust_circumference_ci_mm': 'Circunferência CI (mm)',
+            'flow_adjust_pipe_nominal_in': "POL' da tubulação (pol)",
+            'flow_adjust_before_totmv_m3': 'TOTMV antes (m³)',
+            'flow_adjust_before_totsup_m3': 'TOTSUP antes (m³)',
+            'flow_adjust_before_totmv_start_time': 'Hora início TOTMV',
+            'flow_adjust_before_totmv_end_time': 'Hora final TOTMV',
+            'flow_adjust_before_totsup_start_time': 'Hora início TOTSUP',
+            'flow_adjust_before_totsup_end_time': 'Hora final TOTSUP',
+            'flow_adjust_after_totmv_m3': 'TOTMV após ajuste (m³)',
+            'flow_adjust_after_totsup_m3': 'TOTSUP após ajuste (m³)',
+            'flow_adjust_after_totmv_start_time': 'Hora início TOTMV',
+            'flow_adjust_after_totmv_end_time': 'Hora final TOTMV',
+            'flow_adjust_after_totsup_start_time': 'Hora início TOTSUP',
+            'flow_adjust_after_totsup_end_time': 'Hora final TOTSUP',
+            'flow_adjust_u_ci_mm': 'u(CI) (mm, 1σ)',
+            'flow_adjust_u_inst_t_mm': 'u_inst_t (mm, 1σ)',
+            'flow_adjust_u_delta_t_s': 'u(Δt) (s, 1σ)',
+            'flow_adjust_u_dut_repeat_pct': 'u_repeat DUT (%, 1σ)',
+            'flow_adjust_u_dut_res_pct': 'u_res DUT (%, 1σ)',
+            'flow_adjust_k_factor': 'Fator k',
+            'acceptance_criterion_pct': 'Critério de aceitação (%)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (%)',
+            'error_before_pct': 'Erro antes (%)',
+            'error_after_pct': 'Erro final (%)',
+            'sector': 'Setor 1',
+            'sector_2': 'Setor 2',
+            'sector_3': 'Setor 3',
+            'validator_registration': 'Matrícula 1',
+            'technician_1_name': 'Nome 1',
+            'technician_2_name': 'Nome 2',
+            'technician_2_registration': 'Matrícula 2',
+            'technician_3_name': 'Nome 3',
+            'technician_3_registration': 'Matrícula 3',
+            'standards_used': 'Padrões utilizados',
+            'observation': 'Observação',
+        }
+        widgets = {
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'flow_adjust_before_totmv_start_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_before_totmv_end_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_before_totsup_start_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_before_totsup_end_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_after_totmv_start_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_after_totmv_end_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_after_totsup_start_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'flow_adjust_after_totsup_end_time': forms.TimeInput(format='%H:%M', attrs={'type': 'time'}),
+            'standards_used': forms.Textarea(attrs={'rows': 2}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
+        self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
+        self.fields['execution_date'].localize = False
+
+        for field in self.fields.values():
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.1'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['error_before_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['error_after_pct'].widget.attrs.update({'step': '0.01'})
+
+        for name in [
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_calc_pct',
+            'error_before_pct',
+            'error_after_pct',
+        ]:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo calculado automaticamente pelo sistema.',
+                }
+            )
+
+        if self.instance.flow_adjust_u_ci_mm is None:
+            self.initial.setdefault('flow_adjust_u_ci_mm', Decimal('1.000'))
+        if self.instance.flow_adjust_u_inst_t_mm is None:
+            self.initial.setdefault('flow_adjust_u_inst_t_mm', Decimal('0.200'))
+        if self.instance.flow_adjust_u_delta_t_s is None:
+            self.initial.setdefault('flow_adjust_u_delta_t_s', Decimal('5.000'))
+        if self.instance.flow_adjust_u_dut_repeat_pct is None:
+            self.initial.setdefault('flow_adjust_u_dut_repeat_pct', Decimal('0.000'))
+        if self.instance.flow_adjust_u_dut_res_pct is None:
+            self.initial.setdefault('flow_adjust_u_dut_res_pct', Decimal('0.000'))
+        if self.instance.flow_adjust_k_factor is None:
+            self.initial.setdefault('flow_adjust_k_factor', Decimal('2.000'))
+
+
 class ValidationForm(forms.Form):
     class DecisionChoices:
         APPROVE = 'approve'

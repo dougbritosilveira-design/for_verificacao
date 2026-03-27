@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from .certificate_parser import parse_flow_certificate, parse_scanner_certificate
 from .forms import (
+    FlowAdjustTechnicalForm,
     FlowTechnicalForm,
     LevelTechnicalForm,
     ScannerTechnicalForm,
@@ -429,9 +430,12 @@ def form_edit_view(request, pk):
     if submission.is_scanner_form:
         form_class = ScannerTechnicalForm
         template_name = 'inspecoes/form_edit_scanner.html'
-    elif submission.is_flow_form:
+    elif submission.is_flow_certificate_form:
         form_class = FlowTechnicalForm
         template_name = 'inspecoes/form_edit_flow.html'
+    elif submission.is_flow_adjust_form:
+        form_class = FlowAdjustTechnicalForm
+        template_name = 'inspecoes/form_edit_flow_adjust.html'
     elif submission.is_level_form:
         form_class = LevelTechnicalForm
         template_name = 'inspecoes/form_edit_level.html'
@@ -440,7 +444,7 @@ def form_edit_view(request, pk):
         template_name = 'inspecoes/form_edit.html'
 
     if request.method == 'POST':
-        if submission.is_scanner_form or submission.is_flow_form:
+        if submission.is_scanner_form or submission.is_flow_certificate_form:
             form = form_class(request.POST, request.FILES, instance=submission)
         else:
             form = form_class(request.POST, instance=submission)
@@ -521,7 +525,7 @@ def form_edit_view(request, pk):
                     )
                 return redirect('inspecoes:form-edit', pk=submission.pk)
 
-            if submission.is_flow_form and 'parse_certificate' in request.POST:
+            if submission.is_flow_certificate_form and 'parse_certificate' in request.POST:
                 submission.save()
                 if not submission.flow_certificate_file:
                     messages.warning(request, 'Anexe o certificado em PDF para fazer a leitura automática.')

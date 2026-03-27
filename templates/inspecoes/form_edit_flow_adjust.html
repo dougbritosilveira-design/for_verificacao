@@ -1,0 +1,444 @@
+{% extends 'base.html' %}
+{% block title %}Formulario tecnico - Medidor de vazao (FOR 08.05.006){% endblock %}
+{% block content %}
+<h2>2. Formulario tecnico</h2>
+<p>
+  <strong>OM:</strong> {{ submission.om_number }}
+  | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}
+  | <strong>Equipamento:</strong> {{ submission.equipment.tag }}
+  | <strong>Formulario:</strong> {{ submission.form_type_label }}
+  | <strong>Local:</strong> {{ submission.location_snapshot }}
+</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
+    <p style="margin:0;">
+      <strong>Observacao do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observacao.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+<p><strong>Campos automaticos:</strong> VM, DE, erro antes/depois, U(e) e comparacao final com criterio de aceitacao.</p>
+
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  input.auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
+</style>
+
+<form method="post" id="flow-adjust-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Dados iniciais</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
+  </div>
+
+  <h3>Dados de processo</h3>
+  <div class="row">
+    <p>{{ form.flow_adjust_thickness_1_mm.label_tag }} {{ form.flow_adjust_thickness_1_mm }}</p>
+    <p>{{ form.flow_adjust_thickness_2_mm.label_tag }} {{ form.flow_adjust_thickness_2_mm }}</p>
+    <p>{{ form.flow_adjust_thickness_3_mm.label_tag }} {{ form.flow_adjust_thickness_3_mm }}</p>
+    <p>{{ form.flow_adjust_thickness_4_mm.label_tag }} {{ form.flow_adjust_thickness_4_mm }}</p>
+    <p><label for="id_flow_adjust_vm_display">VM media (mm)</label><input id="id_flow_adjust_vm_display" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+  <div class="row">
+    <p>{{ form.flow_adjust_circumference_ci_mm.label_tag }} {{ form.flow_adjust_circumference_ci_mm }}</p>
+    <p>{{ form.flow_adjust_pipe_nominal_in.label_tag }} {{ form.flow_adjust_pipe_nominal_in }}</p>
+    <p><label for="id_flow_adjust_de_display">Diametro externo DE (mm)</label><input id="id_flow_adjust_de_display" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_de_source">Fonte do DE</label><input id="id_flow_adjust_de_source" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_di_display">Diametro interno Di (mm)</label><input id="id_flow_adjust_di_display" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+
+  <h3>Verificacao antes do ajuste</h3>
+  <div class="row">
+    <p>{{ form.flow_adjust_before_totmv_m3.label_tag }} {{ form.flow_adjust_before_totmv_m3 }}</p>
+    <p>{{ form.flow_adjust_before_totsup_m3.label_tag }} {{ form.flow_adjust_before_totsup_m3 }}</p>
+    <p>{{ form.error_before_pct.label_tag }} {{ form.error_before_pct }}</p>
+    <p><label for="id_flow_adjust_before_duration">Tempo medicao antes (min)</label><input id="id_flow_adjust_before_duration" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.flow_adjust_before_totmv_start_time.label_tag }} {{ form.flow_adjust_before_totmv_start_time }}</p>
+    <p>{{ form.flow_adjust_before_totmv_end_time.label_tag }} {{ form.flow_adjust_before_totmv_end_time }}</p>
+    <p>{{ form.flow_adjust_before_totsup_start_time.label_tag }} {{ form.flow_adjust_before_totsup_start_time }}</p>
+    <p>{{ form.flow_adjust_before_totsup_end_time.label_tag }} {{ form.flow_adjust_before_totsup_end_time }}</p>
+  </div>
+
+  <div id="before-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Criterio do erro antes (|erro antes| <= limite)</strong>
+      <span id="before-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="before-detail" style="margin:0;">Preencha TOTMV e TOTSUP antes.</p>
+  </div>
+
+  <h3>Verificacao apos ajuste (caso necessario)</h3>
+  <div class="row">
+    <p>{{ form.flow_adjust_after_totmv_m3.label_tag }} {{ form.flow_adjust_after_totmv_m3 }}</p>
+    <p>{{ form.flow_adjust_after_totsup_m3.label_tag }} {{ form.flow_adjust_after_totsup_m3 }}</p>
+    <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
+    <p><label for="id_flow_adjust_after_duration">Tempo medicao apos (min)</label><input id="id_flow_adjust_after_duration" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.flow_adjust_after_totmv_start_time.label_tag }} {{ form.flow_adjust_after_totmv_start_time }}</p>
+    <p>{{ form.flow_adjust_after_totmv_end_time.label_tag }} {{ form.flow_adjust_after_totmv_end_time }}</p>
+    <p>{{ form.flow_adjust_after_totsup_start_time.label_tag }} {{ form.flow_adjust_after_totsup_start_time }}</p>
+    <p>{{ form.flow_adjust_after_totsup_end_time.label_tag }} {{ form.flow_adjust_after_totsup_end_time }}</p>
+  </div>
+
+  <h3>Parametros da incerteza</h3>
+  <div class="row">
+    <p>{{ form.flow_adjust_u_ci_mm.label_tag }} {{ form.flow_adjust_u_ci_mm }}</p>
+    <p>{{ form.flow_adjust_u_inst_t_mm.label_tag }} {{ form.flow_adjust_u_inst_t_mm }}</p>
+    <p>{{ form.flow_adjust_u_delta_t_s.label_tag }} {{ form.flow_adjust_u_delta_t_s }}</p>
+    <p>{{ form.flow_adjust_u_dut_repeat_pct.label_tag }} {{ form.flow_adjust_u_dut_repeat_pct }}</p>
+    <p>{{ form.flow_adjust_u_dut_res_pct.label_tag }} {{ form.flow_adjust_u_dut_res_pct }}</p>
+    <p>{{ form.flow_adjust_k_factor.label_tag }} {{ form.flow_adjust_k_factor }}</p>
+  </div>
+
+  <h3>Resultados da verificacao e ajuste</h3>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+    <p><label for="id_flow_adjust_final_phase">Fase final considerada</label><input id="id_flow_adjust_final_phase" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+
+  <div id="uncert-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Incerteza expandida calculada</strong>
+      <span id="uncert-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="uncert-detail" style="margin:0;">Preencha os dados de processo e os totalizadores para calcular U(e).</p>
+  </div>
+
+  <div id="final-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Criterio final (|erro final| + U(e) <= limite)</strong>
+      <span id="final-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="final-detail" style="margin:0;">Preencha os dados para avaliar o criterio final.</p>
+  </div>
+
+  <h3>Identificacao e observacao</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.standards_used.label_tag }} {{ form.standards_used }}</p>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+    <p>{{ form.assigned_validator.label_tag }} {{ form.assigned_validator }}</p>
+  </div>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validacao</button>
+  </div>
+</form>
+
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>VM media espessura (mm): <span id="sum-vm">-</span></p>
+<p>DE externo (mm): <span id="sum-de">-</span> | Di interno (mm): <span id="sum-di">-</span></p>
+<p>Erro antes (%): <span id="sum-err-before">-</span></p>
+<p>Erro final (%): <span id="sum-err-final">-</span></p>
+<p>u_rel geometria (%): <span id="sum-u-geom">-</span></p>
+<p>u_rel tempo (%): <span id="sum-u-time">-</span></p>
+<p>u_ref_total (%): <span id="sum-u-ref">-</span></p>
+<p>u_dut_total (%): <span id="sum-u-dut">-</span></p>
+<p>u_rel_r (%): <span id="sum-u-r">-</span></p>
+<p>U(e) final (%): <span id="sum-u-final">-</span></p>
+
+<script>
+(function () {
+  const form = document.getElementById('flow-adjust-form');
+  if (!form) return;
+
+  function parseNum(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).replace(',', '.').trim();
+    if (!txt) return null;
+    const value = Number(txt);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return parseNum(el.value || '');
+  }
+
+  function setNum(id, value, decimals, forNumberInput) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null || !Number.isFinite(value)) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = forNumberInput ? fixed : fixed.replace('.', ',');
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function fmt(value, decimals) {
+    if (value == null || !Number.isFinite(value)) return '-';
+    return value.toFixed(decimals).replace('.', ',');
+  }
+
+  function avg(values) {
+    const nums = values.filter((v) => v != null);
+    if (!nums.length) return null;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
+  }
+
+  function stdevSample(values) {
+    const nums = values.filter((v) => v != null);
+    if (nums.length < 2) return null;
+    const mean = avg(nums);
+    const sumSq = nums.reduce((acc, value) => acc + Math.pow(value - mean, 2), 0);
+    return Math.sqrt(sumSq / (nums.length - 1));
+  }
+
+  function calcErrorPct(totsup, totmv) {
+    if (totmv == null || totsup == null || totmv === 0) return null;
+    return ((totsup / totmv) - 1) * 100;
+  }
+
+  function getTimeMinutes(id) {
+    const el = document.getElementById(id);
+    if (!el || !el.value) return null;
+    const parts = String(el.value).split(':');
+    if (parts.length < 2) return null;
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
+  }
+
+  function calcDurationMinutes(startMin, endMin) {
+    if (startMin == null || endMin == null) return null;
+    let d = endMin - startMin;
+    if (d < 0) d += 24 * 60;
+    if (d <= 0) return null;
+    return d;
+  }
+
+  function setPill(id, status, pendingText) {
+    const pill = document.getElementById(id);
+    if (!pill) return;
+    pill.classList.remove('ok', 'fail', 'pending');
+    pill.classList.add(status);
+    if (status === 'ok') pill.textContent = 'Aprovado';
+    else if (status === 'fail') pill.textContent = 'Reprovado';
+    else pill.textContent = pendingText || 'Pendente dados';
+  }
+
+  function setBox(prefix, status, detail) {
+    const box = document.getElementById(prefix + '-box');
+    const detailEl = document.getElementById(prefix + '-detail');
+    if (!box || !detailEl) return;
+    box.classList.remove('ok', 'fail', 'pending');
+    box.classList.add(status);
+    setPill(prefix + '-pill', status, 'Pendente dados');
+    detailEl.textContent = detail;
+  }
+
+  function recalc() {
+    const t1 = getNum('id_flow_adjust_thickness_1_mm');
+    const t2 = getNum('id_flow_adjust_thickness_2_mm');
+    const t3 = getNum('id_flow_adjust_thickness_3_mm');
+    const t4 = getNum('id_flow_adjust_thickness_4_mm');
+    const vm = avg([t1, t2, t3, t4]);
+    const sT = stdevSample([t1, t2, t3, t4]);
+
+    const ci = getNum('id_flow_adjust_circumference_ci_mm');
+    const pol = getNum('id_flow_adjust_pipe_nominal_in');
+    const uCi = getNum('id_flow_adjust_u_ci_mm');
+    const uInstT = getNum('id_flow_adjust_u_inst_t_mm');
+    const uDeltaT = getNum('id_flow_adjust_u_delta_t_s');
+    const uDutRepeat = getNum('id_flow_adjust_u_dut_repeat_pct');
+    const uDutRes = getNum('id_flow_adjust_u_dut_res_pct');
+    const k = getNum('id_flow_adjust_k_factor');
+
+    let de = null;
+    let deSource = '-';
+    let uDe = null;
+    if (ci != null && ci > 0) {
+      de = ci / 3.14;
+      deSource = 'DE = CI / PI';
+      if (uCi != null) uDe = uCi / 3.14;
+    } else if (pol != null) {
+      de = pol * 25.4;
+      deSource = "DE = POL' x 25,4";
+      uDe = 0;
+    }
+
+    let uTbar = null;
+    const validThickness = [t1, t2, t3, t4].filter((v) => v != null).length;
+    if (validThickness > 0 && uInstT != null) {
+      const stdTerm = sT == null ? 0 : (sT / Math.sqrt(validThickness));
+      uTbar = Math.sqrt((stdTerm * stdTerm) + (uInstT * uInstT));
+    }
+
+    let di = null;
+    if (de != null && vm != null) di = de - (2 * vm);
+
+    let uDi = null;
+    if (uDe != null && uTbar != null) uDi = Math.sqrt((uDe * uDe) + Math.pow(2 * uTbar, 2));
+
+    let uRelGeom = null;
+    if (di != null && di !== 0 && uDi != null) uRelGeom = 100 * (2 * uDi / di);
+
+    const beforeTotmv = getNum('id_flow_adjust_before_totmv_m3');
+    const beforeTotsup = getNum('id_flow_adjust_before_totsup_m3');
+    const afterTotmv = getNum('id_flow_adjust_after_totmv_m3');
+    const afterTotsup = getNum('id_flow_adjust_after_totsup_m3');
+
+    const beforeError = calcErrorPct(beforeTotsup, beforeTotmv);
+    const afterError = calcErrorPct(afterTotsup, afterTotmv);
+
+    const beforeStart = getTimeMinutes('id_flow_adjust_before_totmv_start_time');
+    const beforeEnd = getTimeMinutes('id_flow_adjust_before_totmv_end_time');
+    const afterStart = getTimeMinutes('id_flow_adjust_after_totmv_start_time');
+    const afterEnd = getTimeMinutes('id_flow_adjust_after_totmv_end_time');
+    const beforeDuration = calcDurationMinutes(beforeStart, beforeEnd);
+    const afterDuration = calcDurationMinutes(afterStart, afterEnd);
+
+    const hasAfter = afterTotmv != null && afterTotsup != null;
+    const finalError = hasAfter ? afterError : beforeError;
+    const finalRatio = hasAfter
+      ? ((afterTotmv != null && afterTotmv !== 0 && afterTotsup != null) ? (afterTotsup / afterTotmv) : null)
+      : ((beforeTotmv != null && beforeTotmv !== 0 && beforeTotsup != null) ? (beforeTotsup / beforeTotmv) : null);
+    const finalDuration = (hasAfter && afterDuration != null) ? afterDuration : beforeDuration;
+    const finalPhase = hasAfter ? 'Apos ajuste' : 'Antes do ajuste';
+
+    let uRelTempo = null;
+    if (uDeltaT != null && finalDuration != null && finalDuration > 0) {
+      uRelTempo = 100 * uDeltaT / (finalDuration * 60);
+    }
+
+    let uRefTotal = null;
+    if (uRelGeom != null && uRelTempo != null) {
+      uRefTotal = Math.sqrt((uRelGeom * uRelGeom) + (uRelTempo * uRelTempo));
+    }
+
+    let uDutTotal = null;
+    if (uDutRepeat != null && uDutRes != null) {
+      uDutTotal = Math.sqrt((uDutRepeat * uDutRepeat) + (uDutRes * uDutRes));
+    }
+
+    let uRelR = null;
+    if (uRefTotal != null && uDutTotal != null) {
+      uRelR = Math.sqrt((uRefTotal * uRefTotal) + (uDutTotal * uDutTotal));
+    }
+
+    let uErro = null;
+    if (finalRatio != null && uRelR != null) {
+      uErro = Math.abs(finalRatio * uRelR);
+    }
+
+    let uExpanded = null;
+    if (uErro != null && k != null) {
+      uExpanded = Math.abs(k * uErro);
+    }
+
+    const criterion = getNum('id_acceptance_criterion_pct');
+    if (criterion != null) setNum('id_acceptance_criterion_pct', criterion, 1, true);
+    setNum('id_error_before_pct', beforeError, 3, true);
+    setNum('id_error_after_pct', finalError, 3, true);
+    setNum('id_expanded_uncertainty_calc_pct', uExpanded, 3, true);
+
+    setNum('id_flow_adjust_vm_display', vm, 3, false);
+    setNum('id_flow_adjust_de_display', de, 3, false);
+    setNum('id_flow_adjust_di_display', di, 3, false);
+    setNum('id_flow_adjust_before_duration', beforeDuration, 2, false);
+    setNum('id_flow_adjust_after_duration', afterDuration, 2, false);
+    setNum('id_flow_adjust_de_source', null, 0, false);
+    const deSourceInput = document.getElementById('id_flow_adjust_de_source');
+    if (deSourceInput) deSourceInput.value = deSource;
+    const phaseInput = document.getElementById('id_flow_adjust_final_phase');
+    if (phaseInput) phaseInput.value = finalPhase;
+
+    setText('sum-vm', fmt(vm, 3));
+    setText('sum-de', fmt(de, 3));
+    setText('sum-di', fmt(di, 3));
+    setText('sum-err-before', fmt(beforeError, 3));
+    setText('sum-err-final', fmt(finalError, 3));
+    setText('sum-u-geom', fmt(uRelGeom, 3));
+    setText('sum-u-time', fmt(uRelTempo, 3));
+    setText('sum-u-ref', fmt(uRefTotal, 3));
+    setText('sum-u-dut', fmt(uDutTotal, 3));
+    setText('sum-u-r', fmt(uRelR, 3));
+    setText('sum-u-final', fmt(uExpanded, 3));
+
+    if (criterion == null || beforeError == null) {
+      setBox('before', 'pending', 'Preencha TOTMV e TOTSUP antes.');
+    } else if (Math.abs(beforeError) <= criterion) {
+      setBox('before', 'ok', `Erro antes ${fmt(Math.abs(beforeError), 3)}% dentro do limite ${fmt(criterion, 1)}%.`);
+    } else {
+      setBox('before', 'fail', `Erro antes ${fmt(Math.abs(beforeError), 3)}% fora do limite ${fmt(criterion, 1)}%.`);
+    }
+
+    if (uExpanded == null) {
+      setBox('uncert', 'pending', 'Preencha os dados para calcular U(e).');
+    } else {
+      setBox('uncert', 'ok', `U(e) calculada: ${fmt(uExpanded, 3)}%.`);
+    }
+
+    if (criterion == null || finalError == null || uExpanded == null) {
+      setBox('final', 'pending', 'Preencha os dados para avaliar o criterio final.');
+    } else {
+      const combined = Math.abs(finalError) + Math.abs(uExpanded);
+      if (combined <= criterion) {
+        setBox('final', 'ok', `|Erro final| + U(e) = ${fmt(combined, 3)}% (limite ${fmt(criterion, 1)}%).`);
+      } else {
+        setBox('final', 'fail', `|Erro final| + U(e) = ${fmt(combined, 3)}% (limite ${fmt(criterion, 1)}%).`);
+      }
+    }
+  }
+
+  form.addEventListener('input', recalc);
+  form.addEventListener('change', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}

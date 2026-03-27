@@ -1,5 +1,5 @@
 ﻿import re
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal, localcontext
 
 from django.conf import settings
@@ -524,6 +524,9 @@ class FormSubmission(models.Model):
     FORM_CODE_LEVEL = 'FOR 07.04.01.002'
     FORM_CODE_SCANNER = 'FOR SCANNER'
     FORM_CODE_FLOW = 'FOR VAZAO'
+    FORM_CODE_FLOW_CERT = 'FOR VAZAO'
+    FORM_CODE_FLOW_ADJUST = 'FOR 08.05.006'
+    FORM_CODE_FLOW_ADJUST_ALT = 'FOR 08.03.006'
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -714,6 +717,70 @@ class FormSubmission(models.Model):
     flow_tendency_6_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     flow_uncertainty_6_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     flow_k_6 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    flow_adjust_thickness_1_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_thickness_2_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_thickness_3_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_thickness_4_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_circumference_ci_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_pipe_nominal_in = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    flow_adjust_before_totmv_m3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_before_totsup_m3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_before_totmv_start_time = models.TimeField(null=True, blank=True)
+    flow_adjust_before_totmv_end_time = models.TimeField(null=True, blank=True)
+    flow_adjust_before_totsup_start_time = models.TimeField(null=True, blank=True)
+    flow_adjust_before_totsup_end_time = models.TimeField(null=True, blank=True)
+
+    flow_adjust_after_totmv_m3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_after_totsup_m3 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    flow_adjust_after_totmv_start_time = models.TimeField(null=True, blank=True)
+    flow_adjust_after_totmv_end_time = models.TimeField(null=True, blank=True)
+    flow_adjust_after_totsup_start_time = models.TimeField(null=True, blank=True)
+    flow_adjust_after_totsup_end_time = models.TimeField(null=True, blank=True)
+
+    flow_adjust_u_ci_mm = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('1.000'),
+    )
+    flow_adjust_u_inst_t_mm = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('0.200'),
+    )
+    flow_adjust_u_delta_t_s = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('5.000'),
+    )
+    flow_adjust_u_dut_repeat_pct = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('0.000'),
+    )
+    flow_adjust_u_dut_res_pct = models.DecimalField(
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('0.000'),
+    )
+    flow_adjust_k_factor = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('2.000'),
+    )
 
     level_before_vm_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     level_before_vl_1 = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -1003,21 +1070,50 @@ class FormSubmission(models.Model):
         return 'SCANNER' in code or 'SCANNER' in title
 
     @property
-    def is_flow_form(self):
+    def is_flow_certificate_form(self):
         code = self.form_code
         title = ''
         if self.form_type_id and self.form_type:
             title = (self.form_type.title or '').strip().upper()
         return (
-            self.FORM_CODE_FLOW in code
-            or 'VAZAO' in code
-            or 'VAZAO' in title
-            or 'MEDIDOR DE VAZAO' in title
+            self.FORM_CODE_FLOW_CERT in code
+            or 'FOR VAZAO' in code
+            or 'VALIDACAO DE CERTIFICADO' in title
+            or 'CERTIFICADO DE CALIBRACAO DE MEDIDOR DE VAZAO' in title
         )
 
     @property
+    def is_flow_adjust_form(self):
+        code = self.form_code
+        title = ''
+        if self.form_type_id and self.form_type:
+            title = (self.form_type.title or '').strip().upper()
+        title_has_vazao_adjust = (
+            'VAZAO' in title
+            and 'VERIFICACAO' in title
+            and 'AJUSTE' in title
+            and 'MEDIDOR' in title
+        )
+        return (
+            code.startswith(self.FORM_CODE_FLOW_ADJUST)
+            or code.startswith(self.FORM_CODE_FLOW_ADJUST_ALT)
+            or 'FOR 08.05.006' in code
+            or 'FOR 08.03.006' in code
+            or title_has_vazao_adjust
+        )
+
+    @property
+    def is_flow_form(self):
+        return self.is_flow_certificate_form
+
+    @property
     def is_belt_form(self):
-        return not self.is_level_form and not self.is_scanner_form and not self.is_flow_form
+        return (
+            not self.is_level_form
+            and not self.is_scanner_form
+            and not self.is_flow_certificate_form
+            and not self.is_flow_adjust_form
+        )
 
     @staticmethod
     def _avg(*values):
@@ -1269,6 +1365,281 @@ class FormSubmission(models.Model):
         if all(row['ok'] is True for row in valid_rows):
             return 'Aprovado'
         return 'Pendente dados'
+
+    @staticmethod
+    def _duration_minutes(start_time, end_time):
+        if not start_time or not end_time:
+            return None
+        start_dt = datetime.combine(timezone.localdate(), start_time)
+        end_dt = datetime.combine(timezone.localdate(), end_time)
+        if end_dt < start_dt:
+            end_dt += timedelta(days=1)
+        delta = end_dt - start_dt
+        minutes = Decimal(str(delta.total_seconds())) / Decimal('60')
+        if minutes <= 0:
+            return None
+        return minutes
+
+    @property
+    def flow_adjust_pipe_thickness_values_mm(self):
+        return [
+            value
+            for value in [
+                self.flow_adjust_thickness_1_mm,
+                self.flow_adjust_thickness_2_mm,
+                self.flow_adjust_thickness_3_mm,
+                self.flow_adjust_thickness_4_mm,
+            ]
+            if value is not None
+        ]
+
+    @property
+    def flow_adjust_pipe_thickness_mean_mm(self):
+        return self._avg(*self.flow_adjust_pipe_thickness_values_mm)
+
+    @property
+    def flow_adjust_pipe_thickness_std_mm(self):
+        return self._std_sample(self.flow_adjust_pipe_thickness_values_mm)
+
+    @property
+    def flow_adjust_external_diameter_mm(self):
+        circumference = self.flow_adjust_circumference_ci_mm
+        if circumference is not None and circumference > 0:
+            return circumference / Decimal('3.14')
+        if self.flow_adjust_pipe_nominal_in is not None:
+            return self.flow_adjust_pipe_nominal_in * Decimal('25.4')
+        return None
+
+    @property
+    def flow_adjust_external_diameter_source_label(self):
+        circumference = self.flow_adjust_circumference_ci_mm
+        if circumference is not None and circumference > 0:
+            return 'DE = CI / PI'
+        if self.flow_adjust_pipe_nominal_in is not None:
+            return "DE = POL' x 25,4"
+        return '-'
+
+    @property
+    def flow_adjust_u_ci_mm_value(self):
+        if self.flow_adjust_u_ci_mm is not None:
+            return self.flow_adjust_u_ci_mm
+        return Decimal('1.000')
+
+    @property
+    def flow_adjust_u_inst_t_mm_value(self):
+        if self.flow_adjust_u_inst_t_mm is not None:
+            return self.flow_adjust_u_inst_t_mm
+        return Decimal('0.200')
+
+    @property
+    def flow_adjust_u_delta_t_s_value(self):
+        if self.flow_adjust_u_delta_t_s is not None:
+            return self.flow_adjust_u_delta_t_s
+        return Decimal('5.000')
+
+    @property
+    def flow_adjust_u_dut_repeat_pct_value(self):
+        if self.flow_adjust_u_dut_repeat_pct is not None:
+            return self.flow_adjust_u_dut_repeat_pct
+        return Decimal('0')
+
+    @property
+    def flow_adjust_u_dut_res_pct_value(self):
+        if self.flow_adjust_u_dut_res_pct is not None:
+            return self.flow_adjust_u_dut_res_pct
+        return Decimal('0')
+
+    @property
+    def flow_adjust_k_factor_value(self):
+        if self.flow_adjust_k_factor is not None:
+            return self.flow_adjust_k_factor
+        return Decimal('2')
+
+    @property
+    def flow_adjust_u_de_mm(self):
+        circumference = self.flow_adjust_circumference_ci_mm
+        if circumference is not None and circumference > 0:
+            return self.flow_adjust_u_ci_mm_value / Decimal('3.14')
+        if self.flow_adjust_pipe_nominal_in is not None:
+            return Decimal('0')
+        return None
+
+    @property
+    def flow_adjust_u_t_bar_mm(self):
+        values = self.flow_adjust_pipe_thickness_values_mm
+        count = len(values)
+        if count == 0:
+            return None
+        std_sample = self._std_sample(values)
+        std_term = Decimal('0')
+        if std_sample is not None:
+            sqrt_count = self._sqrt(Decimal(count))
+            if sqrt_count in (None, 0):
+                return None
+            std_term = std_sample / sqrt_count
+        inst = self.flow_adjust_u_inst_t_mm_value
+        return self._sqrt((std_term * std_term) + (inst * inst))
+
+    @property
+    def flow_adjust_internal_diameter_mm(self):
+        de = self.flow_adjust_external_diameter_mm
+        t_mean = self.flow_adjust_pipe_thickness_mean_mm
+        if de is None or t_mean is None:
+            return None
+        return de - (Decimal('2') * t_mean)
+
+    @property
+    def flow_adjust_u_internal_diameter_mm(self):
+        u_de = self.flow_adjust_u_de_mm
+        u_t_bar = self.flow_adjust_u_t_bar_mm
+        if u_de is None or u_t_bar is None:
+            return None
+        return self._sqrt((u_de * u_de) + ((Decimal('2') * u_t_bar) ** 2))
+
+    @property
+    def flow_adjust_u_rel_geom_pct(self):
+        di = self.flow_adjust_internal_diameter_mm
+        u_di = self.flow_adjust_u_internal_diameter_mm
+        if di in (None, 0) or u_di is None:
+            return None
+        return Decimal('100') * (Decimal('2') * u_di / di)
+
+    @property
+    def flow_adjust_before_duration_min(self):
+        return self._duration_minutes(
+            self.flow_adjust_before_totmv_start_time,
+            self.flow_adjust_before_totmv_end_time,
+        )
+
+    @property
+    def flow_adjust_after_duration_min(self):
+        return self._duration_minutes(
+            self.flow_adjust_after_totmv_start_time,
+            self.flow_adjust_after_totmv_end_time,
+        )
+
+    @property
+    def flow_adjust_before_ratio_r(self):
+        if self.flow_adjust_before_totmv_m3 in (None, 0) or self.flow_adjust_before_totsup_m3 is None:
+            return None
+        return self.flow_adjust_before_totsup_m3 / self.flow_adjust_before_totmv_m3
+
+    @property
+    def flow_adjust_after_ratio_r(self):
+        if self.flow_adjust_after_totmv_m3 in (None, 0) or self.flow_adjust_after_totsup_m3 is None:
+            return None
+        return self.flow_adjust_after_totsup_m3 / self.flow_adjust_after_totmv_m3
+
+    @property
+    def flow_adjust_error_before_pct_auto(self):
+        ratio = self.flow_adjust_before_ratio_r
+        if ratio is None:
+            return None
+        return (ratio - Decimal('1')) * Decimal('100')
+
+    @property
+    def flow_adjust_error_after_pct_auto(self):
+        ratio = self.flow_adjust_after_ratio_r
+        if ratio is None:
+            return None
+        return (ratio - Decimal('1')) * Decimal('100')
+
+    @property
+    def flow_adjust_has_after_data(self):
+        return self.flow_adjust_after_totmv_m3 is not None and self.flow_adjust_after_totsup_m3 is not None
+
+    @property
+    def flow_adjust_final_phase(self):
+        return 'after' if self.flow_adjust_has_after_data else 'before'
+
+    @property
+    def flow_adjust_final_phase_label(self):
+        return 'Apos ajuste' if self.flow_adjust_has_after_data else 'Antes do ajuste'
+
+    @property
+    def flow_adjust_final_ratio_r(self):
+        if self.flow_adjust_has_after_data:
+            return self.flow_adjust_after_ratio_r
+        return self.flow_adjust_before_ratio_r
+
+    @property
+    def flow_adjust_final_error_pct(self):
+        if self.flow_adjust_has_after_data:
+            return self.flow_adjust_error_after_pct_auto
+        return self.flow_adjust_error_before_pct_auto
+
+    @property
+    def flow_adjust_final_duration_min(self):
+        if self.flow_adjust_has_after_data and self.flow_adjust_after_duration_min is not None:
+            return self.flow_adjust_after_duration_min
+        return self.flow_adjust_before_duration_min
+
+    @property
+    def flow_adjust_u_rel_tempo_pct(self):
+        duration_min = self.flow_adjust_final_duration_min
+        if duration_min in (None, 0):
+            return None
+        return Decimal('100') * self.flow_adjust_u_delta_t_s_value / (duration_min * Decimal('60'))
+
+    @property
+    def flow_adjust_u_ref_total_pct(self):
+        u_rel_geom = self.flow_adjust_u_rel_geom_pct
+        u_rel_tempo = self.flow_adjust_u_rel_tempo_pct
+        if u_rel_geom is None or u_rel_tempo is None:
+            return None
+        u_cal_maleta = Decimal('0')
+        u_repeat_maleta = Decimal('0')
+        u_alg = Decimal('0')
+        return self._sqrt(
+            (u_cal_maleta * u_cal_maleta)
+            + (u_repeat_maleta * u_repeat_maleta)
+            + (u_alg * u_alg)
+            + (u_rel_geom * u_rel_geom)
+            + (u_rel_tempo * u_rel_tempo)
+        )
+
+    @property
+    def flow_adjust_u_dut_total_pct(self):
+        repeat = self.flow_adjust_u_dut_repeat_pct_value
+        resolution = self.flow_adjust_u_dut_res_pct_value
+        return self._sqrt((repeat * repeat) + (resolution * resolution))
+
+    @property
+    def flow_adjust_u_rel_r_pct(self):
+        u_ref_total = self.flow_adjust_u_ref_total_pct
+        u_dut_total = self.flow_adjust_u_dut_total_pct
+        if u_ref_total is None or u_dut_total is None:
+            return None
+        return self._sqrt((u_ref_total * u_ref_total) + (u_dut_total * u_dut_total))
+
+    @property
+    def flow_adjust_u_error_pct(self):
+        ratio = self.flow_adjust_final_ratio_r
+        u_rel_r = self.flow_adjust_u_rel_r_pct
+        if ratio is None or u_rel_r is None:
+            return None
+        return abs(ratio * u_rel_r)
+
+    @property
+    def flow_adjust_u_expanded_pct(self):
+        u_error = self.flow_adjust_u_error_pct
+        if u_error is None:
+            return None
+        return abs(self.flow_adjust_k_factor_value * u_error)
+
+    @property
+    def flow_adjust_error_before_ok(self):
+        before_error = self.flow_adjust_error_before_pct_auto
+        if before_error is None or self.acceptance_limit_pct is None:
+            return None
+        return abs(before_error) <= self.acceptance_limit_pct
+
+    @property
+    def flow_adjust_error_final_ok(self):
+        final_error = self.flow_adjust_final_error_pct
+        if final_error is None or self.acceptance_limit_pct is None:
+            return None
+        return abs(final_error) <= self.acceptance_limit_pct
 
     @property
     def attached_certificate_file(self):
@@ -1698,6 +2069,8 @@ class FormSubmission(models.Model):
             return self.scanner_u_expanded_mm
         if self.is_flow_form:
             return self.flow_max_uncertainty_pct
+        if self.is_flow_adjust_form:
+            return self.flow_adjust_u_expanded_pct
         return self.expanded_uncertainty_after_pct_auto
 
     @property
@@ -1708,6 +2081,8 @@ class FormSubmission(models.Model):
             return self.level_uncertainty_expanded_m
         if self.is_flow_form:
             return self.flow_max_uncertainty_pct
+        if self.is_flow_adjust_form:
+            return self.flow_adjust_u_expanded_pct
         return self.expanded_uncertainty_calc_pct_auto
 
     @property
@@ -1780,6 +2155,8 @@ class FormSubmission(models.Model):
             return self.scanner_max_error_abs_mm
         if self.is_flow_form:
             return self.flow_max_error_abs_pct
+        if self.is_flow_adjust_form:
+            return self.flow_adjust_error_before_pct_auto
         return self.error_before_pct if self.error_before_pct is not None else self.error_before_pct_auto
 
     @property
@@ -1790,6 +2167,8 @@ class FormSubmission(models.Model):
             return self.scanner_max_error_abs_mm
         if self.is_flow_form:
             return self.flow_max_error_abs_pct
+        if self.is_flow_adjust_form:
+            return self.flow_adjust_final_error_pct
         return self.error_after_pct if self.error_after_pct is not None else self.error_after_pct_auto
 
     @property
@@ -1902,6 +2281,11 @@ class FormSubmission(models.Model):
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
             if not self.expanded_uncertainty_unit:
                 self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
+        if self.is_flow_adjust_form:
+            if not self.acceptance_criterion_unit:
+                self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
+            if not self.expanded_uncertainty_unit:
+                self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
         if self.is_level_form:
             self.error_before_pct = self.level_before_mean_abs_m
             self.error_after_pct = self.level_final_mean_abs_m
@@ -1914,6 +2298,10 @@ class FormSubmission(models.Model):
             self.error_before_pct = self.flow_max_error_abs_pct
             self.error_after_pct = self.flow_max_error_abs_pct
             self.expanded_uncertainty_calc_pct = self.flow_max_uncertainty_pct
+        elif self.is_flow_adjust_form:
+            self.error_before_pct = self.flow_adjust_error_before_pct_auto
+            self.error_after_pct = self.flow_adjust_final_error_pct
+            self.expanded_uncertainty_calc_pct = self.flow_adjust_u_expanded_pct
         else:
             self.ibm = self.ibm_auto
             self.mark_distance = self.mark_distance_auto
