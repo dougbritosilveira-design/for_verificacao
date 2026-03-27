@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
-{% block title %}Formulario tecnico - Medidor de vazao (FOR 08.05.006){% endblock %}
+{% block title %}Formulário técnico - Medidor de vazão (FOR 08.05.006){% endblock %}
 {% block content %}
-<h2>2. Formulario tecnico</h2>
+<h2>2. Formulário técnico</h2>
 <p>
   <strong>OM:</strong> {{ submission.om_number }}
   | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}
   | <strong>Equipamento:</strong> {{ submission.equipment.tag }}
-  | <strong>Formulario:</strong> {{ submission.form_type_label }}
+  | <strong>Formulário:</strong> {{ submission.form_type_label }}
   | <strong>Local:</strong> {{ submission.location_snapshot }}
 </p>
 <p><span class="status-chip">{{ submission.get_status_display }}</span></p>
@@ -14,16 +14,16 @@
   <div class="accept-box fail" style="margin-top:8px;">
     <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
     <p style="margin:0;">
-      <strong>Observacao do avaliador:</strong>
+      <strong>Observação do avaliador:</strong>
       {% if submission.validation_feedback %}
         {{ submission.validation_feedback|linebreaksbr }}
       {% else %}
-        Sem observacao.
+        Sem observação.
       {% endif %}
     </p>
   </div>
 {% endif %}
-<p><strong>Campos automaticos:</strong> VM, DE, erro antes/depois, U(e) e comparacao final com criterio de aceitacao.</p>
+<p><strong>Campos automáticos:</strong> VM, DE, erro antes/depois, U(e) e comparação final com critério de aceitação.</p>
 
 <style>
   .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
@@ -62,22 +62,22 @@
     <p>{{ form.flow_adjust_thickness_2_mm.label_tag }} {{ form.flow_adjust_thickness_2_mm }}</p>
     <p>{{ form.flow_adjust_thickness_3_mm.label_tag }} {{ form.flow_adjust_thickness_3_mm }}</p>
     <p>{{ form.flow_adjust_thickness_4_mm.label_tag }} {{ form.flow_adjust_thickness_4_mm }}</p>
-    <p><label for="id_flow_adjust_vm_display">VM media (mm)</label><input id="id_flow_adjust_vm_display" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_vm_display">VM média (mm)</label><input id="id_flow_adjust_vm_display" class="auto-locked" type="text" readonly disabled></p>
   </div>
   <div class="row">
     <p>{{ form.flow_adjust_circumference_ci_mm.label_tag }} {{ form.flow_adjust_circumference_ci_mm }}</p>
     <p>{{ form.flow_adjust_pipe_nominal_in.label_tag }} {{ form.flow_adjust_pipe_nominal_in }}</p>
-    <p><label for="id_flow_adjust_de_display">Diametro externo DE (mm)</label><input id="id_flow_adjust_de_display" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_de_display">Diâmetro externo DE (mm)</label><input id="id_flow_adjust_de_display" class="auto-locked" type="text" readonly disabled></p>
     <p><label for="id_flow_adjust_de_source">Fonte do DE</label><input id="id_flow_adjust_de_source" class="auto-locked" type="text" readonly disabled></p>
-    <p><label for="id_flow_adjust_di_display">Diametro interno Di (mm)</label><input id="id_flow_adjust_di_display" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_di_display">Diâmetro interno Di (mm)</label><input id="id_flow_adjust_di_display" class="auto-locked" type="text" readonly disabled></p>
   </div>
 
-  <h3>Verificacao antes do ajuste</h3>
+  <h3>Verificação antes do ajuste</h3>
   <div class="row">
     <p>{{ form.flow_adjust_before_totmv_m3.label_tag }} {{ form.flow_adjust_before_totmv_m3 }}</p>
     <p>{{ form.flow_adjust_before_totsup_m3.label_tag }} {{ form.flow_adjust_before_totsup_m3 }}</p>
     <p>{{ form.error_before_pct.label_tag }} {{ form.error_before_pct }}</p>
-    <p><label for="id_flow_adjust_before_duration">Tempo medicao antes (min)</label><input id="id_flow_adjust_before_duration" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_before_duration">Tempo medição antes (min)</label><input id="id_flow_adjust_before_duration" class="auto-locked" type="text" readonly disabled></p>
   </div>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.flow_adjust_before_totmv_start_time.label_tag }} {{ form.flow_adjust_before_totmv_start_time }}</p>
@@ -88,18 +88,18 @@
 
   <div id="before-box" class="accept-box pending">
     <p style="margin:0 0 4px;">
-      <strong>Criterio do erro antes (|erro antes| <= limite)</strong>
+      <strong>Critério do erro antes (|erro antes| <= limite)</strong>
       <span id="before-pill" class="accept-pill pending">Pendente dados</span>
     </p>
     <p id="before-detail" style="margin:0;">Preencha TOTMV e TOTSUP antes.</p>
   </div>
 
-  <h3>Verificacao apos ajuste (caso necessario)</h3>
+  <h3>Verificação após ajuste (caso necessário)</h3>
   <div class="row">
     <p>{{ form.flow_adjust_after_totmv_m3.label_tag }} {{ form.flow_adjust_after_totmv_m3 }}</p>
     <p>{{ form.flow_adjust_after_totsup_m3.label_tag }} {{ form.flow_adjust_after_totsup_m3 }}</p>
     <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
-    <p><label for="id_flow_adjust_after_duration">Tempo medicao apos (min)</label><input id="id_flow_adjust_after_duration" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_flow_adjust_after_duration">Tempo medição após (min)</label><input id="id_flow_adjust_after_duration" class="auto-locked" type="text" readonly disabled></p>
   </div>
   <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.flow_adjust_after_totmv_start_time.label_tag }} {{ form.flow_adjust_after_totmv_start_time }}</p>
@@ -108,17 +108,17 @@
     <p>{{ form.flow_adjust_after_totsup_end_time.label_tag }} {{ form.flow_adjust_after_totsup_end_time }}</p>
   </div>
 
-  <h3>Parametros da incerteza</h3>
+  <h3>Parâmetros da incerteza</h3>
   <div class="row">
-    <p>{{ form.flow_adjust_u_ci_mm.label_tag }} {{ form.flow_adjust_u_ci_mm }}</p>
-    <p>{{ form.flow_adjust_u_inst_t_mm.label_tag }} {{ form.flow_adjust_u_inst_t_mm }}</p>
-    <p>{{ form.flow_adjust_u_delta_t_s.label_tag }} {{ form.flow_adjust_u_delta_t_s }}</p>
-    <p>{{ form.flow_adjust_u_dut_repeat_pct.label_tag }} {{ form.flow_adjust_u_dut_repeat_pct }}</p>
-    <p>{{ form.flow_adjust_u_dut_res_pct.label_tag }} {{ form.flow_adjust_u_dut_res_pct }}</p>
     <p>{{ form.flow_adjust_k_factor.label_tag }} {{ form.flow_adjust_k_factor }}</p>
+    {{ form.flow_adjust_u_ci_mm }}
+    {{ form.flow_adjust_u_inst_t_mm }}
+    {{ form.flow_adjust_u_delta_t_s }}
+    {{ form.flow_adjust_u_dut_repeat_pct }}
+    {{ form.flow_adjust_u_dut_res_pct }}
   </div>
 
-  <h3>Resultados da verificacao e ajuste</h3>
+  <h3>Resultados da verificação e ajuste</h3>
   <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
     <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
@@ -135,13 +135,13 @@
 
   <div id="final-box" class="accept-box pending">
     <p style="margin:0 0 4px;">
-      <strong>Criterio final (|erro final| + U(e) <= limite)</strong>
+      <strong>Critério final (|erro final| + U(e) <= limite)</strong>
       <span id="final-pill" class="accept-pill pending">Pendente dados</span>
     </p>
-    <p id="final-detail" style="margin:0;">Preencha os dados para avaliar o criterio final.</p>
+    <p id="final-detail" style="margin:0;">Preencha os dados para avaliar o critério final.</p>
   </div>
 
-  <h3>Identificacao e observacao</h3>
+  <h3>Identificação e observação</h3>
   <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
     <div>
       <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
@@ -167,13 +167,13 @@
 
   <div style="margin-top:12px; display:flex; gap:10px;">
     <button type="submit">Salvar</button>
-    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validacao</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
   </div>
 </form>
 
 <hr>
 <h3>Resumo calculado (MVP)</h3>
-<p>VM media espessura (mm): <span id="sum-vm">-</span></p>
+<p>VM média espessura (mm): <span id="sum-vm">-</span></p>
 <p>DE externo (mm): <span id="sum-de">-</span> | Di interno (mm): <span id="sum-di">-</span></p>
 <p>Erro antes (%): <span id="sum-err-before">-</span></p>
 <p>Erro final (%): <span id="sum-err-final">-</span></p>
@@ -349,7 +349,7 @@
       ? ((afterTotmv != null && afterTotmv !== 0 && afterTotsup != null) ? (afterTotsup / afterTotmv) : null)
       : ((beforeTotmv != null && beforeTotmv !== 0 && beforeTotsup != null) ? (beforeTotsup / beforeTotmv) : null);
     const finalDuration = (hasAfter && afterDuration != null) ? afterDuration : beforeDuration;
-    const finalPhase = hasAfter ? 'Apos ajuste' : 'Antes do ajuste';
+    const finalPhase = hasAfter ? 'Após ajuste' : 'Antes do ajuste';
 
     let uRelTempo = null;
     if (uDeltaT != null && finalDuration != null && finalDuration > 0) {
@@ -383,9 +383,9 @@
 
     const criterion = getNum('id_acceptance_criterion_pct');
     if (criterion != null) setNum('id_acceptance_criterion_pct', criterion, 1, true);
-    setNum('id_error_before_pct', beforeError, 3, true);
+    setNum('id_error_before_pct', beforeError, 2, true);
     setNum('id_error_after_pct', finalError, 3, true);
-    setNum('id_expanded_uncertainty_calc_pct', uExpanded, 3, true);
+    setNum('id_expanded_uncertainty_calc_pct', uExpanded, 2, true);
 
     setNum('id_flow_adjust_vm_display', vm, 3, false);
     setNum('id_flow_adjust_de_display', de, 3, false);
@@ -413,25 +413,25 @@
     if (criterion == null || beforeError == null) {
       setBox('before', 'pending', 'Preencha TOTMV e TOTSUP antes.');
     } else if (Math.abs(beforeError) <= criterion) {
-      setBox('before', 'ok', `Erro antes ${fmt(Math.abs(beforeError), 3)}% dentro do limite ${fmt(criterion, 1)}%.`);
+      setBox('before', 'ok', `Erro antes ${fmt(Math.abs(beforeError), 2)}% dentro do limite ${fmt(criterion, 2)}%.`);
     } else {
-      setBox('before', 'fail', `Erro antes ${fmt(Math.abs(beforeError), 3)}% fora do limite ${fmt(criterion, 1)}%.`);
+      setBox('before', 'fail', `Erro antes ${fmt(Math.abs(beforeError), 2)}% fora do limite ${fmt(criterion, 2)}%.`);
     }
 
     if (uExpanded == null) {
       setBox('uncert', 'pending', 'Preencha os dados para calcular U(e).');
     } else {
-      setBox('uncert', 'ok', `U(e) calculada: ${fmt(uExpanded, 3)}%.`);
+      setBox('uncert', 'ok', `U(e) calculada: ${fmt(uExpanded, 2)}%.`);
     }
 
     if (criterion == null || finalError == null || uExpanded == null) {
-      setBox('final', 'pending', 'Preencha os dados para avaliar o criterio final.');
+      setBox('final', 'pending', 'Preencha os dados para avaliar o critério final.');
     } else {
       const combined = Math.abs(finalError) + Math.abs(uExpanded);
       if (combined <= criterion) {
-        setBox('final', 'ok', `|Erro final| + U(e) = ${fmt(combined, 3)}% (limite ${fmt(criterion, 1)}%).`);
+        setBox('final', 'ok', `|Erro final| + U(e) = ${fmt(combined, 2)}% (limite ${fmt(criterion, 2)}%).`);
       } else {
-        setBox('final', 'fail', `|Erro final| + U(e) = ${fmt(combined, 3)}% (limite ${fmt(criterion, 1)}%).`);
+        setBox('final', 'fail', `|Erro final| + U(e) = ${fmt(combined, 2)}% (limite ${fmt(criterion, 2)}%).`);
       }
     }
   }

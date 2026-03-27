@@ -785,6 +785,26 @@ class FlowAdjustTechnicalForm(forms.ModelForm):
         self.fields['error_before_pct'].widget.attrs.update({'step': '0.01'})
         self.fields['error_after_pct'].widget.attrs.update({'step': '0.01'})
 
+        # Mantemos os parâmetros para cálculo interno, mas ocultos na interface.
+        for name in [
+            'flow_adjust_u_ci_mm',
+            'flow_adjust_u_inst_t_mm',
+            'flow_adjust_u_delta_t_s',
+            'flow_adjust_u_dut_repeat_pct',
+            'flow_adjust_u_dut_res_pct',
+        ]:
+            self.fields[name].widget = forms.HiddenInput()
+            self.fields[name].required = False
+
+        # Fator k deve ficar visível apenas em modo leitura.
+        self.fields['flow_adjust_k_factor'].disabled = True
+        self.fields['flow_adjust_k_factor'].widget.attrs.update(
+            {
+                'style': 'background:#f3f0e6;',
+                'title': 'Campo bloqueado. Valor padrão do método.',
+            }
+        )
+
         for name in [
             'acceptance_criterion_pct',
             'expanded_uncertainty_calc_pct',
