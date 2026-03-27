@@ -215,7 +215,7 @@ def _generate_submission_report_pdf_bytes(
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.utils import ImageReader
+        from reportlab.lib.utils import ImageReader, simpleSplit
         from reportlab.pdfgen import canvas
     except Exception:
         text = (
@@ -282,17 +282,26 @@ def _generate_submission_report_pdf_bytes(
             '',
             'Pontos avaliados (calibração/indicado/referência/tendência/U(e)):',
         ]
-        for row in submission.flow_points:
+        for row in valid_points:
+            status_label = 'Pendente'
+            if row.get('ok') is True:
+                status_label = 'Aprovado'
+            elif row.get('ok') is False:
+                status_label = 'Reprovado'
             lines.append(
                 f'Ponto {row["index"]} ({row["target"]}): '
                 f'Cal={_format_num(row["calibration_m3h"], 4)} m3/h | '
                 f'Ind={_format_num(row["indicated_m3h"], 4)} m3/h | '
-                f'Ref={_format_num(row["reference_m3h"], 4)} m3/h | '
-                f'Tend={_format_num(row["tendency_pct"], 4)}% | '
-                f'U={_format_num(row["uncertainty_pct"], 4)}% | '
-                f'Soma={_format_num(row["combined_pct"], 4)}% | '
-                f'Status={"OK" if row["ok"] else ("N/A" if row["ok"] is None else "NOK")}'
+                f'Ref={_format_num(row["reference_m3h"], 4)} m3/h'
             )
+            lines.append(
+                f'    Tend={_format_num(row["tendency_pct"], 4)}% | '
+                f'U(e)={_format_num(row["uncertainty_pct"], 4)}% | '
+                f'Soma={_format_num(row["combined_pct"], 4)}% | '
+                f'Status={status_label}'
+            )
+        if not valid_points:
+            lines.append('Nenhum ponto válido encontrado no certificado.')
         lines.extend(
             [
                 '',
@@ -472,13 +481,16 @@ def _generate_submission_report_pdf_bytes(
         ]
 
     pdf.setFont('Helvetica', 10)
-    for line in lines:
-        if y < 60:
-            pdf.showPage()
-            y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
-            pdf.setFont('Helvetica', 10)
-        pdf.drawString(40, y, line[:120])
-        y -= line_height
+    max_text_width = page_width - 80
+    for raw_line in lines:
+        wrapped_lines = simpleSplit(str(raw_line), 'Helvetica', 10, max_text_width) or ['']
+        for line in wrapped_lines:
+            if y < 60:
+                pdf.showPage()
+                y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
+                pdf.setFont('Helvetica', 10)
+            pdf.drawString(40, y, line)
+            y -= line_height
 
     if submission.is_flow_form:
         table_rows = flow_summary_rows
