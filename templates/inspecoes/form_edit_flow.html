@@ -138,7 +138,7 @@
 
   <h3>Resultados da verificação e ajuste</h3>
   <div class="row" style="grid-template-columns:repeat(1,minmax(220px,1fr));">
-    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p style="max-width:280px;">{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
   </div>
 
   <div id="final-box" class="accept-box pending">
@@ -308,11 +308,13 @@
 
     if (finalOk == null) {
       setBox('final', 'pending', 'Preencha os pontos com tendência e incerteza.');
+    } else if (finalOk) {
+      setBox('final', 'ok', `Todos os pontos dentro do critério de aceitação (limite ${fmt(criterion, 1)}%).`);
     } else {
       setBox(
         'final',
-        finalOk ? 'ok' : 'fail',
-        `Pontos aprovados: ${approvedPoints}/${points} | Maior soma por ponto: ${fmt(maxCombined, 4)}% (limite ${fmt(criterion, 1)}%).`,
+        'fail',
+        `Há ponto(s) fora do critério de aceitação (limite ${fmt(criterion, 1)}%).`,
       );
     }
   }
