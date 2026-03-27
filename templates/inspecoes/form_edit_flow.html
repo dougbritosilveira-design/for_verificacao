@@ -137,18 +137,12 @@
   </table>
 
   <h3>Resultados da verificação e ajuste</h3>
-  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+  <div class="row" style="grid-template-columns:repeat(1,minmax(220px,1fr));">
     <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
-    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
-  </div>
-
-  <div id="uncert-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Incerteza expandida calculada</strong> <span id="uncert-pill" class="accept-pill pending">Pendente dados</span></p>
-    <p id="uncert-detail" style="margin:0;">Aguardando pontos de medição para definir U(e) final.</p>
   </div>
 
   <div id="final-box" class="accept-box pending">
-    <p style="margin:0 0 4px;"><strong>Critério final (|erro máximo| + U(e) &lt;= limite)</strong> <span id="final-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p style="margin:0 0 4px;"><strong>Critério final por ponto (|erro| + U(e) &lt;= limite em todos os pontos)</strong> <span id="final-pill" class="accept-pill pending">Pendente dados</span></p>
     <p id="final-detail" style="margin:0;">Preencha os pontos com tendência e incerteza.</p>
   </div>
 
@@ -186,9 +180,10 @@
 <hr>
 <h3>Resumo calculado (MVP)</h3>
 <p>Pontos válidos: <span id="sum-points">0</span></p>
+<p>Pontos aprovados: <span id="sum-approved">0</span></p>
 <p>Maior |erro| (%): <span id="sum-error-max">-</span></p>
 <p>Maior U(e) (%): <span id="sum-u-max">-</span></p>
-<p>Soma final |erro| + U(e) (%): <span id="sum-combined">-</span></p>
+<p>Maior soma por ponto |erro| + U(e) (%): <span id="sum-combined">-</span></p>
 <p>Status final: <span id="sum-status">Pendente dados</span></p>
 
 <script>
@@ -264,9 +259,14 @@
 
   function recalc() {
     const criterion = getNum('id_acceptance_criterion_pct');
+    if (criterion != null) {
+      setField('id_acceptance_criterion_pct', criterion, 1, true);
+    }
     let points = 0;
+    let approvedPoints = 0;
     let maxError = null;
     let maxU = null;
+    let maxCombined = null;
 
     for (let idx = 1; idx <= 6; idx += 1) {
       const indicated = getNum(`id_flow_indicated_${idx}_m3h`);
@@ -293,30 +293,27 @@
         points += 1;
         maxError = maxError == null ? errorAbs : Math.max(maxError, errorAbs);
         maxU = maxU == null ? Math.abs(uncertainty) : Math.max(maxU, Math.abs(uncertainty));
+        maxCombined = maxCombined == null ? combined : Math.max(maxCombined, combined);
+        if (ok === true) approvedPoints += 1;
       }
     }
-
-    setField('id_expanded_uncertainty_calc_pct', maxU, 3, true);
-
-    const finalCombined = (maxError == null || maxU == null) ? null : (maxError + maxU);
-    const finalOk = (finalCombined == null || criterion == null) ? null : (finalCombined <= criterion);
+    const finalOk = (criterion == null || points === 0) ? null : (approvedPoints === points);
 
     setText('sum-points', String(points));
+    setText('sum-approved', String(approvedPoints));
     setText('sum-error-max', fmt(maxError, 4));
     setText('sum-u-max', fmt(maxU, 4));
-    setText('sum-combined', fmt(finalCombined, 4));
+    setText('sum-combined', fmt(maxCombined, 4));
     setText('sum-status', finalOk == null ? 'Pendente dados' : (finalOk ? 'Aprovado' : 'Reprovado'));
-
-    if (maxU == null) {
-      setBox('uncert', 'pending', 'Aguardando pontos de medição para definir U(e) final.');
-    } else {
-      setBox('uncert', 'ok', `U(e) final definida pelo maior valor do certificado: ${fmt(maxU, 4)}%.`);
-    }
 
     if (finalOk == null) {
       setBox('final', 'pending', 'Preencha os pontos com tendência e incerteza.');
     } else {
-      setBox('final', finalOk ? 'ok' : 'fail', `|Erro máximo|: ${fmt(maxError, 4)}% | U(e): ${fmt(maxU, 4)}% | Soma: ${fmt(finalCombined, 4)}% (limite ${fmt(criterion, 2)}%).`);
+      setBox(
+        'final',
+        finalOk ? 'ok' : 'fail',
+        `Pontos aprovados: ${approvedPoints}/${points} | Maior soma por ponto: ${fmt(maxCombined, 4)}% (limite ${fmt(criterion, 1)}%).`,
+      );
     }
   }
 

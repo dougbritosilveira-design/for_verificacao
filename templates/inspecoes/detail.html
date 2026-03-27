@@ -155,6 +155,7 @@
     <li>Erro máximo absoluto: {{ submission.flow_max_error_abs_pct|floatformat:4|localize|default:'-' }}%</li>
     <li>U(e) final (maior U do certificado): {{ submission.flow_max_uncertainty_pct|floatformat:4|localize|default:'-' }}%</li>
     <li>Soma final |erro| + U(e): {{ submission.acceptance_combined_value|floatformat:4|localize|default:'-' }}%</li>
+    <li>Pontos aprovados: {{ submission.flow_approved_points_count }} / {{ submission.flow_valid_points_count }}</li>
     <li>Status final: {{ submission.acceptance_status_label }}</li>
   </ul>
 {% else %}

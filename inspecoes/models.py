@@ -1237,14 +1237,37 @@ class FormSubmission(models.Model):
         return max(values) if values else None
 
     @property
+    def flow_combined_values_pct(self):
+        return [
+            row['combined_pct']
+            for row in self.flow_valid_points
+            if row['combined_pct'] is not None
+        ]
+
+    @property
+    def flow_max_combined_pct(self):
+        values = self.flow_combined_values_pct
+        return max(values) if values else None
+
+    @property
+    def flow_valid_points_count(self):
+        return len(self.flow_valid_points)
+
+    @property
+    def flow_approved_points_count(self):
+        return sum(1 for row in self.flow_valid_points if row.get('ok') is True)
+
+    @property
     def flow_status(self):
         valid_rows = self.flow_valid_points
+        if self.acceptance_limit_pct is None:
+            return 'Pendente dados'
         if not valid_rows:
             return 'Pendente dados'
-        if all(row['ok'] for row in valid_rows if row['ok'] is not None):
-            return 'Aprovado'
         if any(row['ok'] is False for row in valid_rows):
             return 'Reprovado'
+        if all(row['ok'] is True for row in valid_rows):
+            return 'Aprovado'
         return 'Pendente dados'
 
     @property
@@ -1787,6 +1810,8 @@ class FormSubmission(models.Model):
 
     @property
     def acceptance_combined_value(self):
+        if self.is_flow_form:
+            return self.flow_max_combined_pct
         error_abs = self.acceptance_error_after_abs
         uncertainty = self.expanded_uncertainty_calc_value
         if error_abs is None or uncertainty is None:
@@ -1795,10 +1820,14 @@ class FormSubmission(models.Model):
 
     @property
     def acceptance_is_evaluable(self):
+        if self.is_flow_form:
+            return self.flow_status in {'Aprovado', 'Reprovado'}
         return self.acceptance_combined_value is not None
 
     @property
     def acceptance_ok(self):
+        if self.is_flow_form:
+            return self.flow_status == 'Aprovado'
         combined = self.acceptance_combined_value
         if combined is None:
             return False
@@ -1806,6 +1835,8 @@ class FormSubmission(models.Model):
 
     @property
     def acceptance_status_label(self):
+        if self.is_flow_form:
+            return self.flow_status
         if not self.acceptance_is_evaluable:
             return 'Pendente dados'
         return 'Aprovado' if self.acceptance_ok else 'Reprovado'
@@ -1813,6 +1844,18 @@ class FormSubmission(models.Model):
     @property
     def acceptance_block_reason(self):
         unit = self.acceptance_unit_label
+        if self.is_flow_form:
+            if not self.flow_valid_points:
+                return (
+                    'Validação final bloqueada: preencha ao menos um ponto com tendência e U(e) '
+                    'para avaliar o certificado.'
+                )
+            if self.acceptance_ok:
+                return ''
+            return (
+                'Validação final bloqueada: há ponto(s) com soma |erro| + U(e) acima do critério de aceitação '
+                f'(<= {self.acceptance_limit_pct:.2f}{unit}).'
+            )
         if self.acceptance_error_after_abs is None:
             return (
                 'Critério de aceitação não pode ser avaliado. '

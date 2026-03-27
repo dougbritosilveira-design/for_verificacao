@@ -50,6 +50,7 @@
     <li>TAG no certificado: {{ submission.flow_tag_on_certificate|default:'-' }}</li>
     <li>Modelo/Série medidor: {{ submission.flow_meter_model|default:'-' }} / {{ submission.flow_meter_serial_number|default:'-' }}</li>
     <li>Modelo/Série conversor: {{ submission.flow_converter_model|default:'-' }} / {{ submission.flow_converter_serial_number|default:'-' }}</li>
+    <li>Pontos aprovados: {{ submission.flow_approved_points_count }} / {{ submission.flow_valid_points_count }}</li>
   {% else %}
     <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
   {% endif %}

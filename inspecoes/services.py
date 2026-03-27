@@ -213,6 +213,7 @@ def _generate_submission_report_pdf_bytes(
     include_signature: bool = True,
 ) -> bytes:
     try:
+        from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.utils import ImageReader
         from reportlab.pdfgen import canvas
@@ -250,7 +251,12 @@ def _generate_submission_report_pdf_bytes(
     acceptance_unit = submission.acceptance_unit_label or '%'
     uncertainty_unit = submission.expanded_uncertainty_unit_label or acceptance_unit
 
+    flow_summary_rows = []
     if submission.is_flow_form:
+        valid_points = submission.flow_valid_points
+        approved_points = sum(1 for row in valid_points if row.get('ok') is True)
+        total_points = len(valid_points)
+        flow_summary_rows = [row for row in submission.flow_points if row.get('combined_pct') is not None]
         lines = [
             f'{form_code} - {form_title}',
             f'Data da visita: {submission.execution_date}',
@@ -267,11 +273,11 @@ def _generate_submission_report_pdf_bytes(
             f'Série conversor: {submission.flow_converter_serial_number or "-"}',
             f'Laboratório/fornecedor: {submission.flow_provider or "-"}',
             f'Data da calibração no certificado: {submission.flow_measurement_date or "-"}',
-            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
-            f'Incerteza calculada ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
-            f'Status da incerteza: {uncertainty_status}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 1)}',
+            f'U(e) máxima entre os pontos ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
             f'Erro máximo absoluto ({acceptance_unit}): {_format_num(submission.flow_max_error_abs_pct, 4)}',
             f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 4)}',
+            f'Pontos aprovados: {approved_points}/{total_points}',
             f'Status final: {combined_status}',
             '',
             'Pontos avaliados (calibração/indicado/referência/tendência/U(e)):',
@@ -473,6 +479,82 @@ def _generate_submission_report_pdf_bytes(
             pdf.setFont('Helvetica', 10)
         pdf.drawString(40, y, line[:120])
         y -= line_height
+
+    if submission.is_flow_form:
+        table_rows = flow_summary_rows
+        if table_rows:
+            table_title_h = 18
+            table_header_h = 18
+            table_row_h = 18
+            table_gap_after = 14
+            table_total_h = table_title_h + table_header_h + (len(table_rows) * table_row_h) + table_gap_after
+
+            required_after = 0
+            if include_signature:
+                required_after += 108
+            if y < (60 + table_total_h + required_after):
+                pdf.showPage()
+                y = _draw_pdf_header(pdf, page_width, page_height, ImageReader)
+                pdf.setFont('Helvetica', 10)
+
+            x0 = 40
+            col_widths = [45, 85, 85, 85, 85, 130]  # total 515 (A4 com margem 40)
+            headers = ['Ponto', '|Erro| (%)', 'U(e) (%)', 'Soma (%)', 'Limite (%)', 'Status']
+
+            pdf.setFont('Helvetica-Bold', 10)
+            pdf.drawString(x0, y, 'Mini-tabela de fechamento por ponto')
+            y -= table_title_h
+
+            # Cabeçalho
+            current_x = x0
+            for idx, header in enumerate(headers):
+                w = col_widths[idx]
+                pdf.setFillColor(colors.HexColor('#f0ece2'))
+                pdf.rect(current_x, y - table_header_h + 3, w, table_header_h, fill=1, stroke=1)
+                pdf.setFillColor(colors.black)
+                pdf.setFont('Helvetica-Bold', 8)
+                pdf.drawCentredString(current_x + (w / 2), y - 9, header)
+                current_x += w
+            y -= table_header_h
+
+            # Linhas
+            for row in table_rows:
+                status = 'Pendente'
+                status_bg = colors.HexColor('#fff0c5')
+                if row.get('ok') is True:
+                    status = 'Aprovado'
+                    status_bg = colors.HexColor('#d8f0df')
+                elif row.get('ok') is False:
+                    status = 'Reprovado'
+                    status_bg = colors.HexColor('#ffdede')
+
+                data = [
+                    str(row.get('index') or '-'),
+                    _format_num(row.get('error_abs_pct'), 4),
+                    _format_num(row.get('uncertainty_pct'), 4),
+                    _format_num(row.get('combined_pct'), 4),
+                    _format_num(acceptance_limit, 1),
+                    status,
+                ]
+
+                current_x = x0
+                for idx, cell in enumerate(data):
+                    w = col_widths[idx]
+                    if idx == len(data) - 1:
+                        pdf.setFillColor(status_bg)
+                        pdf.rect(current_x, y - table_row_h + 3, w, table_row_h, fill=1, stroke=1)
+                        pdf.setFillColor(colors.black)
+                        pdf.setFont('Helvetica-Bold', 8)
+                    else:
+                        pdf.setFillColor(colors.white)
+                        pdf.rect(current_x, y - table_row_h + 3, w, table_row_h, fill=1, stroke=1)
+                        pdf.setFillColor(colors.black)
+                        pdf.setFont('Helvetica', 8)
+                    pdf.drawCentredString(current_x + (w / 2), y - 9, str(cell)[:24])
+                    current_x += w
+                y -= table_row_h
+
+            y -= table_gap_after
 
     if include_signature:
         signature_reader = _decode_signature_image(submission.validator_signature_data, ImageReader)

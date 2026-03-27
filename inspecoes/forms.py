@@ -546,7 +546,6 @@ class FlowTechnicalForm(forms.ModelForm):
             'flow_calibration_range_min_m3h',
             'flow_calibration_range_max_m3h',
             'acceptance_criterion_pct',
-            'expanded_uncertainty_calc_pct',
             'flow_point_label_1', 'flow_calibration_1_m3h', 'flow_indicated_1_m3h', 'flow_reference_1_m3h', 'flow_tendency_1_pct', 'flow_uncertainty_1_pct', 'flow_k_1',
             'flow_point_label_2', 'flow_calibration_2_m3h', 'flow_indicated_2_m3h', 'flow_reference_2_m3h', 'flow_tendency_2_pct', 'flow_uncertainty_2_pct', 'flow_k_2',
             'flow_point_label_3', 'flow_calibration_3_m3h', 'flow_indicated_3_m3h', 'flow_reference_3_m3h', 'flow_tendency_3_pct', 'flow_uncertainty_3_pct', 'flow_k_3',
@@ -577,7 +576,6 @@ class FlowTechnicalForm(forms.ModelForm):
             'flow_calibration_range_min_m3h': 'Faixa calibrada mínima (m³/h)',
             'flow_calibration_range_max_m3h': 'Faixa calibrada máxima (m³/h)',
             'acceptance_criterion_pct': 'Critério de aceitação (%)',
-            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (%)',
             'flow_point_label_1': 'Ponto 1',
             'flow_calibration_1_m3h': 'Vazão de calibração 1 (m³/h)',
             'flow_indicated_1_m3h': 'Valor indicado 1 (m³/h)',
@@ -651,10 +649,9 @@ class FlowTechnicalForm(forms.ModelForm):
             if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
                 field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
 
-        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.01'})
-        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.1'})
 
-        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct']:
+        for name in ['acceptance_criterion_pct']:
             self.fields[name].disabled = True
             self.fields[name].widget.attrs.update(
                 {
