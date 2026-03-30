@@ -515,6 +515,37 @@ class EquipmentFormCriteria(models.Model):
         super().save(*args, **kwargs)
 
 
+class VolumeStandard(models.Model):
+    tag = models.CharField('TAG do aferidor', max_length=80, unique=True)
+    description = models.CharField('Descrição', max_length=255, blank=True)
+    nominal_volume_l = models.DecimalField(
+        'Volume nominal (L)',
+        max_digits=12,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
+    graduation_l = models.DecimalField(
+        'Graduação (L)',
+        max_digits=12,
+        decimal_places=4,
+        default=Decimal('0.0100'),
+        validators=[MinValueValidator(Decimal('0.0001'))],
+        help_text='Usado no cálculo de incerteza de volume (u_volume = graduação / √12).',
+    )
+    active = models.BooleanField('Ativo', default=True)
+
+    class Meta:
+        verbose_name = 'Aferidor de volume'
+        verbose_name_plural = 'Aferidores de volume'
+        ordering = ['tag']
+
+    def __str__(self):
+        if self.description:
+            return f'{self.tag} - {self.description}'
+        return self.tag
+
+
 class FormSubmission(models.Model):
     DEFAULT_ACCEPTANCE_LIMIT_PCT = Decimal('1.0')
     DEFAULT_UNCERTAINTY_TOTALIZER_RESOLUTION = Decimal('0.001')
@@ -527,6 +558,7 @@ class FormSubmission(models.Model):
     FORM_CODE_FLOW_CERT = 'FOR VAZAO'
     FORM_CODE_FLOW_ADJUST = 'FOR 08.05.006'
     FORM_CODE_FLOW_ADJUST_ALT = 'FOR 08.03.006'
+    FORM_CODE_DENSITY = 'FOR 08.03.003'
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -775,6 +807,119 @@ class FormSubmission(models.Model):
         default=Decimal('0.000'),
     )
     flow_adjust_k_factor = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('2.000'),
+    )
+
+    density_scale_equipment = models.ForeignKey(
+        Equipment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='density_related_submissions',
+        verbose_name='Balança estática utilizada',
+    )
+    density_standard_1 = models.ForeignKey(
+        VolumeStandard,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='density_submission_standard_1',
+        verbose_name='Aferidor 1',
+    )
+    density_standard_2 = models.ForeignKey(
+        VolumeStandard,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='density_submission_standard_2',
+        verbose_name='Aferidor 2',
+    )
+    density_standard_3 = models.ForeignKey(
+        VolumeStandard,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='density_submission_standard_3',
+        verbose_name='Aferidor 3',
+    )
+    density_scale_mab_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_scale_mib_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_scale_criterion_pct = models.DecimalField(
+        max_digits=8,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        default=Decimal('1.000'),
+    )
+    density_scale_u_additional_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        default=Decimal('0.0000'),
+    )
+
+    density_before_low_point_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_high_point_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_low_count_cts = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_high_count_cts = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    density_before_empty_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_full_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_volume_1_l = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_empty_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_full_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_volume_2_l = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_empty_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_full_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_volume_3_l = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_before_mds_informed_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_mds_reading_1_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_mds_reading_2_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_mds_reading_3_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_mds_reading_4_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_before_mds_reading_5_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    density_after_low_point_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_high_point_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_low_count_cts = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_high_count_cts = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    density_after_empty_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_full_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_volume_1_l = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_empty_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_full_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_volume_2_l = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_empty_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_full_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_volume_3_l = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    density_after_mds_informed_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_mds_reading_1_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_mds_reading_2_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_mds_reading_3_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_mds_reading_4_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    density_after_mds_reading_5_gcm3 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    density_volume_graduation_l = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        default=Decimal('0.0100'),
+    )
+    density_mds_resolution_gcm3 = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        default=Decimal('0.0010'),
+    )
+    density_k_factor = models.DecimalField(
         max_digits=8,
         decimal_places=3,
         null=True,
@@ -1103,6 +1248,24 @@ class FormSubmission(models.Model):
         )
 
     @property
+    def is_density_form(self):
+        code = self.form_code
+        title = ''
+        if self.form_type_id and self.form_type:
+            title = (self.form_type.title or '').strip().upper()
+        title_has_density_adjust = (
+            'DENSIDADE' in title
+            and 'TRANSMISSOR' in title
+            and 'VERIFICACAO' in title
+            and 'AJUSTE' in title
+        )
+        return (
+            code.startswith(self.FORM_CODE_DENSITY)
+            or 'FOR 08.03.003' in code
+            or title_has_density_adjust
+        )
+
+    @property
     def is_flow_form(self):
         return self.is_flow_certificate_form
 
@@ -1113,6 +1276,7 @@ class FormSubmission(models.Model):
             and not self.is_scanner_form
             and not self.is_flow_certificate_form
             and not self.is_flow_adjust_form
+            and not self.is_density_form
         )
 
     @staticmethod
@@ -1642,6 +1806,414 @@ class FormSubmission(models.Model):
         return abs(final_error) <= self.acceptance_limit_pct
 
     @property
+    def density_scale_criterion_value(self):
+        if self.density_scale_criterion_pct is not None:
+            return self.density_scale_criterion_pct
+        return Decimal('1.000')
+
+    @property
+    def density_scale_u_additional_kg_value(self):
+        if self.density_scale_u_additional_kg is not None:
+            return self.density_scale_u_additional_kg
+        return Decimal('0.0000')
+
+    @property
+    def density_volume_graduation_l_value(self):
+        if self.density_volume_graduation_l is not None:
+            return self.density_volume_graduation_l
+        for index in range(1, 4):
+            standard = getattr(self, f'density_standard_{index}', None)
+            if standard and standard.graduation_l is not None:
+                return standard.graduation_l
+        return Decimal('0.0100')
+
+    @property
+    def density_mds_resolution_gcm3_value(self):
+        if self.density_mds_resolution_gcm3 is not None:
+            return self.density_mds_resolution_gcm3
+        return Decimal('0.0010')
+
+    @property
+    def density_k_factor_value(self):
+        if self.density_k_factor is not None:
+            return self.density_k_factor
+        return Decimal('2.000')
+
+    @property
+    def density_u_volume_l(self):
+        graduation = self.density_volume_graduation_l_value
+        sqrt_twelve = self._sqrt(Decimal('12'))
+        if graduation is None or sqrt_twelve in (None, 0):
+            return None
+        return graduation / sqrt_twelve
+
+    @property
+    def density_u_res_mds_gcm3(self):
+        resolution = self.density_mds_resolution_gcm3_value
+        sqrt_twelve = self._sqrt(Decimal('12'))
+        if resolution is None or sqrt_twelve in (None, 0):
+            return None
+        return resolution / sqrt_twelve
+
+    @property
+    def density_scale_error_pct(self):
+        mab = self.density_scale_mab_kg
+        mib = self.density_scale_mib_kg
+        if mab in (None, 0) or mib is None:
+            return None
+        return ((mib / mab) - Decimal('1')) * Decimal('100')
+
+    @property
+    def density_scale_ok(self):
+        criterion = self.density_scale_criterion_value
+        error = self.density_scale_error_pct
+        if criterion is None or error is None:
+            return None
+        return abs(error) <= criterion
+
+    @property
+    def density_scale_status_label(self):
+        ok = self.density_scale_ok
+        if ok is None:
+            return 'Pendente dados'
+        return 'OK' if ok else 'NOK'
+
+    def _density_phase_has_data(self, phase='before'):
+        prefix = f'density_{phase}_'
+        for index in range(1, 4):
+            if getattr(self, f'{prefix}empty_{index}_kg', None) is not None:
+                return True
+            if getattr(self, f'{prefix}full_{index}_kg', None) is not None:
+                return True
+            if getattr(self, f'{prefix}volume_{index}_l', None) is not None:
+                return True
+        if getattr(self, f'{prefix}mds_informed_gcm3', None) is not None:
+            return True
+        for index in range(1, 6):
+            if getattr(self, f'{prefix}mds_reading_{index}_gcm3', None) is not None:
+                return True
+        if getattr(self, f'{prefix}low_point_gcm3', None) is not None:
+            return True
+        if getattr(self, f'{prefix}high_point_gcm3', None) is not None:
+            return True
+        if getattr(self, f'{prefix}low_count_cts', None) is not None:
+            return True
+        if getattr(self, f'{prefix}high_count_cts', None) is not None:
+            return True
+        return False
+
+    def _density_phase_rows(self, phase='before'):
+        rows = []
+        phase_prefix = f'density_{phase}_'
+        scale_error_pct = self.density_scale_error_pct
+        u_additional = self.density_scale_u_additional_kg_value or Decimal('0')
+        u_volume = self.density_u_volume_l
+        sqrt_three = self._sqrt(Decimal('3'))
+
+        for index in range(1, 4):
+            standard = getattr(self, f'density_standard_{index}', None)
+            label = standard.tag if standard else f'Aferidor {index}'
+            empty = getattr(self, f'{phase_prefix}empty_{index}_kg', None)
+            full = getattr(self, f'{phase_prefix}full_{index}_kg', None)
+            volume = getattr(self, f'{phase_prefix}volume_{index}_l', None)
+
+            mass = None
+            density = None
+            u_empty = None
+            u_full = None
+            u_mass = None
+            u_density = None
+
+            if empty is not None and full is not None:
+                mass = full - empty
+            if mass is not None and volume not in (None, 0):
+                density = mass / volume
+
+            if empty is not None:
+                balance_term = Decimal('0')
+                if scale_error_pct is not None and sqrt_three not in (None, 0):
+                    balance_term = (abs(scale_error_pct) / Decimal('100')) * empty / sqrt_three
+                u_empty = self._sqrt((balance_term * balance_term) + (u_additional * u_additional))
+            if full is not None:
+                balance_term = Decimal('0')
+                if scale_error_pct is not None and sqrt_three not in (None, 0):
+                    balance_term = (abs(scale_error_pct) / Decimal('100')) * full / sqrt_three
+                u_full = self._sqrt((balance_term * balance_term) + (u_additional * u_additional))
+            if u_empty is not None and u_full is not None:
+                u_mass = self._sqrt((u_empty * u_empty) + (u_full * u_full))
+
+            if (
+                density is not None
+                and mass not in (None, 0)
+                and volume not in (None, 0)
+                and u_mass is not None
+                and u_volume is not None
+            ):
+                term_mass = u_mass / mass
+                term_volume = u_volume / volume
+                u_density = density * self._sqrt((term_mass * term_mass) + (term_volume * term_volume))
+
+            rows.append(
+                {
+                    'index': index,
+                    'label': label,
+                    'standard': standard,
+                    'empty_kg': empty,
+                    'full_kg': full,
+                    'mass_kg': mass,
+                    'volume_l': volume,
+                    'density_gcm3': density,
+                    'u_empty_kg': u_empty,
+                    'u_full_kg': u_full,
+                    'u_mass_kg': u_mass,
+                    'u_volume_l': u_volume,
+                    'u_density_gcm3': u_density,
+                }
+            )
+        return rows
+
+    def _density_phase_mds_readings(self, phase='before'):
+        prefix = f'density_{phase}_mds_reading_'
+        values = []
+        for index in range(1, 6):
+            value = getattr(self, f'{prefix}{index}_gcm3', None)
+            if value is not None:
+                values.append(value)
+        return values
+
+    def _density_phase_mds_mean(self, phase='before'):
+        readings = self._density_phase_mds_readings(phase)
+        if readings:
+            return self._avg(*readings)
+        return getattr(self, f'density_{phase}_mds_informed_gcm3', None)
+
+    def _density_phase_metrics(self, phase='before'):
+        rows = self._density_phase_rows(phase)
+        valid_rows = [row for row in rows if row['density_gcm3'] is not None]
+        densities = [row['density_gcm3'] for row in valid_rows]
+        mda = self._avg(*densities) if densities else None
+
+        s_density = self._std_sample(densities) if len(densities) > 1 else Decimal('0') if densities else None
+        u_a_mda = None
+        if densities:
+            if len(densities) <= 1:
+                u_a_mda = Decimal('0')
+            else:
+                sqrt_n = self._sqrt(Decimal(len(densities)))
+                if s_density is not None and sqrt_n not in (None, 0):
+                    u_a_mda = s_density / sqrt_n
+
+        u_b_mda = None
+        if valid_rows:
+            u_density_values = [row['u_density_gcm3'] or Decimal('0') for row in valid_rows]
+            sum_sq = sum(value * value for value in u_density_values)
+            u_b_mda = self._sqrt(sum_sq) / Decimal(len(valid_rows))
+
+        u_mda = None
+        if u_a_mda is not None and u_b_mda is not None:
+            u_mda = self._sqrt((u_a_mda * u_a_mda) + (u_b_mda * u_b_mda))
+
+        mds_readings = self._density_phase_mds_readings(phase)
+        mds = self._density_phase_mds_mean(phase)
+        u_a_mds = None
+        if mds is not None:
+            if len(mds_readings) <= 1:
+                u_a_mds = Decimal('0')
+            else:
+                std_mds = self._std_sample(mds_readings)
+                sqrt_n = self._sqrt(Decimal(len(mds_readings)))
+                if std_mds is not None and sqrt_n not in (None, 0):
+                    u_a_mds = std_mds / sqrt_n
+
+        u_res_mds = self.density_u_res_mds_gcm3
+        u_mds = None
+        if u_a_mds is not None and u_res_mds is not None:
+            u_mds = self._sqrt((u_a_mds * u_a_mds) + (u_res_mds * u_res_mds))
+
+        error_pct = None
+        if mda not in (None, 0) and mds is not None:
+            error_pct = ((mds / mda) - Decimal('1')) * Decimal('100')
+
+        u_error_pct = None
+        if mda not in (None, 0) and mds not in (None, 0) and u_mda is not None and u_mds is not None:
+            ratio_abs = abs(mds / mda) * Decimal('100')
+            term_mds = u_mds / mds
+            term_mda = u_mda / mda
+            u_error_pct = ratio_abs * self._sqrt((term_mds * term_mds) + (term_mda * term_mda))
+
+        u_expanded_pct = None
+        if u_error_pct is not None:
+            u_expanded_pct = abs(self.density_k_factor_value * u_error_pct)
+
+        margin_pct = None
+        if error_pct is not None and u_expanded_pct is not None:
+            margin_pct = abs(error_pct) + u_expanded_pct
+
+        return {
+            'rows': rows,
+            'valid_rows': valid_rows,
+            'mda_gcm3': mda,
+            's_density_gcm3': s_density,
+            'u_a_mda_gcm3': u_a_mda,
+            'u_b_mda_gcm3': u_b_mda,
+            'u_mda_gcm3': u_mda,
+            'mds_gcm3': mds,
+            'mds_readings': mds_readings,
+            'u_a_mds_gcm3': u_a_mds,
+            'u_res_mds_gcm3': u_res_mds,
+            'u_mds_gcm3': u_mds,
+            'error_pct': error_pct,
+            'u_error_pct': u_error_pct,
+            'u_expanded_pct': u_expanded_pct,
+            'margin_pct': margin_pct,
+        }
+
+    @property
+    def density_before_rows(self):
+        return self._density_phase_metrics('before')['rows']
+
+    @property
+    def density_after_rows(self):
+        return self._density_phase_metrics('after')['rows']
+
+    @property
+    def density_before_mda_gcm3(self):
+        return self._density_phase_metrics('before')['mda_gcm3']
+
+    @property
+    def density_after_mda_gcm3(self):
+        return self._density_phase_metrics('after')['mda_gcm3']
+
+    @property
+    def density_before_mds_gcm3(self):
+        return self._density_phase_metrics('before')['mds_gcm3']
+
+    @property
+    def density_after_mds_gcm3(self):
+        return self._density_phase_metrics('after')['mds_gcm3']
+
+    @property
+    def density_before_error_pct(self):
+        return self._density_phase_metrics('before')['error_pct']
+
+    @property
+    def density_after_error_pct(self):
+        return self._density_phase_metrics('after')['error_pct']
+
+    @property
+    def density_before_u_expanded_pct(self):
+        return self._density_phase_metrics('before')['u_expanded_pct']
+
+    @property
+    def density_after_u_expanded_pct(self):
+        return self._density_phase_metrics('after')['u_expanded_pct']
+
+    @property
+    def density_before_margin_pct(self):
+        return self._density_phase_metrics('before')['margin_pct']
+
+    @property
+    def density_after_margin_pct(self):
+        return self._density_phase_metrics('after')['margin_pct']
+
+    @property
+    def density_before_u_mda_gcm3(self):
+        return self._density_phase_metrics('before')['u_mda_gcm3']
+
+    @property
+    def density_before_u_mds_gcm3(self):
+        return self._density_phase_metrics('before')['u_mds_gcm3']
+
+    @property
+    def density_after_u_mda_gcm3(self):
+        return self._density_phase_metrics('after')['u_mda_gcm3']
+
+    @property
+    def density_after_u_mds_gcm3(self):
+        return self._density_phase_metrics('after')['u_mds_gcm3']
+
+    @property
+    def density_before_u_error_pct(self):
+        return self._density_phase_metrics('before')['u_error_pct']
+
+    @property
+    def density_after_u_error_pct(self):
+        return self._density_phase_metrics('after')['u_error_pct']
+
+    @property
+    def density_has_after_data(self):
+        return self._density_phase_has_data('after')
+
+    @property
+    def density_after_is_evaluable(self):
+        metrics = self._density_phase_metrics('after')
+        return (
+            metrics['error_pct'] is not None
+            and metrics['u_expanded_pct'] is not None
+            and metrics['margin_pct'] is not None
+        )
+
+    @property
+    def density_final_phase(self):
+        return 'after' if self.density_after_is_evaluable else 'before'
+
+    @property
+    def density_final_phase_label(self):
+        return 'Após ajuste' if self.density_final_phase == 'after' else 'Antes do ajuste'
+
+    @property
+    def density_final_error_pct(self):
+        return self.density_after_error_pct if self.density_final_phase == 'after' else self.density_before_error_pct
+
+    @property
+    def density_final_u_expanded_pct(self):
+        return (
+            self.density_after_u_expanded_pct
+            if self.density_final_phase == 'after'
+            else self.density_before_u_expanded_pct
+        )
+
+    @property
+    def density_final_margin_pct(self):
+        return self.density_after_margin_pct if self.density_final_phase == 'after' else self.density_before_margin_pct
+
+    @property
+    def density_final_u_mda_gcm3(self):
+        return self.density_after_u_mda_gcm3 if self.density_final_phase == 'after' else self.density_before_u_mda_gcm3
+
+    @property
+    def density_final_u_mds_gcm3(self):
+        return self.density_after_u_mds_gcm3 if self.density_final_phase == 'after' else self.density_before_u_mds_gcm3
+
+    @property
+    def density_final_u_error_pct(self):
+        return self.density_after_u_error_pct if self.density_final_phase == 'after' else self.density_before_u_error_pct
+
+    @property
+    def density_before_status_label(self):
+        if self.density_scale_ok is False:
+            return 'Inválido - balança NOK'
+        if self.density_before_margin_pct is None or self.acceptance_limit_pct is None:
+            return 'Pendente dados'
+        return 'Aprovado' if self.density_before_margin_pct <= self.acceptance_limit_pct else 'Reprovado'
+
+    @property
+    def density_after_status_label(self):
+        if self.density_scale_ok is False:
+            return 'Inválido - balança NOK'
+        if self.density_after_margin_pct is None or self.acceptance_limit_pct is None:
+            return 'Pendente dados'
+        return 'Aprovado' if self.density_after_margin_pct <= self.acceptance_limit_pct else 'Reprovado'
+
+    @property
+    def density_final_status_label(self):
+        if self.density_scale_ok is False:
+            return 'Inválido - balança NOK'
+        if self.density_final_margin_pct is None or self.acceptance_limit_pct is None:
+            return 'Pendente dados'
+        return 'Aprovado' if self.density_final_margin_pct <= self.acceptance_limit_pct else 'Reprovado'
+
+    @property
     def attached_certificate_file(self):
         if self.is_scanner_form:
             return self.scanner_certificate_file
@@ -2071,6 +2643,8 @@ class FormSubmission(models.Model):
             return self.flow_max_uncertainty_pct
         if self.is_flow_adjust_form:
             return self.flow_adjust_u_expanded_pct
+        if self.is_density_form:
+            return self.density_final_u_expanded_pct
         return self.expanded_uncertainty_after_pct_auto
 
     @property
@@ -2083,6 +2657,8 @@ class FormSubmission(models.Model):
             return self.flow_max_uncertainty_pct
         if self.is_flow_adjust_form:
             return self.flow_adjust_u_expanded_pct
+        if self.is_density_form:
+            return self.density_final_u_expanded_pct
         return self.expanded_uncertainty_calc_pct_auto
 
     @property
@@ -2157,6 +2733,8 @@ class FormSubmission(models.Model):
             return self.flow_max_error_abs_pct
         if self.is_flow_adjust_form:
             return self.flow_adjust_error_before_pct_auto
+        if self.is_density_form:
+            return self.density_before_error_pct
         return self.error_before_pct if self.error_before_pct is not None else self.error_before_pct_auto
 
     @property
@@ -2169,6 +2747,8 @@ class FormSubmission(models.Model):
             return self.flow_max_error_abs_pct
         if self.is_flow_adjust_form:
             return self.flow_adjust_final_error_pct
+        if self.is_density_form:
+            return self.density_final_error_pct
         return self.error_after_pct if self.error_after_pct is not None else self.error_after_pct_auto
 
     @property
@@ -2191,6 +2771,8 @@ class FormSubmission(models.Model):
     def acceptance_combined_value(self):
         if self.is_flow_form:
             return self.flow_max_combined_pct
+        if self.is_density_form:
+            return self.density_final_margin_pct
         error_abs = self.acceptance_error_after_abs
         uncertainty = self.expanded_uncertainty_calc_value
         if error_abs is None or uncertainty is None:
@@ -2201,12 +2783,21 @@ class FormSubmission(models.Model):
     def acceptance_is_evaluable(self):
         if self.is_flow_form:
             return self.flow_status in {'Aprovado', 'Reprovado'}
+        if self.is_density_form:
+            return self.density_final_margin_pct is not None and self.density_scale_ok is not None
         return self.acceptance_combined_value is not None
 
     @property
     def acceptance_ok(self):
         if self.is_flow_form:
             return self.flow_status == 'Aprovado'
+        if self.is_density_form:
+            if self.density_scale_ok is not True:
+                return False
+            combined = self.density_final_margin_pct
+            if combined is None:
+                return False
+            return combined <= self.acceptance_limit_pct
         combined = self.acceptance_combined_value
         if combined is None:
             return False
@@ -2216,6 +2807,12 @@ class FormSubmission(models.Model):
     def acceptance_status_label(self):
         if self.is_flow_form:
             return self.flow_status
+        if self.is_density_form:
+            if self.density_scale_ok is False:
+                return 'Inválido - balança NOK'
+            if not self.acceptance_is_evaluable:
+                return 'Pendente dados'
+            return 'Aprovado' if self.acceptance_ok else 'Reprovado'
         if not self.acceptance_is_evaluable:
             return 'Pendente dados'
         return 'Aprovado' if self.acceptance_ok else 'Reprovado'
@@ -2234,6 +2831,29 @@ class FormSubmission(models.Model):
             return (
                 'Validação final bloqueada: há ponto(s) com soma |erro| + U(e) acima do critério de aceitação '
                 f'(<= {self.acceptance_limit_pct:.2f}{unit}).'
+            )
+        if self.is_density_form:
+            if self.density_scale_ok is None:
+                return (
+                    'Validação final bloqueada: preencha MAB e MIB da balança para avaliar '
+                    'o pré-requisito da checagem da balança.'
+                )
+            if self.density_scale_ok is False:
+                return (
+                    'Validação final bloqueada: checagem da balança estática em NOK. '
+                    'Corrija a balança antes de validar o densímetro.'
+                )
+            if self.density_final_margin_pct is None:
+                return (
+                    'Validação final bloqueada: dados insuficientes para calcular '
+                    'erro e incerteza expandida do densímetro.'
+                )
+            if self.acceptance_ok:
+                return ''
+            return (
+                'Validação final bloqueada: soma |erro final| + U(e) acima do critério de aceitação '
+                f'(<= {self.acceptance_limit_pct:.2f}{unit}). '
+                f'Valor atual: {self.density_final_margin_pct:.2f}{unit}.'
             )
         if self.acceptance_error_after_abs is None:
             return (
@@ -2286,6 +2906,11 @@ class FormSubmission(models.Model):
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
             if not self.expanded_uncertainty_unit:
                 self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
+        if self.is_density_form:
+            if not self.acceptance_criterion_unit:
+                self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
+            if not self.expanded_uncertainty_unit:
+                self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
         if self.is_level_form:
             self.error_before_pct = self.level_before_mean_abs_m
             self.error_after_pct = self.level_final_mean_abs_m
@@ -2302,6 +2927,10 @@ class FormSubmission(models.Model):
             self.error_before_pct = self.flow_adjust_error_before_pct_auto
             self.error_after_pct = self.flow_adjust_final_error_pct
             self.expanded_uncertainty_calc_pct = self.flow_adjust_u_expanded_pct
+        elif self.is_density_form:
+            self.error_before_pct = self.density_before_error_pct
+            self.error_after_pct = self.density_final_error_pct
+            self.expanded_uncertainty_calc_pct = self.density_final_u_expanded_pct
         else:
             self.ibm = self.ibm_auto
             self.mark_distance = self.mark_distance_auto

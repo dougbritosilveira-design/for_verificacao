@@ -8,6 +8,7 @@ from .models import (
     InspectionFormType,
     PortalNotification,
     PortalUserAccess,
+    VolumeStandard,
 )
 
 
@@ -124,6 +125,14 @@ class EquipmentFormCriteriaAdmin(admin.ModelAdmin):
     search_fields = ('equipment__tag', 'equipment__description', 'form_type__code', 'form_type__title')
     autocomplete_fields = ('equipment', 'form_type')
     ordering = ('equipment__tag', 'form_type__code')
+
+
+@admin.register(VolumeStandard)
+class VolumeStandardAdmin(admin.ModelAdmin):
+    list_display = ('tag', 'description', 'nominal_volume_l', 'graduation_l', 'active')
+    list_filter = ('active',)
+    search_fields = ('tag', 'description')
+    ordering = ('tag',)
 
 
 @admin.register(PortalNotification)

@@ -1,0 +1,526 @@
+{% extends 'base.html' %}
+{% block title %}Formulário técnico - Transmissor de densidade (FOR 08.03.003){% endblock %}
+{% block content %}
+<h2>2. Formulário técnico</h2>
+<p>
+  <strong>OM:</strong> {{ submission.om_number }}
+  | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}
+  | <strong>Equipamento:</strong> {{ submission.equipment.tag }}
+  | <strong>Formulário:</strong> {{ submission.form_type_label }}
+  | <strong>Local:</strong> {{ submission.location_snapshot }}
+</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
+    <p style="margin:0;">
+      <strong>Observação do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observação.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+<p><strong>Campos automáticos:</strong> checagem da balança, massa/densidade por aferidor, erro %, U(e) e comparação final com critério.</p>
+
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  input.auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
+  .dense-table { width:100%; border-collapse:collapse; margin-top:8px; }
+  .dense-table th, .dense-table td { border:1px solid #e6ddc8; padding:6px; font-size:13px; }
+  .dense-table th { background:#f4efe2; }
+  .dense-table input, .dense-table select { width:100%; min-height:34px; }
+</style>
+
+<form method="post" id="density-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Dados iniciais</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
+    <p>{{ form.density_scale_equipment.label_tag }} {{ form.density_scale_equipment }}</p>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p>{{ form.density_standard_1.label_tag }} {{ form.density_standard_1 }}</p>
+    <p>{{ form.density_standard_2.label_tag }} {{ form.density_standard_2 }}</p>
+    <p>{{ form.density_standard_3.label_tag }} {{ form.density_standard_3 }}</p>
+  </div>
+
+  <h3>1. Checagem da balança estática (pré-requisito)</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.density_scale_mab_kg.label_tag }} {{ form.density_scale_mab_kg }}</p>
+    <p>{{ form.density_scale_mib_kg.label_tag }} {{ form.density_scale_mib_kg }}</p>
+    <p><label for="id_density_scale_error_pct_display">Erro relativo da balança (%)</label><input id="id_density_scale_error_pct_display" class="auto-locked" type="text" readonly disabled></p>
+    <p>{{ form.density_scale_criterion_pct.label_tag }} {{ form.density_scale_criterion_pct }}</p>
+  </div>
+  <div class="row" style="grid-template-columns:minmax(220px,280px);">
+    <p>{{ form.density_scale_u_additional_kg.label_tag }} {{ form.density_scale_u_additional_kg }}</p>
+  </div>
+  <div id="scale-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Status da checagem da balança</strong>
+      <span id="scale-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="scale-detail" style="margin:0;">Preencha MAB e MIB para validar o pré-requisito da balança.</p>
+  </div>
+
+  <h3>2. Verificação antes do ajuste (densímetro)</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.density_before_low_point_gcm3.label_tag }} {{ form.density_before_low_point_gcm3 }}</p>
+    <p>{{ form.density_before_high_point_gcm3.label_tag }} {{ form.density_before_high_point_gcm3 }}</p>
+    <p>{{ form.density_before_low_count_cts.label_tag }} {{ form.density_before_low_count_cts }}</p>
+    <p>{{ form.density_before_high_count_cts.label_tag }} {{ form.density_before_high_count_cts }}</p>
+  </div>
+  <table class="dense-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Aferidor</th>
+        <th>Vazio (kg)</th>
+        <th>Cheio (kg)</th>
+        <th>Massa (kg)</th>
+        <th>Volume (L)</th>
+        <th>Densidade (g/cm³)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><input id="before_label_1" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_before_empty_1_kg }}</td>
+        <td>{{ form.density_before_full_1_kg }}</td>
+        <td><input id="before_mass_1" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_before_volume_1_l }}</td>
+        <td><input id="before_density_1" class="auto-locked" type="text" readonly disabled></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><input id="before_label_2" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_before_empty_2_kg }}</td>
+        <td>{{ form.density_before_full_2_kg }}</td>
+        <td><input id="before_mass_2" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_before_volume_2_l }}</td>
+        <td><input id="before_density_2" class="auto-locked" type="text" readonly disabled></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><input id="before_label_3" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_before_empty_3_kg }}</td>
+        <td>{{ form.density_before_full_3_kg }}</td>
+        <td><input id="before_mass_3" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_before_volume_3_l }}</td>
+        <td><input id="before_density_3" class="auto-locked" type="text" readonly disabled></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr)); margin-top:10px;">
+    <p>{{ form.density_before_mds_informed_gcm3.label_tag }} {{ form.density_before_mds_informed_gcm3 }}</p>
+    <p><label for="before_mda_display">MDA antes (g/cm³)</label><input id="before_mda_display" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="before_mds_display">MDS usado antes (g/cm³)</label><input id="before_mds_display" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(5,minmax(160px,1fr));">
+    <p>{{ form.density_before_mds_reading_1_gcm3.label_tag }} {{ form.density_before_mds_reading_1_gcm3 }}</p>
+    <p>{{ form.density_before_mds_reading_2_gcm3.label_tag }} {{ form.density_before_mds_reading_2_gcm3 }}</p>
+    <p>{{ form.density_before_mds_reading_3_gcm3.label_tag }} {{ form.density_before_mds_reading_3_gcm3 }}</p>
+    <p>{{ form.density_before_mds_reading_4_gcm3.label_tag }} {{ form.density_before_mds_reading_4_gcm3 }}</p>
+    <p>{{ form.density_before_mds_reading_5_gcm3.label_tag }} {{ form.density_before_mds_reading_5_gcm3 }}</p>
+  </div>
+  <div id="before-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Critério antes (|erro| + U(e) &lt;= limite)</strong>
+      <span id="before-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="before-detail" style="margin:0;">Preencha os dados da fase antes.</p>
+  </div>
+
+  <h3>3. Verificação após ajuste (caso necessário)</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.density_after_low_point_gcm3.label_tag }} {{ form.density_after_low_point_gcm3 }}</p>
+    <p>{{ form.density_after_high_point_gcm3.label_tag }} {{ form.density_after_high_point_gcm3 }}</p>
+    <p>{{ form.density_after_low_count_cts.label_tag }} {{ form.density_after_low_count_cts }}</p>
+    <p>{{ form.density_after_high_count_cts.label_tag }} {{ form.density_after_high_count_cts }}</p>
+  </div>
+  <table class="dense-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Aferidor</th>
+        <th>Vazio (kg)</th>
+        <th>Cheio (kg)</th>
+        <th>Massa (kg)</th>
+        <th>Volume (L)</th>
+        <th>Densidade (g/cm³)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td><input id="after_label_1" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_after_empty_1_kg }}</td>
+        <td>{{ form.density_after_full_1_kg }}</td>
+        <td><input id="after_mass_1" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_after_volume_1_l }}</td>
+        <td><input id="after_density_1" class="auto-locked" type="text" readonly disabled></td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><input id="after_label_2" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_after_empty_2_kg }}</td>
+        <td>{{ form.density_after_full_2_kg }}</td>
+        <td><input id="after_mass_2" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_after_volume_2_l }}</td>
+        <td><input id="after_density_2" class="auto-locked" type="text" readonly disabled></td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><input id="after_label_3" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_after_empty_3_kg }}</td>
+        <td>{{ form.density_after_full_3_kg }}</td>
+        <td><input id="after_mass_3" class="auto-locked" type="text" readonly disabled></td>
+        <td>{{ form.density_after_volume_3_l }}</td>
+        <td><input id="after_density_3" class="auto-locked" type="text" readonly disabled></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr)); margin-top:10px;">
+    <p>{{ form.density_after_mds_informed_gcm3.label_tag }} {{ form.density_after_mds_informed_gcm3 }}</p>
+    <p><label for="after_mda_display">MDA após (g/cm³)</label><input id="after_mda_display" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="after_mds_display">MDS usado após (g/cm³)</label><input id="after_mds_display" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(5,minmax(160px,1fr));">
+    <p>{{ form.density_after_mds_reading_1_gcm3.label_tag }} {{ form.density_after_mds_reading_1_gcm3 }}</p>
+    <p>{{ form.density_after_mds_reading_2_gcm3.label_tag }} {{ form.density_after_mds_reading_2_gcm3 }}</p>
+    <p>{{ form.density_after_mds_reading_3_gcm3.label_tag }} {{ form.density_after_mds_reading_3_gcm3 }}</p>
+    <p>{{ form.density_after_mds_reading_4_gcm3.label_tag }} {{ form.density_after_mds_reading_4_gcm3 }}</p>
+    <p>{{ form.density_after_mds_reading_5_gcm3.label_tag }} {{ form.density_after_mds_reading_5_gcm3 }}</p>
+  </div>
+
+  <h3>Parâmetros da incerteza</h3>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p>{{ form.density_volume_graduation_l.label_tag }} {{ form.density_volume_graduation_l }}</p>
+    <p>{{ form.density_mds_resolution_gcm3.label_tag }} {{ form.density_mds_resolution_gcm3 }}</p>
+    <p>{{ form.density_k_factor.label_tag }} {{ form.density_k_factor }}</p>
+  </div>
+
+  <h3>Resultados da verificação e ajuste</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+    <p>{{ form.error_before_pct.label_tag }} {{ form.error_before_pct }}</p>
+    <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
+  </div>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p><label for="id_density_final_phase">Fase final considerada</label><input id="id_density_final_phase" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_density_final_margin">Soma final |erro| + U(e) (%)</label><input id="id_density_final_margin" class="auto-locked" type="text" readonly disabled></p>
+    <p><label for="id_density_final_status">Status final</label><input id="id_density_final_status" class="auto-locked" type="text" readonly disabled></p>
+  </div>
+
+  <div id="final-box" class="accept-box pending">
+    <p style="margin:0 0 4px;">
+      <strong>Critério final (|erro final| + U(e) &lt;= limite)</strong>
+      <span id="final-pill" class="accept-pill pending">Pendente dados</span>
+    </p>
+    <p id="final-detail" style="margin:0;">Preencha os dados para avaliar o resultado final.</p>
+  </div>
+
+  <h3>Identificação e observação</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.standards_used.label_tag }} {{ form.standards_used }}</p>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+    <p>{{ form.assigned_validator.label_tag }} {{ form.assigned_validator }}</p>
+  </div>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
+  </div>
+</form>
+
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>u(MDA) antes (g/cm³): <span id="sum-before-u-mda">-</span></p>
+<p>u(MDS) antes (g/cm³): <span id="sum-before-u-mds">-</span></p>
+<p>u(erro) antes (%): <span id="sum-before-u-error">-</span></p>
+<p>U(e) antes (%): <span id="sum-before-uexp">-</span></p>
+<p>u(MDA) final (g/cm³): <span id="sum-final-u-mda">-</span></p>
+<p>u(MDS) final (g/cm³): <span id="sum-final-u-mds">-</span></p>
+<p>u(erro) final (%): <span id="sum-final-u-error">-</span></p>
+<p>U(e) final (%): <span id="sum-final-uexp">-</span></p>
+
+<script>
+(function () {
+  const form = document.getElementById('density-form');
+  if (!form) return;
+
+  function parseNum(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).replace(',', '.').trim();
+    if (!txt) return null;
+    const value = Number(txt);
+    return Number.isFinite(value) ? value : null;
+  }
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return parseNum(el.value || '');
+  }
+  function setNum(id, value, decimals, numberInput) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null || !Number.isFinite(value)) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = numberInput ? fixed : fixed.replace('.', ',');
+  }
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+  function fmt(value, decimals) {
+    if (value == null || !Number.isFinite(value)) return '-';
+    return value.toFixed(decimals).replace('.', ',');
+  }
+  function avg(values) {
+    const vals = values.filter((v) => v != null);
+    if (!vals.length) return null;
+    return vals.reduce((a, b) => a + b, 0) / vals.length;
+  }
+  function stdSample(values) {
+    const vals = values.filter((v) => v != null);
+    if (vals.length < 2) return null;
+    const m = avg(vals);
+    const sq = vals.reduce((acc, v) => acc + Math.pow(v - m, 2), 0);
+    return Math.sqrt(sq / (vals.length - 1));
+  }
+  function setPill(id, status) {
+    const pill = document.getElementById(id);
+    if (!pill) return;
+    pill.classList.remove('ok', 'fail', 'pending');
+    pill.classList.add(status);
+    pill.textContent = status === 'ok' ? 'Aprovado' : (status === 'fail' ? 'Reprovado' : 'Pendente dados');
+  }
+  function setBox(prefix, status, detail) {
+    const box = document.getElementById(prefix + '-box');
+    const detailEl = document.getElementById(prefix + '-detail');
+    if (!box || !detailEl) return;
+    box.classList.remove('ok', 'fail', 'pending');
+    box.classList.add(status);
+    setPill(prefix + '-pill', status);
+    detailEl.textContent = detail;
+  }
+
+  function standardLabel(fieldId, fallbackLabel) {
+    const field = document.getElementById(fieldId);
+    if (!field || !field.selectedOptions || !field.selectedOptions.length) return fallbackLabel;
+    const opt = field.selectedOptions[0];
+    return opt && opt.textContent ? opt.textContent : fallbackLabel;
+  }
+
+  function calcPhase(prefix, balanceErrorPct, uAdditionalKg, uVolumeL, mdsResolution, kFactor) {
+    const densities = [];
+    const uDensities = [];
+    for (let idx = 1; idx <= 3; idx++) {
+      const vazio = getNum(`id_density_${prefix}_empty_${idx}_kg`);
+      const cheio = getNum(`id_density_${prefix}_full_${idx}_kg`);
+      const volume = getNum(`id_density_${prefix}_volume_${idx}_l`);
+      const massa = (vazio != null && cheio != null) ? (cheio - vazio) : null;
+      const densidade = (massa != null && volume != null && volume !== 0) ? (massa / volume) : null;
+      setNum(`${prefix}_mass_${idx}`, massa, 3, false);
+      setNum(`${prefix}_density_${idx}`, densidade, 4, false);
+      if (densidade != null) densities.push(densidade);
+
+      let uVazio = null;
+      let uCheio = null;
+      let uMassa = null;
+      let uDens = null;
+      const bErr = (balanceErrorPct == null) ? 0 : Math.abs(balanceErrorPct);
+      if (vazio != null) {
+        const balTerm = (bErr / 100) * vazio / Math.sqrt(3);
+        uVazio = Math.sqrt((balTerm * balTerm) + (uAdditionalKg * uAdditionalKg));
+      }
+      if (cheio != null) {
+        const balTerm = (bErr / 100) * cheio / Math.sqrt(3);
+        uCheio = Math.sqrt((balTerm * balTerm) + (uAdditionalKg * uAdditionalKg));
+      }
+      if (uVazio != null && uCheio != null) {
+        uMassa = Math.sqrt((uVazio * uVazio) + (uCheio * uCheio));
+      }
+      if (densidade != null && massa != null && volume != null && massa !== 0 && volume !== 0 && uMassa != null && uVolumeL != null) {
+        const termMass = uMassa / massa;
+        const termVol = uVolumeL / volume;
+        uDens = densidade * Math.sqrt((termMass * termMass) + (termVol * termVol));
+      }
+      if (uDens != null) uDensities.push(uDens);
+    }
+
+    const mda = avg(densities);
+    const sDens = stdSample(densities);
+    const uA_MDA = densities.length === 0 ? null : (densities.length <= 1 ? 0 : (sDens == null ? null : sDens / Math.sqrt(densities.length)));
+    const uB_MDA = uDensities.length ? (Math.sqrt(uDensities.reduce((acc, v) => acc + (v * v), 0)) / uDensities.length) : null;
+    const uMDA = (uA_MDA != null && uB_MDA != null) ? Math.sqrt((uA_MDA * uA_MDA) + (uB_MDA * uB_MDA)) : null;
+
+    const mdsInformed = getNum(`id_density_${prefix}_mds_informed_gcm3`);
+    const readings = [];
+    for (let i = 1; i <= 5; i++) {
+      const val = getNum(`id_density_${prefix}_mds_reading_${i}_gcm3`);
+      if (val != null) readings.push(val);
+    }
+    const mdsUsed = readings.length ? avg(readings) : mdsInformed;
+    const uA_MDS = (mdsUsed == null) ? null : (readings.length <= 1 ? 0 : (stdSample(readings) / Math.sqrt(readings.length)));
+    const uRes = (mdsResolution == null) ? null : (mdsResolution / Math.sqrt(12));
+    const uMDS = (uA_MDS != null && uRes != null) ? Math.sqrt((uA_MDS * uA_MDS) + (uRes * uRes)) : null;
+
+    const errPct = (mda != null && mdsUsed != null && mda !== 0) ? (((mdsUsed / mda) - 1) * 100) : null;
+    const uErrPct = (mda != null && mda !== 0 && mdsUsed != null && mdsUsed !== 0 && uMDA != null && uMDS != null)
+      ? (Math.abs(mdsUsed / mda) * 100 * Math.sqrt(Math.pow(uMDS / mdsUsed, 2) + Math.pow(uMDA / mda, 2)))
+      : null;
+    const uExpPct = (uErrPct != null && kFactor != null) ? Math.abs(kFactor * uErrPct) : null;
+    const marginPct = (errPct != null && uExpPct != null) ? (Math.abs(errPct) + Math.abs(uExpPct)) : null;
+
+    setNum(`${prefix}_mda_display`, mda, 4, false);
+    setNum(`${prefix}_mds_display`, mdsUsed, 4, false);
+
+    return {
+      hasData: densities.length > 0 || mdsUsed != null || readings.length > 0,
+      mda: mda,
+      mds: mdsUsed,
+      uMDA: uMDA,
+      uMDS: uMDS,
+      uErrPct: uErrPct,
+      uExpPct: uExpPct,
+      errPct: errPct,
+      marginPct: marginPct
+    };
+  }
+
+  function recalc() {
+    for (let idx = 1; idx <= 3; idx++) {
+      setNum(`before_label_${idx}`, null, 0, false);
+      setNum(`after_label_${idx}`, null, 0, false);
+      const beforeLabelInput = document.getElementById(`before_label_${idx}`);
+      const afterLabelInput = document.getElementById(`after_label_${idx}`);
+      const label = standardLabel(`id_density_standard_${idx}`, `Aferidor ${idx}`);
+      if (beforeLabelInput) beforeLabelInput.value = label;
+      if (afterLabelInput) afterLabelInput.value = label;
+    }
+
+    const mab = getNum('id_density_scale_mab_kg');
+    const mib = getNum('id_density_scale_mib_kg');
+    const scaleCriterion = getNum('id_density_scale_criterion_pct');
+    const scaleErr = (mab != null && mib != null && mab !== 0) ? (((mib / mab) - 1) * 100) : null;
+    setNum('id_density_scale_error_pct_display', scaleErr, 3, false);
+
+    if (scaleErr == null || scaleCriterion == null) {
+      setBox('scale', 'pending', 'Preencha MAB e MIB para validar o pré-requisito da balança.');
+    } else if (Math.abs(scaleErr) <= scaleCriterion) {
+      setBox('scale', 'ok', `Balança OK: erro ${fmt(Math.abs(scaleErr), 3)}% dentro do limite ${fmt(scaleCriterion, 1)}%.`);
+    } else {
+      setBox('scale', 'fail', `Balança NOK: erro ${fmt(Math.abs(scaleErr), 3)}% acima do limite ${fmt(scaleCriterion, 1)}%.`);
+    }
+
+    const uAdditional = getNum('id_density_scale_u_additional_kg') ?? 0;
+    const volGrad = getNum('id_density_volume_graduation_l');
+    const uVolume = volGrad == null ? null : (volGrad / Math.sqrt(12));
+    const mdsResolution = getNum('id_density_mds_resolution_gcm3');
+    const kFactor = getNum('id_density_k_factor');
+    const criterion = getNum('id_acceptance_criterion_pct');
+
+    const before = calcPhase('before', scaleErr, uAdditional, uVolume, mdsResolution, kFactor);
+    const after = calcPhase('after', scaleErr, uAdditional, uVolume, mdsResolution, kFactor);
+
+    setText('sum-before-u-mda', fmt(before.uMDA, 6));
+    setText('sum-before-u-mds', fmt(before.uMDS, 6));
+    setText('sum-before-u-error', fmt(before.uErrPct, 4));
+    setText('sum-before-uexp', fmt(before.uExpPct, 3));
+
+    const useAfter = after.marginPct != null;
+    const finalMetrics = useAfter ? after : before;
+    const finalPhase = useAfter ? 'Após ajuste' : 'Antes do ajuste';
+
+    setText('sum-final-u-mda', fmt(finalMetrics.uMDA, 6));
+    setText('sum-final-u-mds', fmt(finalMetrics.uMDS, 6));
+    setText('sum-final-u-error', fmt(finalMetrics.uErrPct, 4));
+    setText('sum-final-uexp', fmt(finalMetrics.uExpPct, 3));
+
+    setNum('id_error_before_pct', before.errPct, 3, true);
+    setNum('id_error_after_pct', finalMetrics.errPct, 3, true);
+    setNum('id_expanded_uncertainty_calc_pct', finalMetrics.uExpPct, 3, true);
+    setNum('id_density_final_margin', finalMetrics.marginPct, 3, false);
+    const phaseField = document.getElementById('id_density_final_phase');
+    if (phaseField) phaseField.value = finalPhase;
+
+    if (criterion != null) {
+      setNum('id_acceptance_criterion_pct', criterion, 2, true);
+    }
+
+    if (scaleErr == null || scaleCriterion == null || before.marginPct == null || criterion == null) {
+      setBox('before', 'pending', 'Preencha os dados da fase antes.');
+    } else if (Math.abs(scaleErr) > scaleCriterion) {
+      setBox('before', 'fail', 'Balança NOK: fase antes inválida até corrigir a balança.');
+    } else if (before.marginPct <= criterion) {
+      setBox('before', 'ok', `Antes do ajuste aprovado: margem ${fmt(before.marginPct, 3)}% (limite ${fmt(criterion, 2)}%).`);
+    } else {
+      setBox('before', 'fail', `Antes do ajuste reprovado: margem ${fmt(before.marginPct, 3)}% (limite ${fmt(criterion, 2)}%).`);
+    }
+
+    const finalStatusField = document.getElementById('id_density_final_status');
+    if (scaleErr == null || scaleCriterion == null || criterion == null || finalMetrics.marginPct == null) {
+      if (finalStatusField) finalStatusField.value = 'Pendente dados';
+      setBox('final', 'pending', 'Preencha os dados para avaliar o resultado final.');
+    } else if (Math.abs(scaleErr) > scaleCriterion) {
+      if (finalStatusField) finalStatusField.value = 'Inválido - balança NOK';
+      setBox('final', 'fail', 'Checagem da balança em NOK. O formulário não pode ser aprovado.');
+    } else if (finalMetrics.marginPct <= criterion) {
+      if (finalStatusField) finalStatusField.value = 'Aprovado';
+      setBox('final', 'ok', `Aprovado: |erro final| + U(e) = ${fmt(finalMetrics.marginPct, 3)}% (limite ${fmt(criterion, 2)}%).`);
+    } else {
+      if (finalStatusField) finalStatusField.value = 'Reprovado';
+      setBox('final', 'fail', `Reprovado: |erro final| + U(e) = ${fmt(finalMetrics.marginPct, 3)}% (limite ${fmt(criterion, 2)}%).`);
+    }
+  }
+
+  form.addEventListener('input', recalc);
+  form.addEventListener('change', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}

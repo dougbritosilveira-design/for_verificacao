@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from .certificate_parser import parse_flow_certificate, parse_scanner_certificate
 from .forms import (
+    DensityTechnicalForm,
     FlowAdjustTechnicalForm,
     FlowTechnicalForm,
     LevelTechnicalForm,
@@ -108,6 +109,12 @@ def _default_units_for_form(form_type, equipment=None):
             or 'VAZAO' in code
             or 'VAZAO' in title
             or 'MEDIDOR DE VAZAO' in title
+        ):
+            return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
+        if (
+            FormSubmission.FORM_CODE_DENSITY in code
+            or 'DENSIDADE' in code
+            or 'DENSIDADE' in title
         ):
             return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
     equipment_unit = (
@@ -347,7 +354,10 @@ def selection_view(request):
     )
     equipment_locations = {str(e.pk): e.location for e in equipment_qs}
     equipment_form_types = {
-        str(e.pk): [{'id': str(form.pk), 'label': form.full_label} for form in e.available_form_types]
+        str(e.pk): [
+            {'id': str(form.pk), 'label': form.full_label, 'code': (form.code or '').strip().upper()}
+            for form in e.available_form_types
+        ]
         for e in equipment_qs
     }
 
@@ -436,6 +446,9 @@ def form_edit_view(request, pk):
     elif submission.is_flow_adjust_form:
         form_class = FlowAdjustTechnicalForm
         template_name = 'inspecoes/form_edit_flow_adjust.html'
+    elif submission.is_density_form:
+        form_class = DensityTechnicalForm
+        template_name = 'inspecoes/form_edit_density.html'
     elif submission.is_level_form:
         form_class = LevelTechnicalForm
         template_name = 'inspecoes/form_edit_level.html'

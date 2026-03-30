@@ -499,6 +499,97 @@ def _generate_submission_report_pdf_bytes(
             f'Validado por: {submission.validator_name or "-"}',
             f'Validado em: {_format_datetime(submission.validated_at)}',
         ]
+    elif submission.is_density_form:
+        before_rows = submission.density_before_rows
+        after_rows = submission.density_after_rows
+        lines = [
+            f'{form_code} - {form_title}',
+            f'Data da visita: {submission.execution_date}',
+            f'OM: {submission.om_number}',
+            f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
+            f'Local: {submission.location_snapshot}',
+            f'Executor: {submission.executor_name}',
+            f'Balança estática: {submission.density_scale_equipment.tag if submission.density_scale_equipment else "-"}',
+            (
+                'Aferidores selecionados: '
+                f'{submission.density_standard_1.tag if submission.density_standard_1 else "-"} / '
+                f'{submission.density_standard_2.tag if submission.density_standard_2 else "-"} / '
+                f'{submission.density_standard_3.tag if submission.density_standard_3 else "-"}'
+            ),
+            '',
+            'Checagem da balança (pré-requisito):',
+            f'MAB (kg): {_format_num(submission.density_scale_mab_kg, 3)}',
+            f'MIB (kg): {_format_num(submission.density_scale_mib_kg, 3)}',
+            f'Erro da balança (%): {_format_num(submission.density_scale_error_pct, 3)}',
+            f'Critério da balança (%): {_format_num(submission.density_scale_criterion_value, 1)}',
+            f'Status da balança: {submission.density_scale_status_label}',
+            f'u adicional por pesagem (kg): {_format_num(submission.density_scale_u_additional_kg_value, 4)}',
+            '',
+            'Verificação antes do ajuste:',
+            f'MDA antes (g/cm³): {_format_num(submission.density_before_mda_gcm3, 4)}',
+            f'MDS antes (g/cm³): {_format_num(submission.density_before_mds_gcm3, 4)}',
+            f'Erro antes (%): {_format_num(submission.density_before_error_pct, 3)}',
+            f'U(e) antes (%): {_format_num(submission.density_before_u_expanded_pct, 3)}',
+            f'Margem antes |erro| + U(e) (%): {_format_num(submission.density_before_margin_pct, 3)}',
+            f'Status antes: {submission.density_before_status_label}',
+            '',
+            'Verificação após ajuste:',
+            f'MDA após (g/cm³): {_format_num(submission.density_after_mda_gcm3, 4)}',
+            f'MDS após (g/cm³): {_format_num(submission.density_after_mds_gcm3, 4)}',
+            f'Erro após (%): {_format_num(submission.density_after_error_pct, 3)}',
+            f'U(e) após (%): {_format_num(submission.density_after_u_expanded_pct, 3)}',
+            f'Margem após |erro| + U(e) (%): {_format_num(submission.density_after_margin_pct, 3)}',
+            f'Status após: {submission.density_after_status_label}',
+            '',
+            'Resultado final:',
+            f'Fase final considerada: {submission.density_final_phase_label}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 2)}',
+            f'Erro final ({acceptance_unit}): {_format_num(submission.density_final_error_pct, 3)}',
+            f'U(e) final ({uncertainty_unit}): {_format_num(submission.density_final_u_expanded_pct, 3)}',
+            f'Soma final |erro| + U(e) ({acceptance_unit}): {_format_num(submission.density_final_margin_pct, 3)}',
+            f'Status final: {submission.acceptance_status_label}',
+            '',
+            'Parâmetros de incerteza:',
+            f'Graduação do aferidor (L): {_format_num(submission.density_volume_graduation_l_value, 4)}',
+            f'Resolução MDS (g/cm³): {_format_num(submission.density_mds_resolution_gcm3_value, 4)}',
+            f'Fator k: {_format_num(submission.density_k_factor_value, 3)}',
+            '',
+            f'Setor 1: {submission.sector or ""}',
+            f'Setor 2: {submission.sector_2 or ""}',
+            f'Setor 3: {submission.sector_3 or ""}',
+            f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
+            f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
+            f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
+            f'Padrões utilizados: {submission.standards_used or ""}',
+            f'Observação: {submission.observation or ""}',
+            '',
+            f'Validado por: {submission.validator_name or "-"}',
+            f'Validado em: {_format_datetime(submission.validated_at)}',
+            '',
+            'Pontos antes (vazio/cheio/massa/volume/densidade/u_densidade):',
+        ]
+        for row in before_rows:
+            lines.append(
+                f'[{row["index"]}] {row["label"]}: '
+                f'Vazio={_format_num(row["empty_kg"], 3)} kg | '
+                f'Cheio={_format_num(row["full_kg"], 3)} kg | '
+                f'Massa={_format_num(row["mass_kg"], 3)} kg | '
+                f'Volume={_format_num(row["volume_l"], 3)} L | '
+                f'Densidade={_format_num(row["density_gcm3"], 4)} g/cm³ | '
+                f'u_dens={_format_num(row["u_density_gcm3"], 6)}'
+            )
+        lines.append('')
+        lines.append('Pontos após (vazio/cheio/massa/volume/densidade/u_densidade):')
+        for row in after_rows:
+            lines.append(
+                f'[{row["index"]}] {row["label"]}: '
+                f'Vazio={_format_num(row["empty_kg"], 3)} kg | '
+                f'Cheio={_format_num(row["full_kg"], 3)} kg | '
+                f'Massa={_format_num(row["mass_kg"], 3)} kg | '
+                f'Volume={_format_num(row["volume_l"], 3)} L | '
+                f'Densidade={_format_num(row["density_gcm3"], 4)} g/cm³ | '
+                f'u_dens={_format_num(row["u_density_gcm3"], 6)}'
+            )
     else:
         lines = [
             f'{form_code} - {form_title}',

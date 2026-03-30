@@ -3,7 +3,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Equipment, FormSubmission, InspectionFormType, PortalUserAccess
+from .models import Equipment, FormSubmission, InspectionFormType, PortalUserAccess, VolumeStandard
 
 DATE_INPUT_FORMATS = ['%Y-%m-%d', '%d/%m/%Y']
 
@@ -61,10 +61,45 @@ class SelectionForm(forms.ModelForm):
         label='Formulário',
         empty_label='Selecione o formulário',
     )
+    density_scale_equipment = forms.ModelChoiceField(
+        queryset=Equipment.objects.filter(active=True).order_by('tag'),
+        required=False,
+        label='Balança estática utilizada',
+        empty_label='Selecione a balança',
+    )
+    density_standard_1 = forms.ModelChoiceField(
+        queryset=VolumeStandard.objects.filter(active=True).order_by('tag'),
+        required=False,
+        label='Aferidor 1',
+        empty_label='Selecione o aferidor',
+    )
+    density_standard_2 = forms.ModelChoiceField(
+        queryset=VolumeStandard.objects.filter(active=True).order_by('tag'),
+        required=False,
+        label='Aferidor 2',
+        empty_label='Selecione o aferidor',
+    )
+    density_standard_3 = forms.ModelChoiceField(
+        queryset=VolumeStandard.objects.filter(active=True).order_by('tag'),
+        required=False,
+        label='Aferidor 3',
+        empty_label='Selecione o aferidor',
+    )
 
     class Meta:
         model = FormSubmission
-        fields = ['equipment', 'form_type', 'location_snapshot', 'om_number', 'execution_date', 'executor_name']
+        fields = [
+            'equipment',
+            'form_type',
+            'density_scale_equipment',
+            'density_standard_1',
+            'density_standard_2',
+            'density_standard_3',
+            'location_snapshot',
+            'om_number',
+            'execution_date',
+            'executor_name',
+        ]
         widgets = {'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'})}
         labels = {
             'location_snapshot': 'Local',
@@ -88,6 +123,11 @@ class SelectionForm(forms.ModelForm):
                 'style': 'background:#f3f0e6;',
             }
         )
+        self.fields['density_scale_equipment'].queryset = Equipment.objects.filter(active=True).order_by('tag')
+        standard_qs = VolumeStandard.objects.filter(active=True).order_by('tag')
+        self.fields['density_standard_1'].queryset = standard_qs
+        self.fields['density_standard_2'].queryset = standard_qs
+        self.fields['density_standard_3'].queryset = standard_qs
 
         selected_equipment = self._resolve_selected_equipment()
         if selected_equipment:
@@ -129,6 +169,30 @@ class SelectionForm(forms.ModelForm):
                 self.add_error('equipment', 'Este equipamento não possui formulários cadastrados. Configure no Admin.')
             if form_type and not allowed_form_types.filter(pk=form_type.pk).exists():
                 self.add_error('form_type', 'O formulário selecionado não está habilitado para este equipamento.')
+
+        code = (form_type.code or '').strip().upper() if form_type else ''
+        title = (form_type.title or '').strip().upper() if form_type else ''
+        is_density_form = (
+            code.startswith(FormSubmission.FORM_CODE_DENSITY)
+            or 'FOR 08.03.003' in code
+            or ('DENSIDADE' in title and 'TRANSMISSOR' in title and 'AJUSTE' in title)
+        )
+        if is_density_form:
+            scale = cleaned_data.get('density_scale_equipment')
+            std_1 = cleaned_data.get('density_standard_1')
+            std_2 = cleaned_data.get('density_standard_2')
+            std_3 = cleaned_data.get('density_standard_3')
+            if not scale:
+                self.add_error('density_scale_equipment', 'Selecione a balança estática usada no procedimento.')
+            if not std_1:
+                self.add_error('density_standard_1', 'Selecione o aferidor 1.')
+            if not std_2:
+                self.add_error('density_standard_2', 'Selecione o aferidor 2.')
+            if not std_3:
+                self.add_error('density_standard_3', 'Selecione o aferidor 3.')
+            standards = [standard.pk for standard in [std_1, std_2, std_3] if standard]
+            if len(standards) != len(set(standards)):
+                self.add_error('density_standard_3', 'Selecione aferidores diferentes (sem repetição).')
         return cleaned_data
 
 
@@ -831,6 +895,221 @@ class FlowAdjustTechnicalForm(forms.ModelForm):
             self.initial.setdefault('flow_adjust_u_dut_res_pct', Decimal('0.000'))
         if self.instance.flow_adjust_k_factor is None:
             self.initial.setdefault('flow_adjust_k_factor', Decimal('2.000'))
+
+
+class DensityTechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
+
+    class Meta:
+        model = FormSubmission
+        fields = [
+            'om_number',
+            'execution_date',
+            'density_scale_equipment',
+            'density_standard_1',
+            'density_standard_2',
+            'density_standard_3',
+            'density_scale_mab_kg',
+            'density_scale_mib_kg',
+            'density_scale_criterion_pct',
+            'density_scale_u_additional_kg',
+            'density_before_low_point_gcm3',
+            'density_before_high_point_gcm3',
+            'density_before_low_count_cts',
+            'density_before_high_count_cts',
+            'density_before_empty_1_kg',
+            'density_before_full_1_kg',
+            'density_before_volume_1_l',
+            'density_before_empty_2_kg',
+            'density_before_full_2_kg',
+            'density_before_volume_2_l',
+            'density_before_empty_3_kg',
+            'density_before_full_3_kg',
+            'density_before_volume_3_l',
+            'density_before_mds_informed_gcm3',
+            'density_before_mds_reading_1_gcm3',
+            'density_before_mds_reading_2_gcm3',
+            'density_before_mds_reading_3_gcm3',
+            'density_before_mds_reading_4_gcm3',
+            'density_before_mds_reading_5_gcm3',
+            'density_after_low_point_gcm3',
+            'density_after_high_point_gcm3',
+            'density_after_low_count_cts',
+            'density_after_high_count_cts',
+            'density_after_empty_1_kg',
+            'density_after_full_1_kg',
+            'density_after_volume_1_l',
+            'density_after_empty_2_kg',
+            'density_after_full_2_kg',
+            'density_after_volume_2_l',
+            'density_after_empty_3_kg',
+            'density_after_full_3_kg',
+            'density_after_volume_3_l',
+            'density_after_mds_informed_gcm3',
+            'density_after_mds_reading_1_gcm3',
+            'density_after_mds_reading_2_gcm3',
+            'density_after_mds_reading_3_gcm3',
+            'density_after_mds_reading_4_gcm3',
+            'density_after_mds_reading_5_gcm3',
+            'density_volume_graduation_l',
+            'density_mds_resolution_gcm3',
+            'density_k_factor',
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_calc_pct',
+            'error_before_pct',
+            'error_after_pct',
+            'sector',
+            'sector_2',
+            'sector_3',
+            'validator_registration',
+            'technician_1_name',
+            'technician_2_name',
+            'technician_2_registration',
+            'technician_3_name',
+            'technician_3_registration',
+            'standards_used',
+            'observation',
+        ]
+        labels = {
+            'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
+            'density_scale_equipment': 'Balança estática utilizada',
+            'density_standard_1': 'Aferidor 1',
+            'density_standard_2': 'Aferidor 2',
+            'density_standard_3': 'Aferidor 3',
+            'density_scale_mab_kg': 'MAB - Massa aplicada na balança (kg)',
+            'density_scale_mib_kg': 'MIB - Massa indicada pela balança (kg)',
+            'density_scale_criterion_pct': 'Critério da balança (%)',
+            'density_scale_u_additional_kg': 'u adicional por pesagem (kg)',
+            'density_before_low_point_gcm3': 'Densidade ponto baixo (g/cm³)',
+            'density_before_high_point_gcm3': 'Densidade ponto alto (g/cm³)',
+            'density_before_low_count_cts': 'Contagens ponto baixo (ct/s)',
+            'density_before_high_count_cts': 'Contagens ponto alto (ct/s)',
+            'density_before_empty_1_kg': 'AV1 vazio (kg)',
+            'density_before_full_1_kg': 'AV1 cheio (kg)',
+            'density_before_volume_1_l': 'AV1 volume (L)',
+            'density_before_empty_2_kg': 'AV2 vazio (kg)',
+            'density_before_full_2_kg': 'AV2 cheio (kg)',
+            'density_before_volume_2_l': 'AV2 volume (L)',
+            'density_before_empty_3_kg': 'AV3 vazio (kg)',
+            'density_before_full_3_kg': 'AV3 cheio (kg)',
+            'density_before_volume_3_l': 'AV3 volume (L)',
+            'density_before_mds_informed_gcm3': 'MDS informado antes (g/cm³)',
+            'density_before_mds_reading_1_gcm3': 'Leitura MDS antes 1',
+            'density_before_mds_reading_2_gcm3': 'Leitura MDS antes 2',
+            'density_before_mds_reading_3_gcm3': 'Leitura MDS antes 3',
+            'density_before_mds_reading_4_gcm3': 'Leitura MDS antes 4',
+            'density_before_mds_reading_5_gcm3': 'Leitura MDS antes 5',
+            'density_after_low_point_gcm3': 'Densidade ponto baixo (g/cm³)',
+            'density_after_high_point_gcm3': 'Densidade ponto alto (g/cm³)',
+            'density_after_low_count_cts': 'Contagens ponto baixo (ct/s)',
+            'density_after_high_count_cts': 'Contagens ponto alto (ct/s)',
+            'density_after_empty_1_kg': 'AV1 vazio (kg)',
+            'density_after_full_1_kg': 'AV1 cheio (kg)',
+            'density_after_volume_1_l': 'AV1 volume (L)',
+            'density_after_empty_2_kg': 'AV2 vazio (kg)',
+            'density_after_full_2_kg': 'AV2 cheio (kg)',
+            'density_after_volume_2_l': 'AV2 volume (L)',
+            'density_after_empty_3_kg': 'AV3 vazio (kg)',
+            'density_after_full_3_kg': 'AV3 cheio (kg)',
+            'density_after_volume_3_l': 'AV3 volume (L)',
+            'density_after_mds_informed_gcm3': 'MDS informado após (g/cm³)',
+            'density_after_mds_reading_1_gcm3': 'Leitura MDS após 1',
+            'density_after_mds_reading_2_gcm3': 'Leitura MDS após 2',
+            'density_after_mds_reading_3_gcm3': 'Leitura MDS após 3',
+            'density_after_mds_reading_4_gcm3': 'Leitura MDS após 4',
+            'density_after_mds_reading_5_gcm3': 'Leitura MDS após 5',
+            'density_volume_graduation_l': 'Graduação do aferidor (L)',
+            'density_mds_resolution_gcm3': 'Resolução do MDS (g/cm³)',
+            'density_k_factor': 'Fator k',
+            'acceptance_criterion_pct': 'Critério de aceitação (%)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (%)',
+            'error_before_pct': 'Erro antes (%)',
+            'error_after_pct': 'Erro final (%)',
+            'sector': 'Setor 1',
+            'sector_2': 'Setor 2',
+            'sector_3': 'Setor 3',
+            'validator_registration': 'Matrícula 1',
+            'technician_1_name': 'Nome 1',
+            'technician_2_name': 'Nome 2',
+            'technician_2_registration': 'Matrícula 2',
+            'technician_3_name': 'Nome 3',
+            'technician_3_registration': 'Matrícula 3',
+            'standards_used': 'Padrões utilizados',
+            'observation': 'Observação',
+        }
+        widgets = {
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'standards_used': forms.Textarea(attrs={'rows': 2}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
+        self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
+        self.fields['execution_date'].localize = False
+
+        self.fields['density_scale_equipment'].queryset = Equipment.objects.filter(active=True).order_by('tag')
+        standard_qs = VolumeStandard.objects.filter(active=True).order_by('tag')
+        self.fields['density_standard_1'].queryset = standard_qs
+        self.fields['density_standard_2'].queryset = standard_qs
+        self.fields['density_standard_3'].queryset = standard_qs
+
+        for field in self.fields.values():
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.1'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['error_before_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['error_after_pct'].widget.attrs.update({'step': '0.01'})
+        self.fields['density_scale_criterion_pct'].widget.attrs.update({'step': '0.1'})
+        self.fields['density_scale_u_additional_kg'].widget.attrs.update({'step': '0.0001'})
+        self.fields['density_volume_graduation_l'].widget.attrs.update({'step': '0.0001'})
+        self.fields['density_mds_resolution_gcm3'].widget.attrs.update({'step': '0.0001'})
+
+        self.fields['density_scale_criterion_pct'].disabled = True
+        self.fields['density_scale_criterion_pct'].widget.attrs.update(
+            {
+                'style': 'background:#f3f0e6;',
+                'title': 'Campo padrão do procedimento.',
+            }
+        )
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct', 'error_before_pct', 'error_after_pct']:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo calculado automaticamente pelo sistema.',
+                }
+            )
+
+        if self.instance.density_scale_criterion_pct is None:
+            self.initial.setdefault('density_scale_criterion_pct', Decimal('1.000'))
+        if self.instance.density_scale_u_additional_kg is None:
+            self.initial.setdefault('density_scale_u_additional_kg', Decimal('0.0000'))
+        if self.instance.density_volume_graduation_l is None:
+            self.initial.setdefault('density_volume_graduation_l', Decimal('0.0100'))
+        if self.instance.density_mds_resolution_gcm3 is None:
+            self.initial.setdefault('density_mds_resolution_gcm3', Decimal('0.0010'))
+        if self.instance.density_k_factor is None:
+            self.initial.setdefault('density_k_factor', Decimal('2.000'))
+
+        if not self.is_bound:
+            for index in range(1, 4):
+                standard = getattr(self.instance, f'density_standard_{index}', None)
+                if standard and standard.nominal_volume_l is not None:
+                    before_field = f'density_before_volume_{index}_l'
+                    after_field = f'density_after_volume_{index}_l'
+                    if self.initial.get(before_field) in (None, '') and getattr(self.instance, before_field) is None:
+                        self.initial[before_field] = standard.nominal_volume_l
+                    if self.initial.get(after_field) in (None, '') and getattr(self.instance, after_field) is None:
+                        self.initial[after_field] = standard.nominal_volume_l
 
 
 class ValidationForm(forms.Form):

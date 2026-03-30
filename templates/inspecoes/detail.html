@@ -178,6 +178,29 @@
     <li>Soma final |erro| + U(e): {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }}%</li>
     <li>Status final: {{ submission.acceptance_status_label }}</li>
   </ul>
+{% elif submission.is_density_form %}
+  <ul>
+    <li>Balança estática utilizada: {% if submission.density_scale_equipment %}{{ submission.density_scale_equipment.tag }} - {{ submission.density_scale_equipment.description }}{% else %}-{% endif %}</li>
+    <li>Aferidores selecionados:
+      {{ submission.density_standard_1.tag|default:'-' }},
+      {{ submission.density_standard_2.tag|default:'-' }},
+      {{ submission.density_standard_3.tag|default:'-' }}
+    </li>
+    <li>Checagem da balança (MAB/MIB): {{ submission.density_scale_mab_kg|floatformat:3|localize|default:'-' }} / {{ submission.density_scale_mib_kg|floatformat:3|localize|default:'-' }} kg</li>
+    <li>Erro relativo da balança: {{ submission.density_scale_error_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>Status da balança: {{ submission.density_scale_status_label }}</li>
+    <li>Fase final considerada: {{ submission.density_final_phase_label }}</li>
+    <li>MDA antes: {{ submission.density_before_mda_gcm3|floatformat:4|localize|default:'-' }} g/cm³</li>
+    <li>MDS antes: {{ submission.density_before_mds_gcm3|floatformat:4|localize|default:'-' }} g/cm³</li>
+    <li>Erro antes: {{ submission.density_before_error_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>U(e) antes: {{ submission.density_before_u_expanded_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>Margem antes |erro| + U(e): {{ submission.density_before_margin_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>Status antes: {{ submission.density_before_status_label }}</li>
+    <li>Erro final: {{ submission.density_final_error_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>U(e) final: {{ submission.density_final_u_expanded_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>Margem final |erro| + U(e): {{ submission.density_final_margin_pct|floatformat:3|localize|default:'-' }}%</li>
+    <li>Status final: {{ submission.density_final_status_label }}</li>
+  </ul>
 {% else %}
   <ul>
     <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
