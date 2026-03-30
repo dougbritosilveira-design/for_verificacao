@@ -46,7 +46,8 @@ class EquipmentAdminForm(forms.ModelForm):
             static_scales_qs = (
                 Equipment.objects.filter(active=True)
                 .filter(
-                    Q(inspection_form_types__code__istartswith='FOR 08.03.005')
+                    (Q(description__icontains='BALAN') & Q(description__icontains='ESTAT'))
+                    | Q(inspection_form_types__code__istartswith='FOR 08.03.005')
                     | (
                         Q(inspection_form_types__title__icontains='BALAN')
                         & Q(inspection_form_types__title__icontains='ESTATICA')
