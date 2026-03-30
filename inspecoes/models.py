@@ -269,6 +269,17 @@ class Equipment(models.Model):
         verbose_name='Formularios habilitados',
         help_text='Selecione os formularios que podem ser aplicados neste equipamento.',
     )
+    density_static_scales = models.ManyToManyField(
+        'self',
+        blank=True,
+        symmetrical=False,
+        related_name='used_as_density_scale_for',
+        verbose_name='Balanças estáticas vinculadas (densímetro)',
+        help_text=(
+            'Para equipamentos densímetro (FOR 08.03.003), selecione as balanças estáticas '
+            'permitidas no procedimento.'
+        ),
+    )
     revisit_interval_days = models.PositiveIntegerField(
         'Periodicidade da nova visita (dias)',
         null=True,

@@ -836,7 +836,11 @@ def equipment_deadlines_view(request):
     status_filter = (request.GET.get('deadline_status') or '').strip()
     active_only = (request.GET.get('active_only') or '1') == '1'
 
-    equipments_qs = _visible_equipments_queryset(request.user).order_by('tag')
+    equipments_qs = (
+        _visible_equipments_queryset(request.user)
+        .exclude(used_as_density_scale_for__isnull=False)
+        .order_by('tag')
+    )
     if active_only:
         equipments_qs = equipments_qs.filter(active=True)
     if tag:

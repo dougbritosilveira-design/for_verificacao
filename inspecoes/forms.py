@@ -66,6 +66,15 @@ def _density_static_scales_queryset():
     )
 
 
+def _density_scales_for_transmitter_queryset(density_equipment):
+    if not density_equipment:
+        return _density_static_scales_queryset()
+    linked_scales = density_equipment.density_static_scales.filter(active=True).order_by('tag')
+    if linked_scales.exists():
+        return linked_scales
+    return _density_static_scales_queryset()
+
+
 class SelectionForm(forms.ModelForm):
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.filter(active=True).order_by('tag'),
@@ -149,6 +158,7 @@ class SelectionForm(forms.ModelForm):
         if selected_equipment:
             allowed_form_types = selected_equipment.available_form_types
             self.fields['form_type'].queryset = allowed_form_types
+            self.fields['density_scale_equipment'].queryset = _density_scales_for_transmitter_queryset(selected_equipment)
             if not self.is_bound and not self.initial.get('form_type'):
                 first_form_type = allowed_form_types.first()
                 if first_form_type:
@@ -198,8 +208,19 @@ class SelectionForm(forms.ModelForm):
             std_1 = cleaned_data.get('density_standard_1')
             std_2 = cleaned_data.get('density_standard_2')
             std_3 = cleaned_data.get('density_standard_3')
+            linked_scales_qs = equipment.density_static_scales.filter(active=True) if equipment else Equipment.objects.none()
+            if equipment and not linked_scales_qs.exists():
+                self.add_error(
+                    'density_scale_equipment',
+                    'Nenhuma balança estática vinculada a este densímetro. Configure no cadastro do equipamento.',
+                )
             if not scale:
                 self.add_error('density_scale_equipment', 'Selecione a balança estática usada no procedimento.')
+            elif linked_scales_qs.exists() and not linked_scales_qs.filter(pk=scale.pk).exists():
+                self.add_error(
+                    'density_scale_equipment',
+                    'Selecione uma balança estática vinculada a este densímetro.',
+                )
             if not std_1:
                 self.add_error('density_standard_1', 'Selecione o aferidor 1.')
             if not std_2:
@@ -1070,7 +1091,7 @@ class DensityTechnicalForm(forms.ModelForm):
         self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
         self.fields['execution_date'].localize = False
 
-        scale_queryset = _density_static_scales_queryset()
+        scale_queryset = _density_scales_for_transmitter_queryset(self.instance.equipment)
         if self.instance and self.instance.density_scale_equipment_id:
             scale_queryset = (
                 scale_queryset

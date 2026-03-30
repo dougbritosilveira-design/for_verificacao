@@ -1,5 +1,7 @@
 ﻿from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
+from django.db.models import Q
+from django import forms
 
 from .models import (
     Equipment,
@@ -33,8 +35,34 @@ class InspectionFormTypeAdmin(admin.ModelAdmin):
     ordering = ('code',)
 
 
+class EquipmentAdminForm(forms.ModelForm):
+    class Meta:
+        model = Equipment
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'density_static_scales' in self.fields:
+            static_scales_qs = (
+                Equipment.objects.filter(active=True)
+                .filter(
+                    Q(inspection_form_types__code__istartswith='FOR 08.03.005')
+                    | (
+                        Q(inspection_form_types__title__icontains='BALAN')
+                        & Q(inspection_form_types__title__icontains='ESTATICA')
+                    )
+                )
+                .distinct()
+                .order_by('tag')
+            )
+            if self.instance and self.instance.pk:
+                static_scales_qs = static_scales_qs.exclude(pk=self.instance.pk)
+            self.fields['density_static_scales'].queryset = static_scales_qs
+
+
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
+    form = EquipmentAdminForm
     list_display = (
         'tag',
         'description',
@@ -49,12 +77,13 @@ class EquipmentAdmin(admin.ModelAdmin):
     search_fields = ('tag', 'description', 'location')
     list_filter = ('active', 'acceptance_criterion_unit')
     readonly_fields = ('deadline_info_admin',)
-    filter_horizontal = ('inspection_form_types',)
+    filter_horizontal = ('inspection_form_types', 'density_static_scales')
     fields = (
         'tag',
         'description',
         'location',
         'inspection_form_types',
+        'density_static_scales',
         'active',
         'revisit_interval_days',
         'acceptance_criterion_pct',
