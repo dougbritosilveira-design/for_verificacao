@@ -2,6 +2,7 @@
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 
 from .models import Equipment, FormSubmission, InspectionFormType, PortalUserAccess, VolumeStandard
 
@@ -50,6 +51,21 @@ def _configure_assigned_validator_field(form_instance):
         form_instance.initial.setdefault('assigned_validator', assigned_validator_id)
 
 
+def _density_static_scales_queryset():
+    return (
+        Equipment.objects.filter(active=True)
+        .filter(
+            Q(inspection_form_types__code__istartswith='FOR 08.03.005')
+            | (
+                Q(inspection_form_types__title__icontains='BALAN')
+                & Q(inspection_form_types__title__icontains='ESTATICA')
+            )
+        )
+        .distinct()
+        .order_by('tag')
+    )
+
+
 class SelectionForm(forms.ModelForm):
     equipment = forms.ModelChoiceField(
         queryset=Equipment.objects.filter(active=True).order_by('tag'),
@@ -62,7 +78,7 @@ class SelectionForm(forms.ModelForm):
         empty_label='Selecione o formulário',
     )
     density_scale_equipment = forms.ModelChoiceField(
-        queryset=Equipment.objects.filter(active=True).order_by('tag'),
+        queryset=_density_static_scales_queryset(),
         required=False,
         label='Balança estática utilizada',
         empty_label='Selecione a balança',
@@ -123,7 +139,7 @@ class SelectionForm(forms.ModelForm):
                 'style': 'background:#f3f0e6;',
             }
         )
-        self.fields['density_scale_equipment'].queryset = Equipment.objects.filter(active=True).order_by('tag')
+        self.fields['density_scale_equipment'].queryset = _density_static_scales_queryset()
         standard_qs = VolumeStandard.objects.filter(active=True).order_by('tag')
         self.fields['density_standard_1'].queryset = standard_qs
         self.fields['density_standard_2'].queryset = standard_qs
@@ -1054,7 +1070,13 @@ class DensityTechnicalForm(forms.ModelForm):
         self.fields['execution_date'].input_formats = DATE_INPUT_FORMATS
         self.fields['execution_date'].localize = False
 
-        self.fields['density_scale_equipment'].queryset = Equipment.objects.filter(active=True).order_by('tag')
+        scale_queryset = _density_static_scales_queryset()
+        if self.instance and self.instance.density_scale_equipment_id:
+            scale_queryset = (
+                scale_queryset
+                | Equipment.objects.filter(pk=self.instance.density_scale_equipment_id)
+            ).distinct().order_by('tag')
+        self.fields['density_scale_equipment'].queryset = scale_queryset
         standard_qs = VolumeStandard.objects.filter(active=True).order_by('tag')
         self.fields['density_standard_1'].queryset = standard_qs
         self.fields['density_standard_2'].queryset = standard_qs
