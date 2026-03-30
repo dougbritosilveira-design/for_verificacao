@@ -1128,6 +1128,10 @@ class DensityTechnicalForm(forms.ModelForm):
         self.fields['density_volume_graduation_l'].widget.attrs.update({'step': '0.0001'})
         self.fields['density_mds_resolution_gcm3'].widget.attrs.update({'step': '0.0001'})
 
+        # Campo não exibido na interface, mantido apenas para cálculo interno.
+        self.fields['density_scale_u_additional_kg'].widget = forms.HiddenInput()
+        self.fields['density_scale_u_additional_kg'].required = False
+
         self.fields['density_scale_criterion_pct'].disabled = True
         self.fields['density_scale_criterion_pct'].widget.attrs.update(
             {
@@ -1135,6 +1139,17 @@ class DensityTechnicalForm(forms.ModelForm):
                 'title': 'Campo padrão do procedimento.',
             }
         )
+
+        # Parâmetros da incerteza visíveis somente leitura.
+        for name in ['density_volume_graduation_l', 'density_mds_resolution_gcm3', 'density_k_factor']:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo bloqueado. Valor padrão do método.',
+                }
+            )
+
         for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct', 'error_before_pct', 'error_after_pct']:
             self.fields[name].disabled = True
             self.fields[name].widget.attrs.update(

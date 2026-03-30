@@ -39,10 +39,14 @@
   .dense-table th, .dense-table td { border:1px solid #e6ddc8; padding:6px; font-size:13px; }
   .dense-table th { background:#f4efe2; }
   .dense-table input, .dense-table select { width:100%; min-height:34px; }
+  .uniform-grid p { margin:0; display:flex; flex-direction:column; gap:6px; }
+  .uniform-grid p > label { min-height:42px; display:flex; align-items:flex-end; }
+  .uniform-grid input, .uniform-grid select, .uniform-grid textarea { min-height:44px; box-sizing:border-box; width:100%; }
 </style>
 
 <form method="post" id="density-form">
   {% csrf_token %}
+  {{ form.density_scale_u_additional_kg }}
   {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
   {% if form.errors %}
     <div style="color:#a12a2a; margin-bottom:12px;">
@@ -55,26 +59,23 @@
   {% endif %}
 
   <h3>Dados iniciais</h3>
-  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
     <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
     <p>{{ form.density_scale_equipment.label_tag }} {{ form.density_scale_equipment }}</p>
   </div>
-  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
     <p>{{ form.density_standard_1.label_tag }} {{ form.density_standard_1 }}</p>
     <p>{{ form.density_standard_2.label_tag }} {{ form.density_standard_2 }}</p>
     <p>{{ form.density_standard_3.label_tag }} {{ form.density_standard_3 }}</p>
   </div>
 
   <h3>1. Checagem da balança estática (pré-requisito)</h3>
-  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.density_scale_mab_kg.label_tag }} {{ form.density_scale_mab_kg }}</p>
     <p>{{ form.density_scale_mib_kg.label_tag }} {{ form.density_scale_mib_kg }}</p>
     <p><label for="id_density_scale_error_pct_display">Erro relativo da balança (%)</label><input id="id_density_scale_error_pct_display" class="auto-locked" type="text" readonly disabled></p>
     <p>{{ form.density_scale_criterion_pct.label_tag }} {{ form.density_scale_criterion_pct }}</p>
-  </div>
-  <div class="row" style="grid-template-columns:minmax(220px,280px);">
-    <p>{{ form.density_scale_u_additional_kg.label_tag }} {{ form.density_scale_u_additional_kg }}</p>
   </div>
   <div id="scale-box" class="accept-box pending">
     <p style="margin:0 0 4px;">
@@ -85,7 +86,7 @@
   </div>
 
   <h3>2. Verificação antes do ajuste (densímetro)</h3>
-  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.density_before_low_point_gcm3.label_tag }} {{ form.density_before_low_point_gcm3 }}</p>
     <p>{{ form.density_before_high_point_gcm3.label_tag }} {{ form.density_before_high_point_gcm3 }}</p>
     <p>{{ form.density_before_low_count_cts.label_tag }} {{ form.density_before_low_count_cts }}</p>
@@ -154,7 +155,7 @@
   </div>
 
   <h3>3. Verificação após ajuste (caso necessário)</h3>
-  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
     <p>{{ form.density_after_low_point_gcm3.label_tag }} {{ form.density_after_low_point_gcm3 }}</p>
     <p>{{ form.density_after_high_point_gcm3.label_tag }} {{ form.density_after_high_point_gcm3 }}</p>
     <p>{{ form.density_after_low_count_cts.label_tag }} {{ form.density_after_low_count_cts }}</p>
@@ -216,7 +217,7 @@
   </div>
 
   <h3>Parâmetros da incerteza</h3>
-  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
     <p>{{ form.density_volume_graduation_l.label_tag }} {{ form.density_volume_graduation_l }}</p>
     <p>{{ form.density_mds_resolution_gcm3.label_tag }} {{ form.density_mds_resolution_gcm3 }}</p>
     <p>{{ form.density_k_factor.label_tag }} {{ form.density_k_factor }}</p>
@@ -229,7 +230,7 @@
     <p>{{ form.error_before_pct.label_tag }} {{ form.error_before_pct }}</p>
     <p>{{ form.error_after_pct.label_tag }} {{ form.error_after_pct }}</p>
   </div>
-  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+  <div class="row uniform-grid" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
     <p><label for="id_density_final_phase">Fase final considerada</label><input id="id_density_final_phase" class="auto-locked" type="text" readonly disabled></p>
     <p><label for="id_density_final_margin">Soma final |erro| + U(e) (%)</label><input id="id_density_final_margin" class="auto-locked" type="text" readonly disabled></p>
     <p><label for="id_density_final_status">Status final</label><input id="id_density_final_status" class="auto-locked" type="text" readonly disabled></p>
@@ -283,6 +284,10 @@
 <p>u(MDS) final (g/cm³): <span id="sum-final-u-mds">-</span></p>
 <p>u(erro) final (%): <span id="sum-final-u-error">-</span></p>
 <p>U(e) final (%): <span id="sum-final-uexp">-</span></p>
+<p>Erro antes (%): <span id="sum-before-error">-</span></p>
+<p>Status antes: <span id="sum-before-status">-</span></p>
+<p>Erro final (%): <span id="sum-final-error">-</span></p>
+<p>Status final: <span id="sum-final-status">-</span></p>
 
 <script>
 (function () {
@@ -471,6 +476,7 @@
     setText('sum-before-u-mds', fmt(before.uMDS, 6));
     setText('sum-before-u-error', fmt(before.uErrPct, 4));
     setText('sum-before-uexp', fmt(before.uExpPct, 3));
+    setText('sum-before-error', fmt(before.errPct, 3));
 
     const useAfter = after.marginPct != null;
     const finalMetrics = useAfter ? after : before;
@@ -480,6 +486,7 @@
     setText('sum-final-u-mds', fmt(finalMetrics.uMDS, 6));
     setText('sum-final-u-error', fmt(finalMetrics.uErrPct, 4));
     setText('sum-final-uexp', fmt(finalMetrics.uExpPct, 3));
+    setText('sum-final-error', fmt(finalMetrics.errPct, 3));
 
     setNum('id_error_before_pct', before.errPct, 3, true);
     setNum('id_error_after_pct', finalMetrics.errPct, 3, true);
@@ -516,6 +523,11 @@
       if (finalStatusField) finalStatusField.value = 'Reprovado';
       setBox('final', 'fail', `Reprovado: |erro final| + U(e) = ${fmt(finalMetrics.marginPct, 3)}% (limite ${fmt(criterion, 2)}%).`);
     }
+
+    const beforePill = document.getElementById('before-pill');
+    const finalPill = document.getElementById('final-pill');
+    setText('sum-before-status', beforePill ? beforePill.textContent : '-');
+    setText('sum-final-status', finalPill ? finalPill.textContent : '-');
   }
 
   form.addEventListener('input', recalc);
