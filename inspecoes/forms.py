@@ -52,15 +52,26 @@ def _configure_assigned_validator_field(form_instance):
 
 
 def _density_static_scales_queryset():
+    static_by_description = (
+        Q(description__icontains='BALAN')
+        & (
+            Q(description__icontains='ESTAT')
+            | Q(description__icontains='ESTÁT')
+        )
+    )
+    static_by_form_title = (
+        Q(inspection_form_types__title__icontains='BALAN')
+        & (
+            Q(inspection_form_types__title__icontains='ESTATICA')
+            | Q(inspection_form_types__title__icontains='ESTÁTICA')
+        )
+    )
     return (
         Equipment.objects.filter(active=True)
         .filter(
-            (Q(description__icontains='BALAN') & Q(description__icontains='ESTAT'))
+            static_by_description
             | Q(inspection_form_types__code__istartswith='FOR 08.03.005')
-            | (
-                Q(inspection_form_types__title__icontains='BALAN')
-                & Q(inspection_form_types__title__icontains='ESTATICA')
-            )
+            | static_by_form_title
         )
         .distinct()
         .order_by('tag')
