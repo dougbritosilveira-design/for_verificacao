@@ -43,6 +43,9 @@
   .cert-current { margin: 4px 0 8px; color:#4f4a3a; }
   .cert-current a { word-break: break-all; }
   .cert-upload { max-width:760px; }
+  .truck-results-grid { grid-template-columns:repeat(3,minmax(220px,1fr)); }
+  .truck-results-grid > p { margin:0; }
+  .truck-results-grid input { width:100%; box-sizing:border-box; }
 </style>
 
 <form method="post" enctype="multipart/form-data" id="truck-form">
@@ -138,10 +141,10 @@
   </table>
 
   <h3>Resultados da verificação e ajuste</h3>
-  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
-    <p style="max-width:280px;">{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
-    <p style="max-width:280px;">{{ form.truck_uncertainty_declared_kg.label_tag }} {{ form.truck_uncertainty_declared_kg }}</p>
-    <p style="max-width:280px;">{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+  <div class="row truck-results-grid">
+    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p>{{ form.truck_uncertainty_declared_kg.label_tag }} {{ form.truck_uncertainty_declared_kg }}</p>
+    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
   </div>
 
   <div id="final-box" class="accept-box pending">
