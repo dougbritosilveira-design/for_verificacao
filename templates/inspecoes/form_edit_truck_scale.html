@@ -121,12 +121,19 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td>1</td><td>{{ form.truck_point_label_1 }}</td><td>{{ form.truck_load_1_kg }}</td><td>{{ form.truck_reading_1_kg }}</td><td>{{ form.truck_error_1_kg }}</td><td><input id="truck_error_abs_1" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_1" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_1" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_1" class="accept-pill pending">-</span></td></tr>
-      <tr><td>2</td><td>{{ form.truck_point_label_2 }}</td><td>{{ form.truck_load_2_kg }}</td><td>{{ form.truck_reading_2_kg }}</td><td>{{ form.truck_error_2_kg }}</td><td><input id="truck_error_abs_2" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_2" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_2" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_2" class="accept-pill pending">-</span></td></tr>
-      <tr><td>3</td><td>{{ form.truck_point_label_3 }}</td><td>{{ form.truck_load_3_kg }}</td><td>{{ form.truck_reading_3_kg }}</td><td>{{ form.truck_error_3_kg }}</td><td><input id="truck_error_abs_3" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_3" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_3" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_3" class="accept-pill pending">-</span></td></tr>
-      <tr><td>4</td><td>{{ form.truck_point_label_4 }}</td><td>{{ form.truck_load_4_kg }}</td><td>{{ form.truck_reading_4_kg }}</td><td>{{ form.truck_error_4_kg }}</td><td><input id="truck_error_abs_4" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_4" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_4" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_4" class="accept-pill pending">-</span></td></tr>
-      <tr><td>5</td><td>{{ form.truck_point_label_5 }}</td><td>{{ form.truck_load_5_kg }}</td><td>{{ form.truck_reading_5_kg }}</td><td>{{ form.truck_error_5_kg }}</td><td><input id="truck_error_abs_5" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_5" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_5" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_5" class="accept-pill pending">-</span></td></tr>
-      <tr><td>6</td><td>{{ form.truck_point_label_6 }}</td><td>{{ form.truck_load_6_kg }}</td><td>{{ form.truck_reading_6_kg }}</td><td>{{ form.truck_error_6_kg }}</td><td><input id="truck_error_abs_6" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_6" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_6" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_6" class="accept-pill pending">-</span></td></tr>
+      {% for row in truck_point_rows %}
+      <tr>
+        <td>{{ row.index }}</td>
+        <td>{{ row.label_field }}</td>
+        <td>{{ row.load_field }}</td>
+        <td>{{ row.reading_field }}</td>
+        <td>{{ row.error_field }}</td>
+        <td><input id="truck_error_abs_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="truck_u_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="truck_sum_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
+        <td><span id="truck_status_{{ row.index }}" class="accept-pill pending">-</span></td>
+      </tr>
+      {% endfor %}
     </tbody>
   </table>
 
@@ -254,6 +261,7 @@
   }
 
   function recalc() {
+    const pointsLimit = Number('{{ truck_points_limit|default:12 }}');
     const criterion = getNum('id_acceptance_criterion_pct');
     const uncertainty = getNum('id_truck_uncertainty_declared_kg');
 
@@ -269,7 +277,7 @@
     let maxError = null;
     let maxCombined = null;
 
-    for (let idx = 1; idx <= 6; idx += 1) {
+    for (let idx = 1; idx <= pointsLimit; idx += 1) {
       const load = getNum('id_truck_load_' + idx + '_kg');
       const reading = getNum('id_truck_reading_' + idx + '_kg');
       let error = getNum('id_truck_error_' + idx + '_kg');

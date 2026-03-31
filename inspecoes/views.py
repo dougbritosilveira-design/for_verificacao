@@ -414,6 +414,23 @@ def selection_view(request):
     )
 
 
+def _build_form_edit_context(form, submission):
+    context = {'form': form, 'submission': submission}
+    if submission.is_truck_scale_form:
+        context['truck_point_rows'] = [
+            {
+                'index': index,
+                'label_field': form[f'truck_point_label_{index}'],
+                'load_field': form[f'truck_load_{index}_kg'],
+                'reading_field': form[f'truck_reading_{index}_kg'],
+                'error_field': form[f'truck_error_{index}_kg'],
+            }
+            for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+        ]
+        context['truck_points_limit'] = FormSubmission.TRUCK_POINTS_LIMIT
+    return context
+
+
 @login_required
 def form_edit_view(request, pk):
     if not _can_view(request.user, 'forms'):
@@ -688,7 +705,7 @@ def form_edit_view(request, pk):
                         'assigned_validator',
                         'Selecione o validador responsável para enviar o formulário.',
                     )
-                    return render(request, template_name, {'form': form, 'submission': submission})
+                    return render(request, template_name, _build_form_edit_context(form, submission))
                 submission.status = FormSubmission.Status.PENDING_VALIDATION
                 submission.schedule_validation_deadline()
             submission.save()
@@ -705,7 +722,7 @@ def form_edit_view(request, pk):
             return redirect('inspecoes:form-edit', pk=submission.pk)
     else:
         form = form_class(instance=submission)
-    return render(request, template_name, {'form': form, 'submission': submission})
+    return render(request, template_name, _build_form_edit_context(form, submission))
 
 
 @login_required

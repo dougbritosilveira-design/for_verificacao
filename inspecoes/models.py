@@ -573,6 +573,7 @@ class FormSubmission(models.Model):
     FORM_CODE_FLOW_ADJUST_ALT = 'FOR 08.03.006'
     FORM_CODE_DENSITY = 'FOR 08.03.003'
     FORM_CODE_TRUCK_CERT = 'FOR RODOVIARIA'
+    TRUCK_POINTS_LIMIT = 12
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -809,6 +810,36 @@ class FormSubmission(models.Model):
     truck_load_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_7 = models.CharField(max_length=120, blank=True, default='Ponto 7')
+    truck_load_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_8 = models.CharField(max_length=120, blank=True, default='Ponto 8')
+    truck_load_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_9 = models.CharField(max_length=120, blank=True, default='Ponto 9')
+    truck_load_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_10 = models.CharField(max_length=120, blank=True, default='Ponto 10')
+    truck_load_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_11 = models.CharField(max_length=120, blank=True, default='Ponto 11')
+    truck_load_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_12 = models.CharField(max_length=120, blank=True, default='Ponto 12')
+    truck_load_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
 
     flow_adjust_thickness_1_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     flow_adjust_thickness_2_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -1617,7 +1648,7 @@ class FormSubmission(models.Model):
         rows = []
         uncertainty = self.truck_u_expanded_kg
         limit = self.acceptance_limit_pct
-        for index in range(1, 7):
+        for index in range(1, self.TRUCK_POINTS_LIMIT + 1):
             label = (getattr(self, f'truck_point_label_{index}', '') or '').strip() or f'Ponto {index}'
             load_kg = getattr(self, f'truck_load_{index}_kg', None)
             reading_kg = getattr(self, f'truck_reading_{index}_kg', None)

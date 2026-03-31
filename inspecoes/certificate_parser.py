@@ -8,6 +8,8 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from statistics import StatisticsError, stdev
 
+TRUCK_SCALE_POINTS_LIMIT = 12
+
 
 def _normalize_ascii(text: str) -> str:
     text = unicodedata.normalize('NFKD', text or '')
@@ -588,7 +590,7 @@ def _extract_truck_scale_points(text: str) -> tuple[list[dict], str, int]:
                 'error_kg': error_kg,
             }
         )
-        if len(points) >= 6:
+        if len(points) >= TRUCK_SCALE_POINTS_LIMIT:
             break
 
     return points, phase, len(candidate_points)

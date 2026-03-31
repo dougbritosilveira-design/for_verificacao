@@ -798,12 +798,16 @@ class TruckScaleTechnicalForm(forms.ModelForm):
             'expanded_uncertainty_calc_pct',
             'truck_uncertainty_declared_kg',
             'truck_k_factor',
-            'truck_point_label_1', 'truck_load_1_kg', 'truck_reading_1_kg', 'truck_error_1_kg',
-            'truck_point_label_2', 'truck_load_2_kg', 'truck_reading_2_kg', 'truck_error_2_kg',
-            'truck_point_label_3', 'truck_load_3_kg', 'truck_reading_3_kg', 'truck_error_3_kg',
-            'truck_point_label_4', 'truck_load_4_kg', 'truck_reading_4_kg', 'truck_error_4_kg',
-            'truck_point_label_5', 'truck_load_5_kg', 'truck_reading_5_kg', 'truck_error_5_kg',
-            'truck_point_label_6', 'truck_load_6_kg', 'truck_reading_6_kg', 'truck_error_6_kg',
+            *[
+                field_name
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+                for field_name in (
+                    f'truck_point_label_{index}',
+                    f'truck_load_{index}_kg',
+                    f'truck_reading_{index}_kg',
+                    f'truck_error_{index}_kg',
+                )
+            ],
             'sector', 'sector_2', 'sector_3',
             'validator_registration',
             'technician_1_name',
@@ -827,30 +831,22 @@ class TruckScaleTechnicalForm(forms.ModelForm):
             'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (kg)',
             'truck_uncertainty_declared_kg': 'Incerteza expandida declarada no certificado (kg)',
             'truck_k_factor': 'Fator de abrangência (k)',
-            'truck_point_label_1': 'Ponto 1',
-            'truck_load_1_kg': 'Carga 1 (kg)',
-            'truck_reading_1_kg': 'Leitura 1 (kg)',
-            'truck_error_1_kg': 'Erro 1 (kg)',
-            'truck_point_label_2': 'Ponto 2',
-            'truck_load_2_kg': 'Carga 2 (kg)',
-            'truck_reading_2_kg': 'Leitura 2 (kg)',
-            'truck_error_2_kg': 'Erro 2 (kg)',
-            'truck_point_label_3': 'Ponto 3',
-            'truck_load_3_kg': 'Carga 3 (kg)',
-            'truck_reading_3_kg': 'Leitura 3 (kg)',
-            'truck_error_3_kg': 'Erro 3 (kg)',
-            'truck_point_label_4': 'Ponto 4',
-            'truck_load_4_kg': 'Carga 4 (kg)',
-            'truck_reading_4_kg': 'Leitura 4 (kg)',
-            'truck_error_4_kg': 'Erro 4 (kg)',
-            'truck_point_label_5': 'Ponto 5',
-            'truck_load_5_kg': 'Carga 5 (kg)',
-            'truck_reading_5_kg': 'Leitura 5 (kg)',
-            'truck_error_5_kg': 'Erro 5 (kg)',
-            'truck_point_label_6': 'Ponto 6',
-            'truck_load_6_kg': 'Carga 6 (kg)',
-            'truck_reading_6_kg': 'Leitura 6 (kg)',
-            'truck_error_6_kg': 'Erro 6 (kg)',
+            **{
+                f'truck_point_label_{index}': f'Ponto {index}'
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            },
+            **{
+                f'truck_load_{index}_kg': f'Carga {index} (kg)'
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            },
+            **{
+                f'truck_reading_{index}_kg': f'Leitura {index} (kg)'
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            },
+            **{
+                f'truck_error_{index}_kg': f'Erro {index} (kg)'
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            },
             'sector': 'Setor 1',
             'sector_2': 'Setor 2',
             'sector_3': 'Setor 3',
