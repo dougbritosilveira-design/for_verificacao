@@ -15,6 +15,7 @@ CRITERION_UNIT_CHOICES = [
     ('%', '%'),
     ('m', 'm'),
     ('mm', 'mm'),
+    ('kg', 'kg'),
 ]
 
 
@@ -458,6 +459,7 @@ class EquipmentFormCriteria(models.Model):
         PERCENT = '%', '%'
         METER = 'm', 'm'
         MILLIMETER = 'mm', 'mm'
+        KILOGRAM = 'kg', 'kg'
 
     equipment = models.ForeignKey(
         Equipment,
@@ -570,6 +572,7 @@ class FormSubmission(models.Model):
     FORM_CODE_FLOW_ADJUST = 'FOR 08.05.006'
     FORM_CODE_FLOW_ADJUST_ALT = 'FOR 08.03.006'
     FORM_CODE_DENSITY = 'FOR 08.03.003'
+    FORM_CODE_TRUCK_CERT = 'FOR RODOVIARIA'
 
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Rascunho'
@@ -760,6 +763,52 @@ class FormSubmission(models.Model):
     flow_tendency_6_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     flow_uncertainty_6_pct = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
     flow_k_6 = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+
+    truck_certificate_file = models.FileField(
+        upload_to='truck_scale_certificates/',
+        null=True,
+        blank=True,
+        verbose_name='Certificado de calibração (PDF)',
+    )
+    truck_certificate_number = models.CharField(max_length=120, blank=True)
+    truck_provider = models.CharField(max_length=255, blank=True)
+    truck_model = models.CharField(max_length=255, blank=True)
+    truck_serial_number = models.CharField(max_length=120, blank=True)
+    truck_tag_on_certificate = models.CharField(max_length=120, blank=True)
+    truck_measurement_date = models.DateField(null=True, blank=True)
+    truck_release_date = models.DateField(null=True, blank=True)
+    truck_uncertainty_declared_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_factor = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_1 = models.CharField(max_length=120, blank=True, default='Ponto 1')
+    truck_load_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_2 = models.CharField(max_length=120, blank=True, default='Ponto 2')
+    truck_load_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_3 = models.CharField(max_length=120, blank=True, default='Ponto 3')
+    truck_load_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_4 = models.CharField(max_length=120, blank=True, default='Ponto 4')
+    truck_load_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_5 = models.CharField(max_length=120, blank=True, default='Ponto 5')
+    truck_load_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+
+    truck_point_label_6 = models.CharField(max_length=120, blank=True, default='Ponto 6')
+    truck_load_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_reading_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_error_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
 
     flow_adjust_thickness_1_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     flow_adjust_thickness_2_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -1234,8 +1283,23 @@ class FormSubmission(models.Model):
         return (
             self.FORM_CODE_FLOW_CERT in code
             or 'FOR VAZAO' in code
-            or 'VALIDACAO DE CERTIFICADO' in title
+            or ('VALIDACAO DE CERTIFICADO' in title and 'VAZAO' in title)
             or 'CERTIFICADO DE CALIBRACAO DE MEDIDOR DE VAZAO' in title
+        )
+
+    @property
+    def is_truck_scale_form(self):
+        code = self.form_code
+        title = ''
+        if self.form_type_id and self.form_type:
+            title = (self.form_type.title or '').strip().upper()
+        return (
+            self.FORM_CODE_TRUCK_CERT in code
+            or 'BALANCA RODOVIARIA' in code
+            or (
+                'VALIDACAO DE CERTIFICADO' in title
+                and ('BALANCA RODOVIARIA' in title or 'RODOVIARIA' in title)
+            )
         )
 
     @property
@@ -1286,6 +1350,7 @@ class FormSubmission(models.Model):
             not self.is_level_form
             and not self.is_scanner_form
             and not self.is_flow_certificate_form
+            and not self.is_truck_scale_form
             and not self.is_flow_adjust_form
             and not self.is_density_form
         )
@@ -1532,6 +1597,89 @@ class FormSubmission(models.Model):
     def flow_status(self):
         valid_rows = self.flow_valid_points
         if self.acceptance_limit_pct is None:
+            return 'Pendente dados'
+        if not valid_rows:
+            return 'Pendente dados'
+        if any(row['ok'] is False for row in valid_rows):
+            return 'Reprovado'
+        if all(row['ok'] is True for row in valid_rows):
+            return 'Aprovado'
+        return 'Pendente dados'
+
+    @property
+    def truck_u_expanded_kg(self):
+        if self.truck_uncertainty_declared_kg is None:
+            return None
+        return abs(self.truck_uncertainty_declared_kg)
+
+    @property
+    def truck_points(self):
+        rows = []
+        uncertainty = self.truck_u_expanded_kg
+        limit = self.acceptance_limit_pct
+        for index in range(1, 7):
+            label = (getattr(self, f'truck_point_label_{index}', '') or '').strip() or f'Ponto {index}'
+            load_kg = getattr(self, f'truck_load_{index}_kg', None)
+            reading_kg = getattr(self, f'truck_reading_{index}_kg', None)
+            error_kg = getattr(self, f'truck_error_{index}_kg', None)
+            if error_kg is None and load_kg is not None and reading_kg is not None:
+                error_kg = reading_kg - load_kg
+
+            error_abs_kg = abs(error_kg) if error_kg is not None else None
+            combined_kg = None
+            ok = None
+            if error_abs_kg is not None and uncertainty is not None:
+                combined_kg = error_abs_kg + uncertainty
+                if limit is not None:
+                    ok = combined_kg <= limit
+
+            rows.append(
+                {
+                    'index': index,
+                    'label': label,
+                    'load_kg': load_kg,
+                    'reading_kg': reading_kg,
+                    'error_kg': error_kg,
+                    'error_abs_kg': error_abs_kg,
+                    'uncertainty_kg': uncertainty,
+                    'combined_kg': combined_kg,
+                    'ok': ok,
+                }
+            )
+        return rows
+
+    @property
+    def truck_error_abs_values_kg(self):
+        return [row['error_abs_kg'] for row in self.truck_points if row['error_abs_kg'] is not None]
+
+    @property
+    def truck_valid_points(self):
+        return [row for row in self.truck_points if row['combined_kg'] is not None]
+
+    @property
+    def truck_max_error_abs_kg(self):
+        values = self.truck_error_abs_values_kg
+        return max(values) if values else None
+
+    @property
+    def truck_max_combined_kg(self):
+        values = [row['combined_kg'] for row in self.truck_valid_points if row['combined_kg'] is not None]
+        return max(values) if values else None
+
+    @property
+    def truck_valid_points_count(self):
+        return len(self.truck_valid_points)
+
+    @property
+    def truck_approved_points_count(self):
+        return sum(1 for row in self.truck_valid_points if row.get('ok') is True)
+
+    @property
+    def truck_status(self):
+        valid_rows = self.truck_valid_points
+        if self.acceptance_limit_pct is None:
+            return 'Pendente dados'
+        if self.truck_u_expanded_kg is None:
             return 'Pendente dados'
         if not valid_rows:
             return 'Pendente dados'
@@ -2230,6 +2378,8 @@ class FormSubmission(models.Model):
             return self.scanner_certificate_file
         if self.is_flow_form:
             return self.flow_certificate_file
+        if self.is_truck_scale_form:
+            return self.truck_certificate_file
         return None
 
     def _level_points(self, phase='before'):
@@ -2652,6 +2802,8 @@ class FormSubmission(models.Model):
             return self.scanner_u_expanded_mm
         if self.is_flow_form:
             return self.flow_max_uncertainty_pct
+        if self.is_truck_scale_form:
+            return self.truck_u_expanded_kg
         if self.is_flow_adjust_form:
             return self.flow_adjust_u_expanded_pct
         if self.is_density_form:
@@ -2666,6 +2818,8 @@ class FormSubmission(models.Model):
             return self.level_uncertainty_expanded_m
         if self.is_flow_form:
             return self.flow_max_uncertainty_pct
+        if self.is_truck_scale_form:
+            return self.truck_u_expanded_kg
         if self.is_flow_adjust_form:
             return self.flow_adjust_u_expanded_pct
         if self.is_density_form:
@@ -2718,6 +2872,8 @@ class FormSubmission(models.Model):
             return 'm'
         if self.is_scanner_form:
             return 'mm'
+        if self.is_truck_scale_form:
+            return 'kg'
         return '%'
 
     @property
@@ -2732,6 +2888,8 @@ class FormSubmission(models.Model):
             return 'm'
         if self.is_scanner_form:
             return 'mm'
+        if self.is_truck_scale_form:
+            return 'kg'
         return '%'
 
     @property
@@ -2742,6 +2900,8 @@ class FormSubmission(models.Model):
             return self.scanner_max_error_abs_mm
         if self.is_flow_form:
             return self.flow_max_error_abs_pct
+        if self.is_truck_scale_form:
+            return self.truck_max_error_abs_kg
         if self.is_flow_adjust_form:
             return self.flow_adjust_error_before_pct_auto
         if self.is_density_form:
@@ -2756,6 +2916,8 @@ class FormSubmission(models.Model):
             return self.scanner_max_error_abs_mm
         if self.is_flow_form:
             return self.flow_max_error_abs_pct
+        if self.is_truck_scale_form:
+            return self.truck_max_error_abs_kg
         if self.is_flow_adjust_form:
             return self.flow_adjust_final_error_pct
         if self.is_density_form:
@@ -2782,6 +2944,8 @@ class FormSubmission(models.Model):
     def acceptance_combined_value(self):
         if self.is_flow_form:
             return self.flow_max_combined_pct
+        if self.is_truck_scale_form:
+            return self.truck_max_combined_kg
         if self.is_density_form:
             return self.density_final_margin_pct
         error_abs = self.acceptance_error_after_abs
@@ -2794,6 +2958,8 @@ class FormSubmission(models.Model):
     def acceptance_is_evaluable(self):
         if self.is_flow_form:
             return self.flow_status in {'Aprovado', 'Reprovado'}
+        if self.is_truck_scale_form:
+            return self.truck_status in {'Aprovado', 'Reprovado'}
         if self.is_density_form:
             return self.density_final_margin_pct is not None and self.density_scale_ok is not None
         return self.acceptance_combined_value is not None
@@ -2802,6 +2968,8 @@ class FormSubmission(models.Model):
     def acceptance_ok(self):
         if self.is_flow_form:
             return self.flow_status == 'Aprovado'
+        if self.is_truck_scale_form:
+            return self.truck_status == 'Aprovado'
         if self.is_density_form:
             if self.density_scale_ok is not True:
                 return False
@@ -2818,6 +2986,8 @@ class FormSubmission(models.Model):
     def acceptance_status_label(self):
         if self.is_flow_form:
             return self.flow_status
+        if self.is_truck_scale_form:
+            return self.truck_status
         if self.is_density_form:
             if self.density_scale_ok is False:
                 return 'Inválido - balança NOK'
@@ -2836,6 +3006,18 @@ class FormSubmission(models.Model):
                 return (
                     'Validação final bloqueada: preencha ao menos um ponto com tendência e U(e) '
                     'para avaliar o certificado.'
+                )
+            if self.acceptance_ok:
+                return ''
+            return (
+                'Validação final bloqueada: há ponto(s) com soma |erro| + U(e) acima do critério de aceitação '
+                f'(<= {self.acceptance_limit_pct:.2f}{unit}).'
+            )
+        if self.is_truck_scale_form:
+            if not self.truck_valid_points:
+                return (
+                    'Validação final bloqueada: preencha ao menos um ponto válido no certificado '
+                    'para avaliar a balança rodoviária.'
                 )
             if self.acceptance_ok:
                 return ''
@@ -2907,11 +3089,21 @@ class FormSubmission(models.Model):
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.MILLIMETER
             if self.expanded_uncertainty_unit == EquipmentFormCriteria.Unit.PERCENT:
                 self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.MILLIMETER
+        if self.is_truck_scale_form:
+            if self.acceptance_criterion_unit == EquipmentFormCriteria.Unit.PERCENT:
+                self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.KILOGRAM
+            if self.expanded_uncertainty_unit == EquipmentFormCriteria.Unit.PERCENT:
+                self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.KILOGRAM
         if self.is_flow_form:
             if not self.acceptance_criterion_unit:
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
             if not self.expanded_uncertainty_unit:
                 self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
+        if self.is_truck_scale_form:
+            if not self.acceptance_criterion_unit:
+                self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.KILOGRAM
+            if not self.expanded_uncertainty_unit:
+                self.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.KILOGRAM
         if self.is_flow_adjust_form:
             if not self.acceptance_criterion_unit:
                 self.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
@@ -2934,6 +3126,10 @@ class FormSubmission(models.Model):
             self.error_before_pct = self.flow_max_error_abs_pct
             self.error_after_pct = self.flow_max_error_abs_pct
             self.expanded_uncertainty_calc_pct = self.flow_max_uncertainty_pct
+        elif self.is_truck_scale_form:
+            self.error_before_pct = self.truck_max_error_abs_kg
+            self.error_after_pct = self.truck_max_error_abs_kg
+            self.expanded_uncertainty_calc_pct = self.truck_u_expanded_kg
         elif self.is_flow_adjust_form:
             self.error_before_pct = self.flow_adjust_error_before_pct_auto
             self.error_after_pct = self.flow_adjust_final_error_pct

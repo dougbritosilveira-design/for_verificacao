@@ -9,7 +9,7 @@ from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .certificate_parser import parse_flow_certificate, parse_scanner_certificate
+from .certificate_parser import parse_flow_certificate, parse_scanner_certificate, parse_truck_scale_certificate
 from .forms import (
     DensityTechnicalForm,
     FlowAdjustTechnicalForm,
@@ -18,6 +18,7 @@ from .forms import (
     ScannerTechnicalForm,
     SelectionForm,
     TechnicalForm,
+    TruckScaleTechnicalForm,
     ValidationForm,
 )
 from .models import Equipment, EquipmentFormCriteria, FormSubmission, PortalNotification, PortalUserAccess
@@ -117,6 +118,12 @@ def _default_units_for_form(form_type, equipment=None):
             or 'DENSIDADE' in title
         ):
             return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
+        if (
+            FormSubmission.FORM_CODE_TRUCK_CERT in code
+            or 'BALANCA RODOVIARIA' in code
+            or 'RODOVIARIA' in title
+        ):
+            return EquipmentFormCriteria.Unit.KILOGRAM, EquipmentFormCriteria.Unit.KILOGRAM
     equipment_unit = (
         equipment.acceptance_criterion_unit
         if equipment and getattr(equipment, 'acceptance_criterion_unit', None)
@@ -440,6 +447,9 @@ def form_edit_view(request, pk):
     if submission.is_scanner_form:
         form_class = ScannerTechnicalForm
         template_name = 'inspecoes/form_edit_scanner.html'
+    elif submission.is_truck_scale_form:
+        form_class = TruckScaleTechnicalForm
+        template_name = 'inspecoes/form_edit_truck_scale.html'
     elif submission.is_flow_certificate_form:
         form_class = FlowTechnicalForm
         template_name = 'inspecoes/form_edit_flow.html'
@@ -457,7 +467,7 @@ def form_edit_view(request, pk):
         template_name = 'inspecoes/form_edit.html'
 
     if request.method == 'POST':
-        if submission.is_scanner_form or submission.is_flow_certificate_form:
+        if submission.is_scanner_form or submission.is_flow_certificate_form or submission.is_truck_scale_form:
             form = form_class(request.POST, request.FILES, instance=submission)
         else:
             form = form_class(request.POST, instance=submission)
@@ -583,6 +593,72 @@ def form_edit_view(request, pk):
 
                 submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.PERCENT
                 submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.PERCENT
+                submission.save()
+
+                points_found = parsed.get('points_found', 0)
+                if points_found:
+                    messages.success(
+                        request,
+                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
+                    )
+                else:
+                    messages.warning(
+                        request,
+                        'Certificado lido, mas não foram encontrados pontos de medição automáticos. '
+                        'Preencha os pontos manualmente.',
+                    )
+                return redirect('inspecoes:form-edit', pk=submission.pk)
+
+            if submission.is_truck_scale_form and 'parse_certificate' in request.POST:
+                submission.save()
+                if not submission.truck_certificate_file:
+                    messages.warning(request, 'Anexe o certificado em PDF para fazer a leitura automática.')
+                    return redirect('inspecoes:form-edit', pk=submission.pk)
+
+                try:
+                    with submission.truck_certificate_file.open('rb') as certificate_file:
+                        parsed = parse_truck_scale_certificate(
+                            certificate_file.read(),
+                            filename=Path(submission.truck_certificate_file.name).name,
+                        )
+                except Exception as exc:
+                    messages.error(request, f'Não foi possível ler o certificado: {exc}')
+                    return redirect('inspecoes:form-edit', pk=submission.pk)
+
+                parsed_values = parsed.get('values', {})
+                always_update_fields = {
+                    'acceptance_criterion_unit',
+                    'expanded_uncertainty_unit',
+                    'truck_certificate_number',
+                    'truck_provider',
+                    'truck_tag_on_certificate',
+                    'truck_model',
+                    'truck_serial_number',
+                    'truck_measurement_date',
+                    'truck_release_date',
+                    'truck_uncertainty_declared_kg',
+                    'truck_k_factor',
+                }
+                for field_name, value in parsed_values.items():
+                    if not hasattr(submission, field_name):
+                        continue
+                    current_value = getattr(submission, field_name)
+                    is_measurement_field = (
+                        field_name.startswith('truck_point_label_')
+                        or field_name.startswith('truck_load_')
+                        or field_name.startswith('truck_reading_')
+                        or field_name.startswith('truck_error_')
+                    )
+                    should_update = (
+                        is_measurement_field
+                        or field_name in always_update_fields
+                        or current_value in (None, '')
+                    )
+                    if should_update:
+                        setattr(submission, field_name, value)
+
+                submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.KILOGRAM
+                submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.KILOGRAM
                 submission.save()
 
                 points_found = parsed.get('points_found', 0)
@@ -751,7 +827,7 @@ def form_download_certificate_view(request, pk):
     submission = get_object_or_404(FormSubmission.objects.select_related('equipment', 'form_type'), pk=pk)
     if not _can_access_submission_for_equipment_scope(request.user, submission):
         return _deny_equipment_scope_access(request)
-    if not (submission.is_scanner_form or submission.is_flow_form):
+    if not (submission.is_scanner_form or submission.is_flow_form or submission.is_truck_scale_form):
         messages.warning(request, 'Este formulário não possui certificado vinculado.')
         return redirect('inspecoes:detail', pk=submission.pk)
 

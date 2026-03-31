@@ -251,12 +251,14 @@ def _generate_submission_report_pdf_bytes(
     acceptance_unit = submission.acceptance_unit_label or '%'
     uncertainty_unit = submission.expanded_uncertainty_unit_label or acceptance_unit
 
-    flow_summary_rows = []
+    certificate_summary_rows = []
+    certificate_summary_kind = ''
     if submission.is_flow_form:
         valid_points = submission.flow_valid_points
         approved_points = sum(1 for row in valid_points if row.get('ok') is True)
         total_points = len(valid_points)
-        flow_summary_rows = [row for row in submission.flow_points if row.get('combined_pct') is not None]
+        certificate_summary_rows = [row for row in submission.flow_points if row.get('combined_pct') is not None]
+        certificate_summary_kind = 'flow'
         lines = [
             f'{form_code} - {form_title}',
             f'Data da visita: {submission.execution_date}',
@@ -298,6 +300,71 @@ def _generate_submission_report_pdf_bytes(
                 f'    Tend={_format_num(row["tendency_pct"], 4)}% | '
                 f'U(e)={_format_num(row["uncertainty_pct"], 4)}% | '
                 f'Soma={_format_num(row["combined_pct"], 4)}% | '
+                f'Status={status_label}'
+            )
+        if not valid_points:
+            lines.append('Nenhum ponto válido encontrado no certificado.')
+        lines.extend(
+            [
+                '',
+                f'Setor 1: {submission.sector or ""}',
+                f'Setor 2: {submission.sector_2 or ""}',
+                f'Setor 3: {submission.sector_3 or ""}',
+                f'Nome 1 / Matrícula 1: {submission.technician_1_name or ""} ({submission.validator_registration or ""})',
+                f'Nome 2 / Matrícula 2: {submission.technician_2_name or ""} ({submission.technician_2_registration or ""})',
+                f'Nome 3 / Matrícula 3: {submission.technician_3_name or ""} ({submission.technician_3_registration or ""})',
+                f'Padrões utilizados: {submission.standards_used or ""}',
+                f'Observação: {submission.observation or ""}',
+                '',
+                f'Validado por: {submission.validator_name or "-"}',
+                f'Validado em: {_format_datetime(submission.validated_at)}',
+            ]
+        )
+    elif submission.is_truck_scale_form:
+        valid_points = submission.truck_valid_points
+        approved_points = sum(1 for row in valid_points if row.get('ok') is True)
+        total_points = len(valid_points)
+        certificate_summary_rows = [row for row in submission.truck_points if row.get('combined_kg') is not None]
+        certificate_summary_kind = 'truck'
+        lines = [
+            f'{form_code} - {form_title}',
+            f'Data da visita: {submission.execution_date}',
+            f'OM: {submission.om_number}',
+            f'Equipamento: {submission.equipment.tag} - {submission.equipment.description}',
+            f'Local: {submission.location_snapshot}',
+            f'Executor: {submission.executor_name}',
+            f'Certificado: {Path(submission.truck_certificate_file.name).name if submission.truck_certificate_file else "-"}',
+            f'Número do certificado: {submission.truck_certificate_number or "-"}',
+            f'TAG no certificado: {submission.truck_tag_on_certificate or "-"}',
+            f'Modelo da balança: {submission.truck_model or "-"}',
+            f'Série: {submission.truck_serial_number or "-"}',
+            f'Laboratório/fornecedor: {submission.truck_provider or "-"}',
+            f'Data da calibração no certificado: {submission.truck_measurement_date or "-"}',
+            f'Critério de aceitação ({acceptance_unit}): {_format_num(acceptance_limit, 1)}',
+            f'U(e) declarada no certificado ({uncertainty_unit}): {_format_num(uncertainty_calc, 3)}',
+            f'Maior erro absoluto ({acceptance_unit}): {_format_num(submission.truck_max_error_abs_kg, 3)}',
+            f'Maior soma |erro| + U(e) ({acceptance_unit}): {_format_num(combined_value, 3)}',
+            f'Pontos aprovados: {approved_points}/{total_points}',
+            f'Status final: {combined_status}',
+            '',
+            'Pontos avaliados (carga/leitura/erro/U(e)):',
+        ]
+        for row in valid_points:
+            status_label = 'Pendente'
+            if row.get('ok') is True:
+                status_label = 'Aprovado'
+            elif row.get('ok') is False:
+                status_label = 'Reprovado'
+            lines.append(
+                f'Ponto {row["index"]} ({row["label"]}): '
+                f'Carga={_format_num(row["load_kg"], 3)} kg | '
+                f'Leitura={_format_num(row["reading_kg"], 3)} kg | '
+                f'Erro={_format_num(row["error_kg"], 3)} kg'
+            )
+            lines.append(
+                f'    |Erro|={_format_num(row["error_abs_kg"], 3)} kg | '
+                f'U(e)={_format_num(row["uncertainty_kg"], 3)} kg | '
+                f'Soma={_format_num(row["combined_kg"], 3)} kg | '
                 f'Status={status_label}'
             )
         if not valid_points:
@@ -647,8 +714,8 @@ def _generate_submission_report_pdf_bytes(
             pdf.drawString(40, y, line)
             y -= line_height
 
-    if submission.is_flow_form:
-        table_rows = flow_summary_rows
+    if certificate_summary_rows and certificate_summary_kind in {'flow', 'truck'}:
+        table_rows = certificate_summary_rows
         if table_rows:
             table_title_h = 18
             table_header_h = 18
@@ -666,7 +733,10 @@ def _generate_submission_report_pdf_bytes(
 
             x0 = 40
             col_widths = [45, 85, 85, 85, 85, 130]  # total 515 (A4 com margem 40)
-            headers = ['Ponto', '|Erro| (%)', 'U(e) (%)', 'Soma (%)', 'Limite (%)', 'Status']
+            if certificate_summary_kind == 'flow':
+                headers = ['Ponto', '|Erro| (%)', 'U(e) (%)', 'Soma (%)', 'Limite (%)', 'Status']
+            else:
+                headers = ['Ponto', '|Erro| (kg)', 'U(e) (kg)', 'Soma (kg)', 'Limite (kg)', 'Status']
 
             pdf.setFont('Helvetica-Bold', 10)
             pdf.drawString(x0, y, 'Mini-tabela de fechamento por ponto')
@@ -695,14 +765,24 @@ def _generate_submission_report_pdf_bytes(
                     status = 'Reprovado'
                     status_bg = colors.HexColor('#ffdede')
 
-                data = [
-                    str(row.get('index') or '-'),
-                    _format_num(row.get('error_abs_pct'), 4),
-                    _format_num(row.get('uncertainty_pct'), 4),
-                    _format_num(row.get('combined_pct'), 4),
-                    _format_num(acceptance_limit, 1),
-                    status,
-                ]
+                if certificate_summary_kind == 'flow':
+                    data = [
+                        str(row.get('index') or '-'),
+                        _format_num(row.get('error_abs_pct'), 4),
+                        _format_num(row.get('uncertainty_pct'), 4),
+                        _format_num(row.get('combined_pct'), 4),
+                        _format_num(acceptance_limit, 1),
+                        status,
+                    ]
+                else:
+                    data = [
+                        str(row.get('index') or '-'),
+                        _format_num(row.get('error_abs_kg'), 3),
+                        _format_num(row.get('uncertainty_kg'), 3),
+                        _format_num(row.get('combined_kg'), 3),
+                        _format_num(acceptance_limit, 1),
+                        status,
+                    ]
 
                 current_x = x0
                 for idx, cell in enumerate(data):

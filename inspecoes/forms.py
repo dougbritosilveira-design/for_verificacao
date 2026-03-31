@@ -774,6 +774,130 @@ class FlowTechnicalForm(forms.ModelForm):
             )
 
 
+class TruckScaleTechnicalForm(forms.ModelForm):
+    assigned_validator = forms.ModelChoiceField(
+        queryset=get_user_model().objects.none(),
+        required=False,
+        label='Validador responsável',
+    )
+
+    class Meta:
+        model = FormSubmission
+        fields = [
+            'om_number',
+            'execution_date',
+            'truck_certificate_file',
+            'truck_certificate_number',
+            'truck_provider',
+            'truck_tag_on_certificate',
+            'truck_model',
+            'truck_serial_number',
+            'truck_measurement_date',
+            'truck_release_date',
+            'acceptance_criterion_pct',
+            'expanded_uncertainty_calc_pct',
+            'truck_uncertainty_declared_kg',
+            'truck_k_factor',
+            'truck_point_label_1', 'truck_load_1_kg', 'truck_reading_1_kg', 'truck_error_1_kg',
+            'truck_point_label_2', 'truck_load_2_kg', 'truck_reading_2_kg', 'truck_error_2_kg',
+            'truck_point_label_3', 'truck_load_3_kg', 'truck_reading_3_kg', 'truck_error_3_kg',
+            'truck_point_label_4', 'truck_load_4_kg', 'truck_reading_4_kg', 'truck_error_4_kg',
+            'truck_point_label_5', 'truck_load_5_kg', 'truck_reading_5_kg', 'truck_error_5_kg',
+            'truck_point_label_6', 'truck_load_6_kg', 'truck_reading_6_kg', 'truck_error_6_kg',
+            'sector', 'sector_2', 'sector_3',
+            'validator_registration',
+            'technician_1_name',
+            'technician_2_name', 'technician_2_registration',
+            'technician_3_name', 'technician_3_registration',
+            'standards_used',
+            'observation',
+        ]
+        labels = {
+            'om_number': 'Nº OM',
+            'execution_date': 'Data da visita',
+            'truck_certificate_file': 'Certificado de calibração (PDF)',
+            'truck_certificate_number': 'Número do certificado',
+            'truck_provider': 'Laboratório / fornecedor',
+            'truck_tag_on_certificate': 'TAG no certificado',
+            'truck_model': 'Modelo da balança',
+            'truck_serial_number': 'Série',
+            'truck_measurement_date': 'Data da calibração',
+            'truck_release_date': 'Data de emissão do certificado',
+            'acceptance_criterion_pct': 'Critério de aceitação (kg)',
+            'expanded_uncertainty_calc_pct': 'Incerteza expandida calculada U(e) (kg)',
+            'truck_uncertainty_declared_kg': 'Incerteza expandida declarada no certificado (kg)',
+            'truck_k_factor': 'Fator de abrangência (k)',
+            'truck_point_label_1': 'Ponto 1',
+            'truck_load_1_kg': 'Carga 1 (kg)',
+            'truck_reading_1_kg': 'Leitura 1 (kg)',
+            'truck_error_1_kg': 'Erro 1 (kg)',
+            'truck_point_label_2': 'Ponto 2',
+            'truck_load_2_kg': 'Carga 2 (kg)',
+            'truck_reading_2_kg': 'Leitura 2 (kg)',
+            'truck_error_2_kg': 'Erro 2 (kg)',
+            'truck_point_label_3': 'Ponto 3',
+            'truck_load_3_kg': 'Carga 3 (kg)',
+            'truck_reading_3_kg': 'Leitura 3 (kg)',
+            'truck_error_3_kg': 'Erro 3 (kg)',
+            'truck_point_label_4': 'Ponto 4',
+            'truck_load_4_kg': 'Carga 4 (kg)',
+            'truck_reading_4_kg': 'Leitura 4 (kg)',
+            'truck_error_4_kg': 'Erro 4 (kg)',
+            'truck_point_label_5': 'Ponto 5',
+            'truck_load_5_kg': 'Carga 5 (kg)',
+            'truck_reading_5_kg': 'Leitura 5 (kg)',
+            'truck_error_5_kg': 'Erro 5 (kg)',
+            'truck_point_label_6': 'Ponto 6',
+            'truck_load_6_kg': 'Carga 6 (kg)',
+            'truck_reading_6_kg': 'Leitura 6 (kg)',
+            'truck_error_6_kg': 'Erro 6 (kg)',
+            'sector': 'Setor 1',
+            'sector_2': 'Setor 2',
+            'sector_3': 'Setor 3',
+            'validator_registration': 'Matrícula 1',
+            'technician_1_name': 'Nome 1',
+            'technician_2_name': 'Nome 2',
+            'technician_2_registration': 'Matrícula 2',
+            'technician_3_name': 'Nome 3',
+            'technician_3_registration': 'Matrícula 3',
+            'standards_used': 'Padrões utilizados',
+            'observation': 'Observação',
+        }
+        widgets = {
+            'execution_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'truck_measurement_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'truck_release_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'standards_used': forms.Textarea(attrs={'rows': 2}),
+            'observation': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _configure_assigned_validator_field(self)
+        for date_field in ['execution_date', 'truck_measurement_date', 'truck_release_date']:
+            self.fields[date_field].input_formats = DATE_INPUT_FORMATS
+            self.fields[date_field].localize = False
+
+        for field in self.fields.values():
+            if isinstance(field, (forms.DecimalField, forms.FloatField, forms.IntegerField)):
+                field.widget.attrs.update({'step': '0.001', 'inputmode': 'decimal'})
+
+        self.fields['acceptance_criterion_pct'].widget.attrs.update({'step': '0.1'})
+        self.fields['expanded_uncertainty_calc_pct'].widget.attrs.update({'step': '0.001'})
+
+        for name in ['acceptance_criterion_pct', 'expanded_uncertainty_calc_pct', 'truck_uncertainty_declared_kg', 'truck_k_factor']:
+            self.fields[name].disabled = True
+            self.fields[name].widget.attrs.update(
+                {
+                    'style': 'background:#f3f0e6;',
+                    'title': 'Campo carregado/calculado automaticamente pelo sistema.',
+                }
+            )
+
+        if self.instance.truck_k_factor is None:
+            self.initial.setdefault('truck_k_factor', Decimal('2.000'))
+
+
 class FlowAdjustTechnicalForm(forms.ModelForm):
     assigned_validator = forms.ModelChoiceField(
         queryset=get_user_model().objects.none(),

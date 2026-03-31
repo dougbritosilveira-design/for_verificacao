@@ -461,3 +461,153 @@ def parse_flow_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
         'points_found': len(points),
         'raw_text': text,
     }
+
+
+def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
+    data: dict = {}
+    normalized = _normalize_ascii(text)
+
+    cert_match = re.search(r'\bN[º°O]?\s*([A-Z0-9]+/[0-9-]+)', normalized)
+    if cert_match:
+        data['truck_certificate_number'] = cert_match.group(1).strip()
+
+    tag_match = re.search(
+        r'PATRIMONIO\s+IDENT\.?\s*TECNICA\s*\(TAG\)\s*\|?\s*([A-Z0-9._/-]+?)(?=SERIE|ENDERECO|MODELO|FABRICANTE|CLIENTE|$)',
+        normalized,
+    )
+    if tag_match:
+        data['truck_tag_on_certificate'] = tag_match.group(1).strip()
+
+    model_match = re.search(
+        r'MODELO\s*\|?\s*([A-Z0-9._/-]+?)(?=FABRICANTE|CLIENTE|$)',
+        normalized,
+    )
+    if model_match:
+        data['truck_model'] = model_match.group(1).strip()
+
+    serial_match = re.search(
+        r'SERIE\s*\|?\s*([A-Z0-9._/-]+?)(?=ENDERECO|MODELO|FABRICANTE|CLIENTE|$)',
+        normalized,
+    )
+    if serial_match:
+        data['truck_serial_number'] = serial_match.group(1).strip()
+
+    provider_match = re.search(r'FABRICANTE\s*\|?\s*([A-Z0-9 ._-]+?)(?=CLIENTE|CERTIFICADO|$)', normalized)
+    if provider_match:
+        provider = re.sub(r'\s+', ' ', provider_match.group(1)).strip(' .')
+        if provider:
+            data['truck_provider'] = provider.title()
+
+    measurement_date_match = re.search(
+        r'DATA\s+DE\s+CALIBRACAO\s*\|?\s*([0-9]{2}[-/][A-Z]{3}[-/][0-9]{4}|[0-9./-]{8,10})',
+        normalized,
+    )
+    if measurement_date_match:
+        parsed = _parse_date_flexible(measurement_date_match.group(1))
+        if parsed:
+            data['truck_measurement_date'] = parsed
+
+    uncertainty_match = re.search(
+        r'INCERTEZA\s+EXPANDIDA\s*:\s*[±+\-]?\s*([0-9.,]+)\s*KG',
+        normalized,
+    )
+    if uncertainty_match:
+        data['truck_uncertainty_declared_kg'] = _to_decimal(uncertainty_match.group(1))
+
+    k_match = re.search(r'K\s*=\s*([0-9.,]+)', normalized)
+    if k_match:
+        data['truck_k_factor'] = _to_decimal(k_match.group(1))
+
+    name = Path(filename or '').name
+    if name and 'truck_tag_on_certificate' not in data:
+        stem = _normalize_ascii(Path(name).stem)
+        tag_name_match = re.search(r'(BL[-_][0-9A-Z-]+)', stem)
+        if tag_name_match:
+            data['truck_tag_on_certificate'] = tag_name_match.group(1).replace('_', '-')
+
+    return data
+
+
+def _extract_truck_scale_points(text: str) -> tuple[list[dict], str]:
+    normalized = _normalize_ascii(text)
+    start_idx = normalized.find('TESTE DE PESAGEM')
+    section = text[start_idx:] if start_idx >= 0 else text
+    section_normalized = _normalize_ascii(section)
+
+    phase = 'DEPOIS'
+    phase_idx = section_normalized.find('DEPOIS')
+    if phase_idx >= 0:
+        section = section[phase_idx:]
+        section_normalized = section_normalized[phase_idx:]
+    else:
+        phase = 'ANTES'
+        before_idx = section_normalized.find('ANTES')
+        if before_idx >= 0:
+            section = section[before_idx:]
+            section_normalized = section_normalized[before_idx:]
+
+    end_markers = ['RESOLUCAO', 'TOLERANCIAS', 'INSTALACOES', 'METODO', 'INSTRUCAO DE TRABALHO']
+    end_positions = [section_normalized.find(marker) for marker in end_markers if section_normalized.find(marker) >= 0]
+    if end_positions:
+        section = section[: min(end_positions)]
+
+    points: list[dict] = []
+    seen_rows: set[tuple[str, str, str]] = set()
+    point_pattern = re.compile(
+        r'([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg',
+        re.IGNORECASE,
+    )
+
+    raw_points: list[tuple[Decimal, Decimal, Decimal]] = []
+    for match in point_pattern.finditer(section):
+        load_kg = _to_decimal(match.group(1))
+        reading_kg = _to_decimal(match.group(2))
+        error_kg = _to_decimal(match.group(3))
+        if load_kg is None or reading_kg is None or error_kg is None:
+            continue
+        raw_points.append((load_kg, reading_kg, error_kg))
+
+    filtered_points = [
+        row
+        for row in raw_points
+        if not (row[0] == 0 and row[1] == 0 and row[2] == 0)
+    ]
+    candidate_points = filtered_points if filtered_points else raw_points
+
+    for load_kg, reading_kg, error_kg in candidate_points:
+        row_key = (str(load_kg), str(reading_kg), str(error_kg))
+        if row_key in seen_rows:
+            continue
+        seen_rows.add(row_key)
+        points.append(
+            {
+                'load_kg': load_kg,
+                'reading_kg': reading_kg,
+                'error_kg': error_kg,
+            }
+        )
+        if len(points) >= 6:
+            break
+
+    return points, phase
+
+
+def parse_truck_scale_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
+    text = _extract_text_from_pdf_bytes(pdf_bytes)
+    metadata = _extract_truck_scale_metadata(text, filename=filename)
+    points, phase = _extract_truck_scale_points(text)
+
+    values: dict = {}
+    values.update(metadata)
+    for index, point in enumerate(points, start=1):
+        values[f'truck_point_label_{index}'] = f'Ponto {index}'
+        values[f'truck_load_{index}_kg'] = point['load_kg']
+        values[f'truck_reading_{index}_kg'] = point['reading_kg']
+        values[f'truck_error_{index}_kg'] = point['error_kg']
+
+    return {
+        'values': values,
+        'points_found': len(points),
+        'phase_used': phase,
+        'raw_text': text,
+    }

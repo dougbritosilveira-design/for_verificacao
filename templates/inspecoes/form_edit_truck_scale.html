@@ -1,0 +1,325 @@
+{% extends 'base.html' %}
+{% block title %}Formulário técnico - Balança rodoviária{% endblock %}
+{% block content %}
+<h2>2. Formulário técnico</h2>
+<p>
+  <strong>OM:</strong> {{ submission.om_number }}
+  | <strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}
+  | <strong>Equipamento:</strong> {{ submission.equipment.tag }}
+  | <strong>Formulário:</strong> {{ submission.form_type_label }}
+  | <strong>Local:</strong> {{ submission.location_snapshot }}
+</p>
+<p><span class="status-chip">{{ submission.get_status_display }}</span></p>
+{% if submission.status == 'rework_required' %}
+  <div class="accept-box fail" style="margin-top:8px;">
+    <p style="margin:0 0 6px;"><strong>Reprovado - Refazer</strong></p>
+    <p style="margin:0;">
+      <strong>Observação do avaliador:</strong>
+      {% if submission.validation_feedback %}
+        {{ submission.validation_feedback|linebreaksbr }}
+      {% else %}
+        Sem observação.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+<p><strong>Campos automáticos:</strong> erro absoluto (kg), U(e) declarada no certificado e comparação por ponto com o critério de aceitação.</p>
+
+<style>
+  .accept-box { border:1px solid #d9d1bf; border-radius:8px; padding:10px 12px; margin: 8px 0 14px; background:#faf8f2; }
+  .accept-box.ok { border-color:#6baa82; background:#eef8f1; }
+  .accept-box.fail { border-color:#d67373; background:#fff1f1; }
+  .accept-box.pending { border-color:#c7b77a; background:#fff9e8; }
+  .accept-pill { display:inline-block; padding:3px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+  .accept-pill.ok { background:#d8f0df; color:#1f5a2d; }
+  .accept-pill.fail { background:#ffdede; color:#8a1d1d; }
+  .accept-pill.pending { background:#fff0c5; color:#7c5a00; }
+  .truck-table { width:100%; border-collapse: collapse; margin-bottom: 12px; }
+  .truck-table th, .truck-table td { border: 1px solid #ded6c4; padding: 8px; text-align: left; vertical-align: top; }
+  .truck-table th { background:#f6f2e8; }
+  .auto-locked { background:#f3f0e6 !important; border-color:#bfb7a3 !important; color:#4e4b42; cursor:not-allowed; }
+  .cert-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:6px 0 10px; }
+  .cert-controls a { text-decoration:none; color:#204a7a; }
+  .cert-current { margin: 4px 0 8px; color:#4f4a3a; }
+  .cert-current a { word-break: break-all; }
+  .cert-upload { max-width:760px; }
+</style>
+
+<form method="post" enctype="multipart/form-data" id="truck-form">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div style="color:#a12a2a;">{{ form.non_field_errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div style="color:#a12a2a; margin-bottom:12px;">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <h3>Dados iniciais</h3>
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.om_number.label_tag }} {{ form.om_number }}</p>
+    <p>{{ form.execution_date.label_tag }} {{ form.execution_date }}</p>
+  </div>
+
+  <h3>Certificado de calibração</h3>
+  <div class="cert-upload">
+    <p>
+      <label for="{{ form.truck_certificate_file.id_for_label }}">{{ form.truck_certificate_file.label }}</label>
+      <input
+        type="file"
+        name="{{ form.truck_certificate_file.html_name }}"
+        id="{{ form.truck_certificate_file.id_for_label }}"
+        accept="application/pdf"
+      >
+      {% if submission.truck_certificate_file %}
+        <input type="checkbox" name="{{ form.truck_certificate_file.html_name }}-clear" id="id_truck_certificate_file-clear" style="display:none;">
+      {% endif %}
+    </p>
+    {% if submission.truck_certificate_file %}
+      <p class="cert-current">
+        <strong>Atualmente:</strong>
+        <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">
+          {{ submission.truck_certificate_file.name }}
+        </a>
+      </p>
+    {% endif %}
+    <div class="cert-controls">
+      <button type="submit" name="parse_certificate" value="1" class="secondary">Ler certificado e preencher</button>
+      {% if submission.truck_certificate_file %}
+        <button type="button" class="secondary" id="btn-clear-certificate">Limpar</button>
+        <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado atual</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row" style="grid-template-columns:repeat(4,minmax(220px,1fr));">
+    <p>{{ form.truck_certificate_number.label_tag }} {{ form.truck_certificate_number }}</p>
+    <p>{{ form.truck_provider.label_tag }} {{ form.truck_provider }}</p>
+    <p>{{ form.truck_tag_on_certificate.label_tag }} {{ form.truck_tag_on_certificate }}</p>
+    <p>{{ form.truck_measurement_date.label_tag }} {{ form.truck_measurement_date }}</p>
+    <p>{{ form.truck_release_date.label_tag }} {{ form.truck_release_date }}</p>
+    <p>{{ form.truck_model.label_tag }} {{ form.truck_model }}</p>
+    <p>{{ form.truck_serial_number.label_tag }} {{ form.truck_serial_number }}</p>
+  </div>
+
+  <h3>Pontos de medição (certificado)</h3>
+  <table class="truck-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Ponto</th>
+        <th>Carga (kg)</th>
+        <th>Leitura (kg)</th>
+        <th>Erro (kg)</th>
+        <th>|Erro| (kg)</th>
+        <th>U(e) (kg)</th>
+        <th>|Erro| + U(e) (kg)</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>1</td><td>{{ form.truck_point_label_1 }}</td><td>{{ form.truck_load_1_kg }}</td><td>{{ form.truck_reading_1_kg }}</td><td>{{ form.truck_error_1_kg }}</td><td><input id="truck_error_abs_1" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_1" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_1" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_1" class="accept-pill pending">-</span></td></tr>
+      <tr><td>2</td><td>{{ form.truck_point_label_2 }}</td><td>{{ form.truck_load_2_kg }}</td><td>{{ form.truck_reading_2_kg }}</td><td>{{ form.truck_error_2_kg }}</td><td><input id="truck_error_abs_2" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_2" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_2" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_2" class="accept-pill pending">-</span></td></tr>
+      <tr><td>3</td><td>{{ form.truck_point_label_3 }}</td><td>{{ form.truck_load_3_kg }}</td><td>{{ form.truck_reading_3_kg }}</td><td>{{ form.truck_error_3_kg }}</td><td><input id="truck_error_abs_3" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_3" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_3" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_3" class="accept-pill pending">-</span></td></tr>
+      <tr><td>4</td><td>{{ form.truck_point_label_4 }}</td><td>{{ form.truck_load_4_kg }}</td><td>{{ form.truck_reading_4_kg }}</td><td>{{ form.truck_error_4_kg }}</td><td><input id="truck_error_abs_4" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_4" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_4" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_4" class="accept-pill pending">-</span></td></tr>
+      <tr><td>5</td><td>{{ form.truck_point_label_5 }}</td><td>{{ form.truck_load_5_kg }}</td><td>{{ form.truck_reading_5_kg }}</td><td>{{ form.truck_error_5_kg }}</td><td><input id="truck_error_abs_5" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_5" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_5" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_5" class="accept-pill pending">-</span></td></tr>
+      <tr><td>6</td><td>{{ form.truck_point_label_6 }}</td><td>{{ form.truck_load_6_kg }}</td><td>{{ form.truck_reading_6_kg }}</td><td>{{ form.truck_error_6_kg }}</td><td><input id="truck_error_abs_6" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_u_6" type="text" readonly disabled class="auto-locked"></td><td><input id="truck_sum_6" type="text" readonly disabled class="auto-locked"></td><td><span id="truck_status_6" class="accept-pill pending">-</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Resultados da verificação e ajuste</h3>
+  <div class="row" style="grid-template-columns:repeat(3,minmax(220px,1fr));">
+    <p style="max-width:280px;">{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+    <p style="max-width:320px;">{{ form.truck_uncertainty_declared_kg.label_tag }} {{ form.truck_uncertainty_declared_kg }}</p>
+    <p style="max-width:320px;">{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+  </div>
+
+  <div id="final-box" class="accept-box pending">
+    <p style="margin:0 0 4px;"><strong>Critério final por ponto (|erro| + U(e) &lt;= limite em todos os pontos)</strong> <span id="final-pill" class="accept-pill pending">Pendente dados</span></p>
+    <p id="final-detail" style="margin:0;">Preencha os pontos com carga/leitura/erro.</p>
+  </div>
+
+  <h3>Identificação e observação</h3>
+  <div class="row" style="grid-template-columns: repeat(3, minmax(220px,1fr)); align-items:start;">
+    <div>
+      <p>{{ form.sector.label_tag }} {{ form.sector }}</p>
+      <p>{{ form.sector_2.label_tag }} {{ form.sector_2 }}</p>
+      <p>{{ form.sector_3.label_tag }} {{ form.sector_3 }}</p>
+    </div>
+    <div>
+      <p>{{ form.validator_registration.label_tag }} {{ form.validator_registration }}</p>
+      <p>{{ form.technician_2_registration.label_tag }} {{ form.technician_2_registration }}</p>
+      <p>{{ form.technician_3_registration.label_tag }} {{ form.technician_3_registration }}</p>
+    </div>
+    <div>
+      <p>{{ form.technician_1_name.label_tag }} {{ form.technician_1_name }}</p>
+      <p>{{ form.technician_2_name.label_tag }} {{ form.technician_2_name }}</p>
+      <p>{{ form.technician_3_name.label_tag }} {{ form.technician_3_name }}</p>
+    </div>
+  </div>
+  <p>{{ form.standards_used.label_tag }} {{ form.standards_used }}</p>
+  <p>{{ form.observation.label_tag }} {{ form.observation }}</p>
+
+  <div class="row" style="grid-template-columns:repeat(2,minmax(220px,1fr));">
+    <p>{{ form.assigned_validator.label_tag }} {{ form.assigned_validator }}</p>
+  </div>
+
+  <div style="margin-top:12px; display:flex; gap:10px;">
+    <button type="submit">Salvar</button>
+    <button type="submit" name="go_validate" value="1" class="secondary">Salvar e enviar para validação</button>
+  </div>
+</form>
+
+<hr>
+<h3>Resumo calculado (MVP)</h3>
+<p>Pontos válidos: <span id="sum-points">0</span></p>
+<p>Pontos aprovados: <span id="sum-approved">0</span></p>
+<p>Maior |erro| (kg): <span id="sum-error-max">-</span></p>
+<p>U(e) (kg): <span id="sum-u">-</span></p>
+<p>Maior soma por ponto |erro| + U(e) (kg): <span id="sum-combined">-</span></p>
+<p>Status final: <span id="sum-status">Pendente dados</span></p>
+
+<script>
+(function () {
+  const form = document.getElementById('truck-form');
+  if (!form) return;
+
+  const clearButton = document.getElementById('btn-clear-certificate');
+  if (clearButton) {
+    clearButton.addEventListener('click', function () {
+      const clearCheckbox = document.getElementById('id_truck_certificate_file-clear');
+      if (clearCheckbox) clearCheckbox.checked = true;
+      const fileInput = document.getElementById('id_truck_certificate_file');
+      if (fileInput) fileInput.value = '';
+      form.requestSubmit();
+    });
+  }
+
+  function parseNum(raw) {
+    if (raw == null) return null;
+    const txt = String(raw).replace(',', '.').trim();
+    if (!txt) return null;
+    const value = Number(txt);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  function getNum(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return parseNum(el.value || '');
+  }
+
+  function fmt(value, decimals) {
+    if (value == null || !Number.isFinite(value)) return '-';
+    return value.toFixed(decimals).replace('.', ',');
+  }
+
+  function setField(id, value, decimals, forNumberInput) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (value == null || !Number.isFinite(value)) {
+      el.value = '';
+      return;
+    }
+    const fixed = value.toFixed(decimals);
+    el.value = forNumberInput ? fixed : fixed.replace('.', ',');
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function setPill(id, status, pendingText) {
+    const pill = document.getElementById(id);
+    if (!pill) return;
+    pill.classList.remove('ok', 'fail', 'pending');
+    pill.classList.add(status);
+    if (status === 'ok') pill.textContent = 'Aprovado';
+    else if (status === 'fail') pill.textContent = 'Reprovado';
+    else pill.textContent = pendingText || 'Pendente';
+  }
+
+  function setBox(prefix, status, detail) {
+    const box = document.getElementById(prefix + '-box');
+    const detailEl = document.getElementById(prefix + '-detail');
+    if (!box || !detailEl) return;
+    box.classList.remove('ok', 'fail', 'pending');
+    box.classList.add(status);
+    setPill(prefix + '-pill', status, 'Pendente dados');
+    detailEl.textContent = detail;
+  }
+
+  function recalc() {
+    const criterion = getNum('id_acceptance_criterion_pct');
+    const uncertainty = getNum('id_truck_uncertainty_declared_kg');
+
+    if (criterion != null) {
+      setField('id_acceptance_criterion_pct', criterion, 1, true);
+    }
+    if (uncertainty != null) {
+      setField('id_expanded_uncertainty_calc_pct', uncertainty, 3, true);
+    }
+
+    let points = 0;
+    let approvedPoints = 0;
+    let maxError = null;
+    let maxCombined = null;
+
+    for (let idx = 1; idx <= 6; idx += 1) {
+      const load = getNum('id_truck_load_' + idx + '_kg');
+      const reading = getNum('id_truck_reading_' + idx + '_kg');
+      let error = getNum('id_truck_error_' + idx + '_kg');
+
+      if (error == null && load != null && reading != null) {
+        error = reading - load;
+        setField('id_truck_error_' + idx + '_kg', error, 3, true);
+      }
+
+      const errorAbs = error == null ? null : Math.abs(error);
+      const combined = (errorAbs == null || uncertainty == null) ? null : (errorAbs + Math.abs(uncertainty));
+      const ok = (combined == null || criterion == null) ? null : (combined <= criterion);
+
+      setField('truck_error_abs_' + idx, errorAbs, 3, false);
+      setField('truck_u_' + idx, uncertainty, 3, false);
+      setField('truck_sum_' + idx, combined, 3, false);
+
+      if (ok == null) setPill('truck_status_' + idx, 'pending', '-');
+      else setPill('truck_status_' + idx, ok ? 'ok' : 'fail', '-');
+
+      if (combined != null) {
+        points += 1;
+        maxError = maxError == null ? errorAbs : Math.max(maxError, errorAbs);
+        maxCombined = maxCombined == null ? combined : Math.max(maxCombined, combined);
+        if (ok === true) approvedPoints += 1;
+      }
+    }
+
+    const finalOk = (criterion == null || points === 0) ? null : (approvedPoints === points);
+
+    setText('sum-points', String(points));
+    setText('sum-approved', String(approvedPoints));
+    setText('sum-error-max', fmt(maxError, 3));
+    setText('sum-u', fmt(uncertainty, 3));
+    setText('sum-combined', fmt(maxCombined, 3));
+    setText('sum-status', finalOk == null ? 'Pendente dados' : (finalOk ? 'Aprovado' : 'Reprovado'));
+
+    if (finalOk == null) {
+      setBox('final', 'pending', 'Preencha os pontos com carga/leitura/erro.');
+    } else if (finalOk) {
+      setBox('final', 'ok', 'Todos os pontos dentro do critério de aceitação (limite ' + fmt(criterion, 1) + 'kg).');
+    } else {
+      setBox('final', 'fail', 'Há ponto(s) fora do critério de aceitação (limite ' + fmt(criterion, 1) + 'kg).');
+    }
+  }
+
+  form.addEventListener('input', recalc);
+  form.addEventListener('change', recalc);
+  recalc();
+})();
+</script>
+{% endblock %}
+

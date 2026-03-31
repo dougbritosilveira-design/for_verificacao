@@ -37,7 +37,7 @@
   {% endif %}
 </p>
 <p><strong>Incerteza expandida calculada:</strong>
-  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form or submission.is_flow_adjust_form %}
+  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form or submission.is_truck_scale_form or submission.is_flow_adjust_form %}
     {{ submission.expanded_uncertainty_calc_value|floatformat:3|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
   {% else %}
     {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
@@ -45,7 +45,7 @@
 </p>
 <p><strong>Status do erro final (|erro| &lt;= critério):</strong> {{ submission.instrument_error_status_label }}</p>
 <p><strong>Soma final |erro| + U(e):</strong>
-  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form or submission.is_flow_adjust_form %}
+  {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form or submission.is_truck_scale_form or submission.is_flow_adjust_form %}
     {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% else %}
     {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
@@ -61,7 +61,8 @@
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
 <p><strong>Executor:</strong> {{ submission.executor_name }}</p>
 <p><strong>Padrões utilizados:</strong> {{ submission.standards_used|default:'-' }}</p>
-{% if submission.is_scanner_form or submission.is_flow_form %}
+
+{% if submission.is_scanner_form or submission.is_flow_form or submission.is_truck_scale_form %}
   <p><strong>Certificado anexado:</strong>
     {% if submission.attached_certificate_file %}
       <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a>
@@ -81,13 +82,21 @@
     <p><strong>Modelo conversor:</strong> {{ submission.flow_converter_model|default:'-' }} | <strong>Série:</strong> {{ submission.flow_converter_serial_number|default:'-' }}</p>
     <p><strong>Laboratório/fornecedor:</strong> {{ submission.flow_provider|default:'-' }}</p>
     <p><strong>Data da calibração no certificado:</strong> {{ submission.flow_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+  {% elif submission.is_truck_scale_form %}
+    <p><strong>Número do certificado:</strong> {{ submission.truck_certificate_number|default:'-' }}</p>
+    <p><strong>TAG no certificado:</strong> {{ submission.truck_tag_on_certificate|default:'-' }}</p>
+    <p><strong>Modelo da balança:</strong> {{ submission.truck_model|default:'-' }} | <strong>Série:</strong> {{ submission.truck_serial_number|default:'-' }}</p>
+    <p><strong>Laboratório/fornecedor:</strong> {{ submission.truck_provider|default:'-' }}</p>
+    <p><strong>Data da calibração no certificado:</strong> {{ submission.truck_measurement_date|date:"d/m/Y"|default:'-' }}</p>
   {% endif %}
 {% endif %}
+
 <p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
 <p><strong>Validado em:</strong> {{ submission.validated_at|date:"d/m/Y H:i"|default:'-' }}</p>
 {% if submission.validation_feedback %}
   <p><strong>Observação do avaliador:</strong> {{ submission.validation_feedback }}</p>
 {% endif %}
+
 <p>
   {% if portal_user_can_edit_forms and portal_can_view_forms %}
     {% if submission.status == 'draft' or submission.status == 'rework_required' %}
@@ -97,12 +106,13 @@
   {% if portal_user_can_validate_forms and portal_can_view_forms %}
     <a href="{% url 'inspecoes:form-validate' submission.pk %}">Validar</a> |
   {% endif %}
-  {% if submission.is_scanner_form and submission.scanner_certificate_file or submission.is_flow_form and submission.flow_certificate_file %}
+  {% if submission.is_scanner_form and submission.scanner_certificate_file or submission.is_flow_form and submission.flow_certificate_file or submission.is_truck_scale_form and submission.truck_certificate_file %}
     <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a> |
   {% endif %}
   <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
   <a href="{% url 'inspecoes:history' %}">Voltar ao histórico</a>
 </p>
+
 {% if portal_user_can_send_sap and portal_can_view_forms %}
   {% if submission.status == 'approved' or submission.status == 'sent_to_sap' %}
     <form method="post" action="{% url 'inspecoes:form-send-sap' submission.pk %}" style="margin-bottom:16px;">
@@ -119,6 +129,7 @@
     <p><em>Valide o formulário para habilitar o envio ao SAP.</em></p>
   {% endif %}
 {% endif %}
+
 <hr>
 <h3>Medições (resumo)</h3>
 {% if submission.is_level_form %}
@@ -154,6 +165,15 @@
     <li>Pontos aprovados: {{ submission.flow_approved_points_count }} / {{ submission.flow_valid_points_count }}</li>
     <li>Status final: {{ submission.acceptance_status_label }}</li>
   </ul>
+{% elif submission.is_truck_scale_form %}
+  <ul>
+    <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:1|localize|default:'-' }} kg</li>
+    <li>Maior erro absoluto: {{ submission.truck_max_error_abs_kg|floatformat:3|localize|default:'-' }} kg</li>
+    <li>U(e) declarada no certificado: {{ submission.truck_u_expanded_kg|floatformat:3|localize|default:'-' }} kg</li>
+    <li>Maior soma |erro| + U(e): {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }} kg</li>
+    <li>Pontos aprovados: {{ submission.truck_approved_points_count }} / {{ submission.truck_valid_points_count }}</li>
+    <li>Status final: {{ submission.acceptance_status_label }}</li>
+  </ul>
 {% elif submission.is_flow_adjust_form %}
   <ul>
     <li>Fase final considerada: {{ submission.flow_adjust_final_phase_label }}</li>
@@ -177,11 +197,7 @@
 {% elif submission.is_density_form %}
   <ul>
     <li>Balança estática utilizada: {% if submission.density_scale_equipment %}{{ submission.density_scale_equipment.tag }} - {{ submission.density_scale_equipment.description }}{% else %}-{% endif %}</li>
-    <li>Aferidores selecionados:
-      {{ submission.density_standard_1.tag|default:'-' }},
-      {{ submission.density_standard_2.tag|default:'-' }},
-      {{ submission.density_standard_3.tag|default:'-' }}
-    </li>
+    <li>Aferidores selecionados: {{ submission.density_standard_1.tag|default:'-' }}, {{ submission.density_standard_2.tag|default:'-' }}, {{ submission.density_standard_3.tag|default:'-' }}</li>
     <li>Checagem da balança (MAB/MIB): {{ submission.density_scale_mab_kg|floatformat:3|localize|default:'-' }} / {{ submission.density_scale_mib_kg|floatformat:3|localize|default:'-' }} kg</li>
     <li>Erro relativo da balança: {{ submission.density_scale_error_pct|floatformat:3|localize|default:'-' }}%</li>
     <li>Status da balança: {{ submission.density_scale_status_label }}</li>
@@ -220,5 +236,7 @@
     <li>Soma final |erro| + U(e) (%): {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}</li>
   </ul>
 {% endif %}
+
 <p><strong>Observação:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
 {% endblock %}
+
