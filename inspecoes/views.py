@@ -80,6 +80,30 @@ def _resolve_criteria_defaults(equipment, form_type):
     return acceptance_value, acceptance_unit, uncertainty_unit
 
 
+def _is_truck_form_type(form_type):
+    if not form_type:
+        return False
+    code = (form_type.code or '').strip().upper()
+    title = (form_type.title or '').strip().upper()
+    return (
+        FormSubmission.FORM_CODE_TRUCK_CERT in code
+        or 'BALANCA RODOVIARIA' in code
+        or 'RODOVIARIA' in title
+    )
+
+
+def _resolve_truck_points_limit(equipment, form_type):
+    if not _is_truck_form_type(form_type):
+        return FormSubmission.TRUCK_POINTS_LIMIT
+    criteria_config = _ensure_equipment_form_criteria(equipment, form_type)
+    if criteria_config and criteria_config.certificate_points_limit:
+        try:
+            return max(1, min(int(criteria_config.certificate_points_limit), FormSubmission.TRUCK_POINTS_LIMIT))
+        except (TypeError, ValueError):
+            return FormSubmission.TRUCK_POINTS_LIMIT
+    return FormSubmission.TRUCK_POINTS_LIMIT
+
+
 def _unpack_criteria_defaults(criteria_defaults):
     """
     Compatibilidade entre versões:
@@ -156,6 +180,7 @@ def _ensure_equipment_form_criteria(equipment, form_type):
         else (equipment.acceptance_criterion_pct if equipment.acceptance_criterion_pct is not None else Decimal('1.0'))
     )
     default_uncertainty = None
+    default_points_limit = FormSubmission.TRUCK_POINTS_LIMIT if _is_truck_form_type(form_type) else None
 
     criteria_config, _ = EquipmentFormCriteria.objects.get_or_create(
         equipment=equipment,
@@ -165,6 +190,7 @@ def _ensure_equipment_form_criteria(equipment, form_type):
             'acceptance_criterion_unit': default_acceptance_unit,
             'expanded_uncertainty_value': default_uncertainty,
             'expanded_uncertainty_unit': default_uncertainty_unit,
+            'certificate_points_limit': default_points_limit,
         },
     )
 
@@ -187,6 +213,13 @@ def _ensure_equipment_form_criteria(equipment, form_type):
     if default_uncertainty_unit and criteria_config.expanded_uncertainty_unit != default_uncertainty_unit:
         criteria_config.expanded_uncertainty_unit = default_uncertainty_unit
         update_fields.append('expanded_uncertainty_unit')
+    if _is_truck_form_type(form_type):
+        if not criteria_config.certificate_points_limit:
+            criteria_config.certificate_points_limit = FormSubmission.TRUCK_POINTS_LIMIT
+            update_fields.append('certificate_points_limit')
+    elif criteria_config.certificate_points_limit is not None:
+        criteria_config.certificate_points_limit = None
+        update_fields.append('certificate_points_limit')
 
     if update_fields:
         update_fields.append('updated_at')
@@ -218,6 +251,11 @@ def _sync_submission_criteria_from_config(submission):
     if uncertainty_unit and submission.expanded_uncertainty_unit != uncertainty_unit:
         submission.expanded_uncertainty_unit = uncertainty_unit
         update_fields.append('expanded_uncertainty_unit')
+    if submission.is_truck_scale_form:
+        points_limit = _resolve_truck_points_limit(submission.equipment, submission.form_type)
+        if submission.truck_points_limit != points_limit:
+            submission.truck_points_limit = points_limit
+            update_fields.append('truck_points_limit')
 
     if update_fields:
         update_fields.append('updated_at')
@@ -382,6 +420,10 @@ def selection_view(request):
             submission.acceptance_criterion_pct = acceptance_value
             submission.acceptance_criterion_unit = acceptance_unit
             submission.expanded_uncertainty_unit = uncertainty_unit
+            submission.truck_points_limit = _resolve_truck_points_limit(
+                submission.equipment,
+                submission.form_type,
+            )
             if not submission.location_snapshot:
                 submission.location_snapshot = submission.equipment.location
             submission.status = FormSubmission.Status.DRAFT
@@ -417,6 +459,7 @@ def selection_view(request):
 def _build_form_edit_context(form, submission):
     context = {'form': form, 'submission': submission}
     if submission.is_truck_scale_form:
+        points_limit = submission.truck_points_limit_effective
         context['truck_point_rows'] = [
             {
                 'index': index,
@@ -425,9 +468,9 @@ def _build_form_edit_context(form, submission):
                 'reading_field': form[f'truck_reading_{index}_kg'],
                 'error_field': form[f'truck_error_{index}_kg'],
             }
-            for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            for index in range(1, points_limit + 1)
         ]
-        context['truck_points_limit'] = FormSubmission.TRUCK_POINTS_LIMIT
+        context['truck_points_limit'] = points_limit
     return context
 
 
@@ -637,6 +680,7 @@ def form_edit_view(request, pk):
                         parsed = parse_truck_scale_certificate(
                             certificate_file.read(),
                             filename=Path(submission.truck_certificate_file.name).name,
+                            points_limit=submission.truck_points_limit_effective,
                         )
                 except Exception as exc:
                     messages.error(request, f'Não foi possível ler o certificado: {exc}')

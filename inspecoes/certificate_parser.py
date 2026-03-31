@@ -537,7 +537,7 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
     return data
 
 
-def _extract_truck_scale_points(text: str) -> tuple[list[dict], str, int]:
+def _extract_truck_scale_points(text: str, points_limit: int = TRUCK_SCALE_POINTS_LIMIT) -> tuple[list[dict], str, int]:
     normalized = _normalize_ascii(text)
     start_idx = normalized.find('TESTE DE PESAGEM')
     section = text[start_idx:] if start_idx >= 0 else text
@@ -581,6 +581,11 @@ def _extract_truck_scale_points(text: str) -> tuple[list[dict], str, int]:
     ]
     candidate_points = filtered_points if filtered_points else raw_points
 
+    try:
+        safe_limit = max(1, min(int(points_limit), TRUCK_SCALE_POINTS_LIMIT))
+    except (TypeError, ValueError):
+        safe_limit = TRUCK_SCALE_POINTS_LIMIT
+
     points: list[dict] = []
     for load_kg, reading_kg, error_kg in candidate_points:
         points.append(
@@ -590,16 +595,20 @@ def _extract_truck_scale_points(text: str) -> tuple[list[dict], str, int]:
                 'error_kg': error_kg,
             }
         )
-        if len(points) >= TRUCK_SCALE_POINTS_LIMIT:
+        if len(points) >= safe_limit:
             break
 
     return points, phase, len(candidate_points)
 
 
-def parse_truck_scale_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
+def parse_truck_scale_certificate(
+    pdf_bytes: bytes,
+    filename: str = '',
+    points_limit: int = TRUCK_SCALE_POINTS_LIMIT,
+) -> dict:
     text = _extract_text_from_pdf_bytes(pdf_bytes)
     metadata = _extract_truck_scale_metadata(text, filename=filename)
-    points, phase, points_total = _extract_truck_scale_points(text)
+    points, phase, points_total = _extract_truck_scale_points(text, points_limit=points_limit)
 
     values: dict = {}
     values.update(metadata)

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal, localcontext
 
 from django.conf import settings
-from django.core.validators import MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.db.models.signals import post_save
@@ -500,6 +500,13 @@ class EquipmentFormCriteria(models.Model):
         choices=Unit.choices,
         default=Unit.PERCENT,
     )
+    certificate_points_limit = models.PositiveSmallIntegerField(
+        'Limite de pontos do certificado',
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(12)],
+        help_text='Opcional. Usado no FOR RODOVIARIA para definir quantos pontos exibir/preencher (1 a 12).',
+    )
     updated_at = models.DateTimeField('Atualizado em', auto_now=True)
 
     class Meta:
@@ -780,6 +787,11 @@ class FormSubmission(models.Model):
     truck_release_date = models.DateField(null=True, blank=True)
     truck_uncertainty_declared_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_k_factor = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
+    truck_points_limit = models.PositiveSmallIntegerField(
+        default=12,
+        validators=[MinValueValidator(1), MaxValueValidator(12)],
+        help_text='Quantidade de pontos exibidos no FOR RODOVIARIA (1 a 12).',
+    )
 
     truck_point_label_1 = models.CharField(max_length=120, blank=True, default='Ponto 1')
     truck_load_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -1648,7 +1660,7 @@ class FormSubmission(models.Model):
         rows = []
         uncertainty = self.truck_u_expanded_kg
         limit = self.acceptance_limit_pct
-        for index in range(1, self.TRUCK_POINTS_LIMIT + 1):
+        for index in range(1, self.truck_points_limit_effective + 1):
             label = (getattr(self, f'truck_point_label_{index}', '') or '').strip() or f'Ponto {index}'
             load_kg = getattr(self, f'truck_load_{index}_kg', None)
             reading_kg = getattr(self, f'truck_reading_{index}_kg', None)
@@ -1678,6 +1690,18 @@ class FormSubmission(models.Model):
                 }
             )
         return rows
+
+    @property
+    def truck_points_limit_effective(self):
+        value = self._to_decimal(self.truck_points_limit)
+        if value is None:
+            return self.TRUCK_POINTS_LIMIT
+        try:
+            parsed = int(value)
+        except Exception:
+            return self.TRUCK_POINTS_LIMIT
+        parsed = max(1, min(parsed, self.TRUCK_POINTS_LIMIT))
+        return parsed
 
     @property
     def truck_error_abs_values_kg(self):

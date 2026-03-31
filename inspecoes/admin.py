@@ -22,6 +22,7 @@ class EquipmentFormCriteriaInline(admin.TabularInline):
         'form_type',
         'acceptance_criterion_value',
         'acceptance_criterion_unit',
+        'certificate_points_limit',
         'updated_at',
     )
     readonly_fields = ('updated_at',)
@@ -156,6 +157,7 @@ class EquipmentFormCriteriaAdmin(admin.ModelAdmin):
         'form_type',
         'acceptance_criterion_value',
         'acceptance_criterion_unit',
+        'certificate_points_limit',
         'updated_at',
     )
     list_filter = (
