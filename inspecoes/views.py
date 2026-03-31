@@ -662,11 +662,18 @@ def form_edit_view(request, pk):
                 submission.save()
 
                 points_found = parsed.get('points_found', 0)
+                points_total = parsed.get('points_total', points_found)
                 if points_found:
-                    messages.success(
-                        request,
-                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
-                    )
+                    if points_total > points_found:
+                        messages.success(
+                            request,
+                            f'Certificado lido com sucesso. {points_total} ponto(s) encontrados; {points_found} foram preenchidos automaticamente (limite do formulário).',
+                        )
+                    else:
+                        messages.success(
+                            request,
+                            f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
+                        )
                 else:
                     messages.warning(
                         request,

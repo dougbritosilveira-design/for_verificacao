@@ -467,9 +467,13 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
     data: dict = {}
     normalized = _normalize_ascii(text)
 
-    cert_match = re.search(r'\bN[º°O]?\s*([A-Z0-9]+/[0-9-]+)', normalized)
+    cert_match = re.search(r'\bN\S?\s*([A-Z0-9]+/[0-9-]+)', normalized)
     if cert_match:
         data['truck_certificate_number'] = cert_match.group(1).strip()
+    else:
+        cert_fallback_match = re.search(r'\b(P\d{2}/\d+(?:-\d+)?)\b', normalized)
+        if cert_fallback_match:
+            data['truck_certificate_number'] = cert_fallback_match.group(1).strip()
 
     tag_match = re.search(
         r'PATRIMONIO\s+IDENT\.?\s*TECNICA\s*\(TAG\)\s*\|?\s*([A-Z0-9._/-]+?)(?=SERIE|ENDERECO|MODELO|FABRICANTE|CLIENTE|$)',
@@ -497,6 +501,8 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
         provider = re.sub(r'\s+', ' ', provider_match.group(1)).strip(' .')
         if provider:
             data['truck_provider'] = provider.title()
+    elif 'TOLEDO DO BRASIL' in normalized:
+        data['truck_provider'] = 'Toledo Do Brasil'
 
     measurement_date_match = re.search(
         r'DATA\s+DE\s+CALIBRACAO\s*\|?\s*([0-9]{2}[-/][A-Z]{3}[-/][0-9]{4}|[0-9./-]{8,10})',
@@ -506,15 +512,16 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
         parsed = _parse_date_flexible(measurement_date_match.group(1))
         if parsed:
             data['truck_measurement_date'] = parsed
+            data.setdefault('truck_release_date', parsed)
 
     uncertainty_match = re.search(
-        r'INCERTEZA\s+EXPANDIDA\s*:\s*[±+\-]?\s*([0-9.,]+)\s*KG',
+        r'INCERTEZA\s+EXPANDIDA\s*:\s*[^0-9]{0,4}\s*([0-9.,]+)\s*KG',
         normalized,
     )
     if uncertainty_match:
         data['truck_uncertainty_declared_kg'] = _to_decimal(uncertainty_match.group(1))
 
-    k_match = re.search(r'K\s*=\s*([0-9.,]+)', normalized)
+    k_match = re.search(r'K\s*=\s*([0-9]+(?:[.,][0-9]+)?)', normalized)
     if k_match:
         data['truck_k_factor'] = _to_decimal(k_match.group(1))
 
@@ -528,7 +535,7 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
     return data
 
 
-def _extract_truck_scale_points(text: str) -> tuple[list[dict], str]:
+def _extract_truck_scale_points(text: str) -> tuple[list[dict], str, int]:
     normalized = _normalize_ascii(text)
     start_idx = normalized.find('TESTE DE PESAGEM')
     section = text[start_idx:] if start_idx >= 0 else text
@@ -551,8 +558,6 @@ def _extract_truck_scale_points(text: str) -> tuple[list[dict], str]:
     if end_positions:
         section = section[: min(end_positions)]
 
-    points: list[dict] = []
-    seen_rows: set[tuple[str, str, str]] = set()
     point_pattern = re.compile(
         r'([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg',
         re.IGNORECASE,
@@ -574,11 +579,8 @@ def _extract_truck_scale_points(text: str) -> tuple[list[dict], str]:
     ]
     candidate_points = filtered_points if filtered_points else raw_points
 
+    points: list[dict] = []
     for load_kg, reading_kg, error_kg in candidate_points:
-        row_key = (str(load_kg), str(reading_kg), str(error_kg))
-        if row_key in seen_rows:
-            continue
-        seen_rows.add(row_key)
         points.append(
             {
                 'load_kg': load_kg,
@@ -589,13 +591,13 @@ def _extract_truck_scale_points(text: str) -> tuple[list[dict], str]:
         if len(points) >= 6:
             break
 
-    return points, phase
+    return points, phase, len(candidate_points)
 
 
 def parse_truck_scale_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
     text = _extract_text_from_pdf_bytes(pdf_bytes)
     metadata = _extract_truck_scale_metadata(text, filename=filename)
-    points, phase = _extract_truck_scale_points(text)
+    points, phase, points_total = _extract_truck_scale_points(text)
 
     values: dict = {}
     values.update(metadata)
@@ -608,6 +610,7 @@ def parse_truck_scale_certificate(pdf_bytes: bytes, filename: str = '') -> dict:
     return {
         'values': values,
         'points_found': len(points),
+        'points_total': points_total,
         'phase_used': phase,
         'raw_text': text,
     }
