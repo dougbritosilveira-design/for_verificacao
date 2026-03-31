@@ -10,9 +10,10 @@
     margin-bottom: 16px;
   }
   .deadlines-filters p { margin: 0; }
-  .deadlines-filters .field-tag { grid-column: span 4; }
+  .deadlines-filters .field-tag { grid-column: span 3; }
+  .deadlines-filters .field-location { grid-column: span 2; }
   .deadlines-filters .field-status { grid-column: span 3; }
-  .deadlines-filters .field-active { grid-column: span 3; }
+  .deadlines-filters .field-active { grid-column: span 2; }
   .deadlines-filters .field-submit { grid-column: span 2; }
   .deadlines-filters .field-submit button { width: 100%; }
 
@@ -41,6 +42,7 @@
 
   @media (max-width: 920px) {
     .deadlines-filters .field-tag,
+    .deadlines-filters .field-location,
     .deadlines-filters .field-status,
     .deadlines-filters .field-active,
     .deadlines-filters .field-submit { grid-column: 1 / -1; }
@@ -55,6 +57,15 @@
   <p class="field-tag">
     <label>TAG</label>
     <input type="text" name="tag" value="{{ filters.tag }}">
+  </p>
+  <p class="field-location">
+    <label>Local</label>
+    <select name="location">
+      <option value="">Todos</option>
+      {% for location in location_choices %}
+        <option value="{{ location }}" {% if filters.location == location %}selected{% endif %}>{{ location }}</option>
+      {% endfor %}
+    </select>
   </p>
   <p class="field-status">
     <label>Status do prazo</label>

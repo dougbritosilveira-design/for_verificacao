@@ -977,18 +977,33 @@ def equipment_deadlines_view(request):
         return _deny_screen_access(request, 'Prazos')
 
     tag = (request.GET.get('tag') or '').strip()
+    location_filter = (request.GET.get('location') or '').strip()
     status_filter = (request.GET.get('deadline_status') or '').strip()
     active_only = (request.GET.get('active_only') or '1') == '1'
 
-    equipments_qs = (
+    base_qs = (
         _visible_equipments_queryset(request.user)
         .exclude(used_as_density_scale_for__isnull=False)
-        .order_by('tag')
     )
     if active_only:
-        equipments_qs = equipments_qs.filter(active=True)
+        base_qs = base_qs.filter(active=True)
+
+    location_choices = list(
+        base_qs.exclude(location__isnull=True)
+        .exclude(location__exact='')
+        .values_list('location', flat=True)
+        .order_by('location')
+        .distinct()
+    )
+
+    equipments_qs = (
+        base_qs
+        .order_by('tag')
+    )
     if tag:
         equipments_qs = equipments_qs.filter(tag__icontains=tag)
+    if location_filter:
+        equipments_qs = equipments_qs.filter(location=location_filter)
 
     equipments = list(equipments_qs)
     if status_filter:
@@ -1001,9 +1016,11 @@ def equipment_deadlines_view(request):
             'equipments': equipments,
             'filters': {
                 'tag': tag,
+                'location': location_filter,
                 'deadline_status': status_filter,
                 'active_only': '1' if active_only else '0',
             },
+            'location_choices': location_choices,
             'deadline_status_choices': [
                 ('on_time', 'Dentro do prazo'),
                 ('due_soon', 'Próximo do vencimento'),
