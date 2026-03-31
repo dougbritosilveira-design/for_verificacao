@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='portaluseraccess',
             name='can_edit_forms',
-            field=models.BooleanField(default=False, help_text='Permite criar, editar, validar formulÃ¡rios e enviar para SAP.', verbose_name='Editar formulÃ¡rios'),
+            field=models.BooleanField(default=False, help_text='Permite criar, editar, validar formulários e enviar para SAP.', verbose_name='Editar formulários'),
         ),
         migrations.AddField(
             model_name='portaluseraccess',
@@ -23,16 +23,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='portaluseraccess',
             name='can_view_forms',
-            field=models.BooleanField(default=True, help_text='Permite acessar formulÃ¡rios (detalhe, PDF e fluxo de formulÃ¡rio).', verbose_name='Acessar tela FormulÃ¡rios'),
+            field=models.BooleanField(default=True, help_text='Permite acessar formulários (detalhe, PDF e fluxo de formulário).', verbose_name='Acessar tela Formulários'),
         ),
         migrations.AddField(
             model_name='portaluseraccess',
             name='can_view_history',
-            field=models.BooleanField(default=True, help_text='Permite acessar a tela de histÃ³rico de formulÃ¡rios.', verbose_name='Acessar tela HistÃ³rico'),
+            field=models.BooleanField(default=True, help_text='Permite acessar a tela de histórico de formulários.', verbose_name='Acessar tela Histórico'),
         ),
         migrations.AlterField(
             model_name='portaluseraccess',
             name='can_edit',
-            field=models.BooleanField(default=False, help_text='Compatibilidade com versÃµes anteriores.', verbose_name='Pode editar (legado)'),
+            field=models.BooleanField(default=False, help_text='Compatibilidade com versões anteriores.', verbose_name='Pode editar (legado)'),
         ),
     ]

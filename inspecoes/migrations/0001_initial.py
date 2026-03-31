@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('location_snapshot', models.CharField(max_length=255)),
-                ('om_number', models.CharField(max_length=50, verbose_name='N? OM')),
+                ('om_number', models.CharField(max_length=50, verbose_name='Nº OM')),
                 ('execution_date', models.DateField(default=django.utils.timezone.localdate)),
                 ('executor_name', models.CharField(max_length=120)),
                 ('t1', models.DecimalField(blank=True, decimal_places=3, max_digits=10, null=True)),
