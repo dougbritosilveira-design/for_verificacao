@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 {% load l10n %}
-{% block title %}Detalhe do formulÃ¡rio{% endblock %}
+{% block title %}Detalhe do formulário{% endblock %}
 {% block content %}
-<h2>Detalhe do formulÃ¡rio #{{ submission.id }}</h2>
+<h2>Detalhe do formulário #{{ submission.id }}</h2>
 <p><strong>OM:</strong> {{ submission.om_number }}</p>
-<p><strong>FormulÃ¡rio:</strong> {{ submission.form_type_label }}</p>
+<p><strong>Formulário:</strong> {{ submission.form_type_label }}</p>
 <p><strong>Equipamento:</strong> {{ submission.equipment.tag }} - {{ submission.equipment.description }}</p>
 <p><strong>Local:</strong> {{ submission.location_snapshot }}</p>
 <p><strong>Data da visita:</strong> {{ submission.execution_date|date:"d/m/Y" }}</p>
-<p><strong>FormulÃ¡rio preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
+<p><strong>Formulário preenchido em:</strong> {{ submission.created_at|date:"d/m/Y H:i" }}</p>
 <p><strong>Criado por:</strong>
   {% if submission.created_by %}
     {{ submission.created_by.get_full_name|default:submission.created_by.username }}
@@ -18,18 +18,18 @@
 </p>
 <p><strong>Status:</strong> {{ submission.get_status_display }}</p>
 <p><strong>Validador designado:</strong> {{ submission.assigned_validator_label }}</p>
-<p><strong>Enviado para validaÃ§Ã£o em:</strong> {{ submission.validation_requested_at|date:"d/m/Y H:i"|default:'-' }}</p>
+<p><strong>Enviado para validação em:</strong> {{ submission.validation_requested_at|date:"d/m/Y H:i"|default:'-' }}</p>
 <p><strong>Prazo para validar:</strong> {% if submission.validation_deadline_days_display %}{{ submission.validation_deadline_days_display }} dia(s){% else %}-{% endif %}</p>
-<p><strong>Validar atÃ©:</strong> {{ submission.validation_due_date_local|date:"d/m/Y"|default:'-' }}</p>
-<p><strong>Status do prazo de validaÃ§Ã£o:</strong>
+<p><strong>Validar até:</strong> {{ submission.validation_due_date_local|date:"d/m/Y"|default:'-' }}</p>
+<p><strong>Status do prazo de validação:</strong>
   <span class="badge {{ submission.validation_deadline_badge_class }}">{{ submission.validation_deadline_status_label }}</span>
   ({{ submission.validation_deadline_detail }})
 </p>
 <p><strong>Status SAP:</strong> {{ submission.get_sap_status_display }}</p>
 <p><strong>Periodicidade da nova visita:</strong> {{ submission.equipment.revisit_interval_days|default:'-' }} dia(s)</p>
 <p><strong>Status do prazo do equipamento:</strong> <span class="badge {{ submission.equipment.deadline_badge_class }}">{{ submission.equipment.deadline_status_label }}</span> ({{ submission.equipment.deadline_status_detail }})</p>
-<p><strong>PrÃ³xima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|date:"d/m/Y"|default:'-' }}</p>
-<p><strong>CritÃ©rio de aceitaÃ§Ã£o (formulÃ¡rio):</strong>
+<p><strong>Próxima visita prevista:</strong> {{ submission.equipment.next_visit_due_date|date:"d/m/Y"|default:'-' }}</p>
+<p><strong>Critério de aceitação (formulário):</strong>
   {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form %}
     {{ submission.acceptance_criterion_pct|floatformat:2|localize|default:'-' }}{{ submission.acceptance_unit_label }}
   {% else %}
@@ -43,7 +43,7 @@
     {{ submission.expanded_uncertainty_calc_value|floatformat:2|localize|default:'-' }}{{ submission.expanded_uncertainty_unit_label }}
   {% endif %}
 </p>
-<p><strong>Status do erro final (|erro| &lt;= critÃ©rio):</strong> {{ submission.instrument_error_status_label }}</p>
+<p><strong>Status do erro final (|erro| &lt;= critério):</strong> {{ submission.instrument_error_status_label }}</p>
 <p><strong>Soma final |erro| + U(e):</strong>
   {% if submission.is_level_form or submission.is_scanner_form or submission.is_flow_form or submission.is_flow_adjust_form %}
     {{ submission.acceptance_combined_value|floatformat:3|localize|default:'-' }}{{ submission.acceptance_unit_label }}
@@ -56,11 +56,11 @@
     {{ submission.acceptance_status_label }}
   </span>
 </p>
-<p><strong>E-mails de notificaÃ§Ã£o:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
+<p><strong>E-mails de notificação:</strong> {% if submission.equipment.notification_recipients %}{{ submission.equipment.notification_recipients|join:', ' }}{% else %}-{% endif %}</p>
 {% if submission.sap_attachment_id %}<p><strong>ID anexo SAP:</strong> {{ submission.sap_attachment_id }}</p>{% endif %}
 {% if submission.sap_response_message %}<p><strong>Resposta SAP:</strong> {{ submission.sap_response_message }}</p>{% endif %}
 <p><strong>Executor:</strong> {{ submission.executor_name }}</p>
-<p><strong>PadrÃµes utilizados:</strong> {{ submission.standards_used|default:'-' }}</p>
+<p><strong>Padrões utilizados:</strong> {{ submission.standards_used|default:'-' }}</p>
 {% if submission.is_scanner_form or submission.is_flow_form %}
   <p><strong>Certificado anexado:</strong>
     {% if submission.attached_certificate_file %}
@@ -70,25 +70,24 @@
     {% endif %}
   </p>
   {% if submission.is_scanner_form %}
-    <p><strong>NÃºmero do certificado:</strong> {{ submission.scanner_certificate_number|default:'-' }}</p>
-    <p><strong>Modelo:</strong> {{ submission.scanner_model|default:'-' }} | <strong>SÃ©rie:</strong> {{ submission.scanner_serial_number|default:'-' }}</p>
-    <p><strong>LaboratÃ³rio/fornecedor:</strong> {{ submission.scanner_provider|default:'-' }}</p>
-    <p><strong>Data da mediÃ§Ã£o no certificado:</strong> {{ submission.scanner_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+    <p><strong>Número do certificado:</strong> {{ submission.scanner_certificate_number|default:'-' }}</p>
+    <p><strong>Modelo:</strong> {{ submission.scanner_model|default:'-' }} | <strong>Série:</strong> {{ submission.scanner_serial_number|default:'-' }}</p>
+    <p><strong>Laboratório/fornecedor:</strong> {{ submission.scanner_provider|default:'-' }}</p>
+    <p><strong>Data da medição no certificado:</strong> {{ submission.scanner_measurement_date|date:"d/m/Y"|default:'-' }}</p>
   {% elif submission.is_flow_form %}
-    <p><strong>NÃºmero do certificado:</strong> {{ submission.flow_certificate_number|default:'-' }}</p>
+    <p><strong>Número do certificado:</strong> {{ submission.flow_certificate_number|default:'-' }}</p>
     <p><strong>TAG no certificado:</strong> {{ submission.flow_tag_on_certificate|default:'-' }}</p>
-    <p><strong>Modelo medidor:</strong> {{ submission.flow_meter_model|default:'-' }} | <strong>SÃ©rie:</strong> {{ submission.flow_meter_serial_number|default:'-' }}</p>
-    <p><strong>Modelo conversor:</strong> {{ submission.flow_converter_model|default:'-' }} | <strong>SÃ©rie:</strong> {{ submission.flow_converter_serial_number|default:'-' }}</p>
-    <p><strong>LaboratÃ³rio/fornecedor:</strong> {{ submission.flow_provider|default:'-' }}</p>
-    <p><strong>Data da calibraÃ§Ã£o no certificado:</strong> {{ submission.flow_measurement_date|date:"d/m/Y"|default:'-' }}</p>
+    <p><strong>Modelo medidor:</strong> {{ submission.flow_meter_model|default:'-' }} | <strong>Série:</strong> {{ submission.flow_meter_serial_number|default:'-' }}</p>
+    <p><strong>Modelo conversor:</strong> {{ submission.flow_converter_model|default:'-' }} | <strong>Série:</strong> {{ submission.flow_converter_serial_number|default:'-' }}</p>
+    <p><strong>Laboratório/fornecedor:</strong> {{ submission.flow_provider|default:'-' }}</p>
+    <p><strong>Data da calibração no certificado:</strong> {{ submission.flow_measurement_date|date:"d/m/Y"|default:'-' }}</p>
   {% endif %}
 {% endif %}
 <p><strong>Validador:</strong> {{ submission.validator_name|default:'-' }}</p>
 <p><strong>Validado em:</strong> {{ submission.validated_at|date:"d/m/Y H:i"|default:'-' }}</p>
 {% if submission.validation_feedback %}
-  <p><strong>ObservaÃ§Ã£o do avaliador:</strong> {{ submission.validation_feedback }}</p>
+  <p><strong>Observação do avaliador:</strong> {{ submission.validation_feedback }}</p>
 {% endif %}
-
 <p>
   {% if portal_user_can_edit_forms and portal_can_view_forms %}
     {% if submission.status == 'draft' or submission.status == 'rework_required' %}
@@ -102,9 +101,8 @@
     <a href="{% url 'inspecoes:form-download-certificate' submission.pk %}">Baixar certificado</a> |
   {% endif %}
   <a href="{% url 'inspecoes:form-download-pdf' submission.pk %}">Baixar PDF</a> |
-  <a href="{% url 'inspecoes:history' %}">Voltar ao histÃ³rico</a>
+  <a href="{% url 'inspecoes:history' %}">Voltar ao histórico</a>
 </p>
-
 {% if portal_user_can_send_sap and portal_can_view_forms %}
   {% if submission.status == 'approved' or submission.status == 'sent_to_sap' %}
     <form method="post" action="{% url 'inspecoes:form-send-sap' submission.pk %}" style="margin-bottom:16px;">
@@ -118,41 +116,39 @@
       </button>
     </form>
   {% else %}
-    <p><em>Valide o formulÃ¡rio para habilitar o envio ao SAP.</em></p>
+    <p><em>Valide o formulário para habilitar o envio ao SAP.</em></p>
   {% endif %}
 {% endif %}
-
 <hr>
-<h3>MediÃ§Ãµes (resumo)</h3>
+<h3>Medições (resumo)</h3>
 {% if submission.is_level_form %}
   <ul>
     <li>Fase final considerada: {{ submission.level_final_phase_label }}</li>
-    <li>Erro mÃ©dio absoluto antes: {{ submission.level_before_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro médio absoluto antes: {{ submission.level_before_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
     <li>U(e) antes: {{ submission.level_uncertainty_expanded_before_m|floatformat:3|localize|default:'-' }} m</li>
     <li>Soma antes |erro| + U(e): {{ submission.level_before_combined_value|floatformat:3|localize|default:'-' }} m</li>
     <li>Status antes: {% if submission.level_before_combined_ok is None %}Pendente dados{% elif submission.level_before_combined_ok %}Aprovado{% else %}Reprovado{% endif %}</li>
-    <li>Erro mÃ©dio absoluto depois: {{ submission.level_after_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro médio absoluto depois: {{ submission.level_after_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
     <li>U(e) depois: {{ submission.level_uncertainty_expanded_after_m|floatformat:3|localize|default:'-' }} m</li>
     <li>Soma depois |erro| + U(e): {{ submission.level_after_combined_value|floatformat:3|localize|default:'-' }} m</li>
     <li>Status depois: {% if submission.level_after_combined_ok is None %}Pendente dados{% elif submission.level_after_combined_ok %}Aprovado{% else %}Reprovado{% endif %}</li>
-    <li>Erro mÃ©dio absoluto final: {{ submission.level_final_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
+    <li>Erro médio absoluto final: {{ submission.level_final_mean_abs_m|floatformat:3|localize|default:'-' }} m</li>
     <li>U(e) calculada final: {{ submission.level_uncertainty_expanded_m|floatformat:3|localize|default:'-' }} m</li>
   </ul>
 {% elif submission.is_scanner_form %}
   <ul>
-    <li>CritÃ©rio fixo: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }} mm</li>
+    <li>Critério fixo: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }} mm</li>
     <li>U(e) calculada: {{ submission.scanner_u_expanded_mm|floatformat:3|localize|default:'-' }} mm</li>
-    <li>Status critÃ©rio fixo: {{ submission.scanner_status_fixed }}</li>
-    <li>Status critÃ©rio fabricante: {{ submission.scanner_status_manufacturer }}</li>
+    <li>Status critério fixo: {{ submission.scanner_status_fixed }}</li>
+    <li>Status critério fabricante: {{ submission.scanner_status_manufacturer }}</li>
     <li>Parcela do fabricante (ppm): {{ submission.scanner_manufacturer_ppm_value|floatformat:3|localize|default:'-' }}</li>
-    <li>Fator de abrangÃªncia (k): {{ submission.scanner_k_factor_value|floatformat:3|localize|default:'-' }}</li>
-    <li>Erro mÃ¡ximo absoluto: {{ submission.scanner_max_error_abs_mm|floatformat:3|localize|default:'-' }} mm</li>
+    <li>Fator de abrangência (k): {{ submission.scanner_k_factor_value|floatformat:3|localize|default:'-' }}</li>
+    <li>Erro máximo absoluto: {{ submission.scanner_max_error_abs_mm|floatformat:3|localize|default:'-' }} mm</li>
   </ul>
-
 {% elif submission.is_flow_form %}
   <ul>
-    <li>CritÃ©rio de aceitaÃ§Ã£o: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }}%</li>
-    <li>Erro mÃ¡ximo absoluto: {{ submission.flow_max_error_abs_pct|floatformat:4|localize|default:'-' }}%</li>
+    <li>Critério de aceitação: {{ submission.acceptance_limit_pct|floatformat:2|localize|default:'-' }}%</li>
+    <li>Erro máximo absoluto: {{ submission.flow_max_error_abs_pct|floatformat:4|localize|default:'-' }}%</li>
     <li>U(e) final (maior U do certificado): {{ submission.flow_max_uncertainty_pct|floatformat:4|localize|default:'-' }}%</li>
     <li>Soma final |erro| + U(e): {{ submission.acceptance_combined_value|floatformat:4|localize|default:'-' }}%</li>
     <li>Pontos aprovados: {{ submission.flow_approved_points_count }} / {{ submission.flow_valid_points_count }}</li>
@@ -205,8 +201,8 @@
   <ul>
     <li>T1/T2/T3: {{ submission.t1|floatformat:2|localize|default:'-' }} / {{ submission.t2|floatformat:2|localize|default:'-' }} / {{ submission.t3|floatformat:2|localize|default:'-' }} (TM: {{ submission.tm|floatformat:2|localize|default:'-' }})</li>
     <li>M1/M2/M3: {{ submission.m1|floatformat:2|localize|default:'-' }} / {{ submission.m2|floatformat:2|localize|default:'-' }} / {{ submission.m3|floatformat:2|localize|default:'-' }} (MD: {{ submission.md|floatformat:2|localize|default:'-' }})</li>
-    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}NÃ£o{% endif %}</li>
-    <li>DistÃ¢ncia entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
+    <li>Houve troca de correia: {% if submission.belt_replaced %}Sim{% else %}Não{% endif %}</li>
+    <li>Distância entre marcas: {{ submission.mark_distance|floatformat:2|localize|default:'-' }}</li>
     <li>Pulsos por volta / IBM: {{ submission.pulses_per_turn_1|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_2|floatformat:2|localize|default:'-' }} / {{ submission.pulses_per_turn_3|floatformat:2|localize|default:'-' }} (IBM: {{ submission.ibm|floatformat:2|localize|default:'-' }})</li>
     <li>IL antes: {{ submission.il_before|floatformat:2|localize|default:'-' }}</li>
     <li>IL depois: {{ submission.il_after|floatformat:2|localize|default:'-' }}</li>
@@ -215,7 +211,7 @@
     <li>L (comprimento da correia): {{ submission.belt_length|floatformat:2|localize|default:'-' }}</li>
     <li>B04 (IBM/L): {{ submission.speed_characteristic_b04|floatformat:2|localize|default:'-' }}</li>
     <li>Ic informado: {{ submission.calculated_flow_ic|floatformat:2|localize|default:'-' }}</li>
-    <li>Ic automÃ¡tico: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
+    <li>Ic automático: {{ submission.calculated_flow_ic_auto|floatformat:2|localize|default:'-' }}</li>
     <li>Erro antes (%): {{ submission.error_before_pct|floatformat:2|localize|default:'-' }}</li>
     <li>Erro depois (%): {{ submission.error_after_pct|floatformat:2|localize|default:'-' }}</li>
     <li>U(e) antes (%): {{ submission.expanded_uncertainty_before_pct_auto|floatformat:2|localize|default:'-' }}</li>
@@ -224,7 +220,5 @@
     <li>Soma final |erro| + U(e) (%): {{ submission.acceptance_combined_value|floatformat:2|localize|default:'-' }}</li>
   </ul>
 {% endif %}
-
-<p><strong>ObservaÃ§Ã£o:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
+<p><strong>Observação:</strong><br>{{ submission.observation|linebreaksbr|default:'-' }}</p>
 {% endblock %}
-

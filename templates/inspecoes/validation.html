@@ -24,6 +24,28 @@
   .confirm-row { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; }
   .confirm-row input[type="checkbox"] { width: auto; margin: 0; }
   .confirm-row label { margin: 0; }
+  .field-error {
+    margin-top: -6px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d67373;
+    background: #fff1f1;
+    color: #8a1d1d;
+    font-weight: 700;
+  }
+  .form-errors {
+    margin: 10px 0 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d67373;
+    background: #fff1f1;
+    color: #8a1d1d;
+  }
+  .form-errors ul {
+    margin: 6px 0 0 18px;
+    padding: 0;
+  }
   @media (max-width: 900px) {
     #signature-pad { height: 180px; }
     .sig-tools { flex-wrap: wrap; }
@@ -116,6 +138,9 @@
   <p>{{ form.validator_name.label_tag }} {{ form.validator_name }}</p>
   <p>{{ form.decision.label_tag }} {{ form.decision }}</p>
   <p>{{ form.feedback.label_tag }} {{ form.feedback }}</p>
+  {% if form.feedback.errors %}
+    <div class="field-error">Informe o motivo para reprovação (nova visita).</div>
+  {% endif %}
   {{ form.signature_data }}
   <p><strong>Assinatura</strong></p>
   <canvas id="signature-pad" width="700" height="220"></canvas>
@@ -126,7 +151,14 @@
     {{ form.confirm }}
     {{ form.confirm.label_tag }}
   </div>
-  {% if form.errors %}<div style="color:#a12a2a;">{{ form.errors }}</div>{% endif %}
+  {% if form.errors %}
+    <div class="form-errors">
+      <strong>Corrija os campos destacados para salvar a validação.</strong>
+      {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+      {% if form.confirm.errors %}{{ form.confirm.errors }}{% endif %}
+      {% if form.signature_data.errors %}{{ form.signature_data.errors }}{% endif %}
+    </div>
+  {% endif %}
   <button type="submit">Salvar validação</button>
 </form>
 <script>

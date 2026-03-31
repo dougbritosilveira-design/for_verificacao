@@ -1200,7 +1200,7 @@ class ValidationForm(forms.Form):
     feedback = forms.CharField(
         label='Observação do avaliador',
         required=False,
-        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Obrigatório quando solicitar refação.'}),
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Obrigatório quando reprovar (nova visita).'}),
     )
     signature_data = forms.CharField(widget=forms.HiddenInput())
     confirm = forms.BooleanField(label='Confirmo a validação do formulário')
@@ -1216,6 +1216,6 @@ class ValidationForm(forms.Form):
         decision = cleaned.get('decision')
         feedback = (cleaned.get('feedback') or '').strip()
         if decision == self.DecisionChoices.REWORK and not feedback:
-            self.add_error('feedback', 'Informe o motivo da refação.')
+            self.add_error('feedback', 'Informe o motivo para reprovação (nova visita).')
         return cleaned
 
