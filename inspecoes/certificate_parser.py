@@ -603,6 +603,17 @@ def _extract_truck_scale_points(
                 values.append(value)
         return values
 
+    def _extract_decimal_values(fragment: str) -> list[Decimal]:
+        values: list[Decimal] = []
+        for token in re.findall(r'[+-]?[0-9]+[.,][0-9]+', fragment or ''):
+            value = _to_decimal(token)
+            if value is not None:
+                values.append(value)
+        return values
+
+    def _compact(text_value: str) -> str:
+        return re.sub(r'[^A-Z0-9]', '', text_value or '')
+
     def _extract_k_candidates(section_text: str) -> list[Decimal]:
         candidates: list[Decimal] = []
         for line in section_text.splitlines():
@@ -630,35 +641,42 @@ def _extract_truck_scale_points(
         ) -> bool:
             if not candidate_line:
                 return False
-            if 'ERRO DE INDICACAO' in candidate_line:
+            compact_candidate = _compact(candidate_line)
+            compact_prev = _compact(prev_line)
+            compact_next = _compact(next_line)
+            compact_next_2 = _compact(next_line_2)
+
+            if 'ERRODEINDICACAO' in compact_candidate:
                 return False
-            if 'INCERTEZA EXPANDIDA' in candidate_line:
+            if 'INCERTEZAEXPANDIDA' in compact_candidate:
                 return False
-            if 'ABRANGENCIA' in candidate_line:
+            if 'ABRANGENCIA' in compact_candidate:
                 return False
-            if 'LEITURAS SEM AJUSTE' in candidate_line or 'LEITURAS APOS AJUSTE' in candidate_line:
+            if 'LEITURASSEMAJUSTE' in compact_candidate or 'LEITURASAPOSAJUSTE' in compact_candidate:
                 return False
 
             values = _extract_kg_values(candidate_line)
             if not values:
-                if 'MEDIA' in prev_line and 'LEITURA' in prev_line:
+                values = _extract_decimal_values(candidate_line)
+            if not values:
+                if 'MEDIADASLEITURAS' in compact_prev:
                     return True
                 return False
 
-            if 'MEDIA' in candidate_line and 'LEITURA' in candidate_line:
-                return True
-            if 'DAS LEITURAS' in candidate_line:
+            if 'MEDIADASLEITURAS' in compact_candidate:
                 return True
 
-            if 'ERRO DE INDICACAO' in next_line:
+            if 'ERRODEINDICACAO' in compact_next:
                 return True
-            if 'ERRO DE INDICACAO' in next_line_2:
+            if 'ERRODEINDICACAO' in compact_next_2:
                 return True
 
             return False
 
         def _extract_values_with_neighbor_support(base_idx: int, direct_line: str) -> list[Decimal]:
             values = _extract_kg_values(direct_line)
+            if not values:
+                values = _extract_decimal_values(direct_line)
             if values:
                 return values
             parts = [direct_line]
@@ -667,13 +685,18 @@ def _extract_truck_scale_points(
             if base_idx + 2 < len(lines):
                 parts.append(lines[base_idx + 2])
             merged = ' '.join(part for part in parts if part)
-            return _extract_kg_values(merged)
+            values = _extract_kg_values(merged)
+            if values:
+                return values
+            return _extract_decimal_values(merged)
 
         idx = 0
         while idx < len(lines):
             line = lines[idx]
-            if 'MASSA CONVENCIONAL' in line:
+            if 'MASSACONVENCIONAL' in _compact(line):
                 conventional_values = _extract_kg_values(line)
+                if not conventional_values:
+                    conventional_values = _extract_decimal_values(line)
                 if conventional_values:
                     current_conventional_values = conventional_values
                 idx += 1
@@ -696,11 +719,12 @@ def _extract_truck_scale_points(
             k_line = ''
             j = idx + 1
             while j < len(lines):
-                if not error_line and 'ERRO DE INDICACAO' in lines[j]:
+                compact_j = _compact(lines[j])
+                if not error_line and 'ERRODEINDICACAO' in compact_j:
                     error_line = lines[j]
-                elif not uncertainty_line and 'INCERTEZA EXPANDIDA' in lines[j] and '(U)' in lines[j]:
+                elif not uncertainty_line and 'INCERTEZAEXPANDIDA' in compact_j and 'U' in compact_j:
                     uncertainty_line = lines[j]
-                elif not k_line and 'ABRANGENCIA' in lines[j] and '(K)' in lines[j]:
+                elif not k_line and 'ABRANGENCIA' in compact_j and 'K' in compact_j:
                     k_line = lines[j]
                     break
                 if lines[j].strip() == '' and error_line and uncertainty_line:
@@ -717,8 +741,10 @@ def _extract_truck_scale_points(
             if not conventional_values:
                 back_start = max(0, idx - 12)
                 for back_idx in range(idx - 1, back_start - 1, -1):
-                    if 'MASSA CONVENCIONAL' in lines[back_idx]:
+                    if 'MASSACONVENCIONAL' in _compact(lines[back_idx]):
                         conventional_values = _extract_kg_values(lines[back_idx])
+                        if not conventional_values:
+                            conventional_values = _extract_decimal_values(lines[back_idx])
                         if conventional_values:
                             break
             uncertainty_idx = lines.index(uncertainty_line, idx + 1) if uncertainty_line and uncertainty_line in lines[idx + 1 :] else idx + 1
