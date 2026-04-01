@@ -817,6 +817,132 @@ def _extract_truck_scale_points(
 
         return rows
 
+    def _extract_points_from_media_blocks(section_text: str) -> list[dict]:
+        normalized_section = _normalize_ascii(section_text)
+        for marker in [
+            r'MEDIA\s*DAS\s*LEITURAS',
+            r'ERRO\s*DE\s*INDICACAO',
+            r'INCERTEZA\s*EXPANDIDA\s*\(U\)',
+            r'FAT\.?\s*ABRANGENCIA\s*\(K\)',
+            r'LEITURAS\s*APOS\s*AJUSTE',
+            r'LEITURAS\s*SEM\s*AJUSTE',
+        ]:
+            normalized_section = re.sub(marker, lambda m: f"\n{m.group(0)}", normalized_section, flags=re.IGNORECASE)
+
+        lines = [line.strip() for line in normalized_section.splitlines() if line.strip()]
+        rows: list[dict] = []
+        idx = 0
+
+        while idx < len(lines):
+            compact_line = _compact(lines[idx])
+            if 'MEDIADASLEITURAS' not in compact_line:
+                idx += 1
+                continue
+
+            media_values = _extract_kg_values(lines[idx]) or _extract_decimal_values(lines[idx])
+            if not media_values:
+                merged_media = ' '.join(
+                    lines[pos]
+                    for pos in range(idx, min(len(lines), idx + 3))
+                )
+                media_values = _extract_kg_values(merged_media) or _extract_decimal_values(merged_media)
+            if not media_values:
+                idx += 1
+                continue
+
+            error_idx = None
+            uncertainty_idx = None
+            k_idx = None
+            for look_ahead in range(idx + 1, min(len(lines), idx + 12)):
+                compact_look = _compact(lines[look_ahead])
+                if error_idx is None and 'ERRODEINDICACAO' in compact_look:
+                    error_idx = look_ahead
+                elif uncertainty_idx is None and 'INCERTEZAEXPANDIDA' in compact_look and 'U' in compact_look:
+                    uncertainty_idx = look_ahead
+                elif k_idx is None and 'ABRANGENCIA' in compact_look and 'K' in compact_look:
+                    k_idx = look_ahead
+                if error_idx is not None and uncertainty_idx is not None:
+                    break
+
+            if error_idx is None:
+                idx += 1
+                continue
+
+            error_values = _extract_kg_values(lines[error_idx]) or _extract_decimal_values(lines[error_idx])
+            if not error_values:
+                merged_error = ' '.join(
+                    lines[pos]
+                    for pos in range(error_idx, min(len(lines), error_idx + 3))
+                )
+                error_values = _extract_kg_values(merged_error) or _extract_decimal_values(merged_error)
+            if not error_values:
+                idx = error_idx + 1
+                continue
+
+            uncertainty_values: list[Decimal] = []
+            if uncertainty_idx is not None:
+                uncertainty_values = _extract_kg_values(lines[uncertainty_idx]) or _extract_decimal_values(lines[uncertainty_idx])
+                if not uncertainty_values:
+                    merged_uncertainty = ' '.join(
+                        lines[pos]
+                        for pos in range(uncertainty_idx, min(len(lines), uncertainty_idx + 3))
+                    )
+                    uncertainty_values = _extract_kg_values(merged_uncertainty) or _extract_decimal_values(merged_uncertainty)
+
+            k_values: list[Decimal] = []
+            if k_idx is not None:
+                k_fragment = ' '.join(
+                    lines[pos]
+                    for pos in range(k_idx, min(len(lines), k_idx + 2))
+                )
+                for token in re.findall(r'[+-]?[0-9]+(?:[.,][0-9]+)?', k_fragment):
+                    value = _to_decimal(token)
+                    if value is not None and Decimal('0') < value <= Decimal('20'):
+                        k_values.append(value)
+
+            point_count = min(len(media_values), len(error_values))
+            if point_count <= 0:
+                idx = (uncertainty_idx or error_idx) + 1
+                continue
+
+            for point_idx in range(point_count):
+                reading_kg = media_values[point_idx]
+                error_kg = error_values[point_idx]
+                load_kg = reading_kg - error_kg
+                rows.append(
+                    {
+                        'load_kg': load_kg,
+                        'reading_kg': reading_kg,
+                        'error_kg': error_kg,
+                        'uncertainty_kg': uncertainty_values[point_idx] if point_idx < len(uncertainty_values) else None,
+                        'k_factor': k_values[point_idx] if point_idx < len(k_values) else None,
+                    }
+                )
+
+            next_idx = uncertainty_idx if uncertainty_idx is not None else error_idx
+            idx = next_idx + 1
+
+        compact_rows: list[dict] = []
+        for row in rows:
+            signature = (
+                str(row.get('load_kg')),
+                str(row.get('reading_kg')),
+                str(row.get('error_kg')),
+                str(row.get('uncertainty_kg')),
+            )
+            if compact_rows:
+                prev = compact_rows[-1]
+                prev_signature = (
+                    str(prev.get('load_kg')),
+                    str(prev.get('reading_kg')),
+                    str(prev.get('error_kg')),
+                    str(prev.get('uncertainty_kg')),
+                )
+                if signature == prev_signature:
+                    continue
+            compact_rows.append(row)
+        return compact_rows
+
     normalized = _normalize_ascii(text)
     start_markers = ['TESTE DE PESAGEM', 'MEDIA DAS LEITURAS', 'ERRO DE INDICACAO']
     start_positions = [normalized.find(marker) for marker in start_markers if normalized.find(marker) >= 0]
@@ -857,6 +983,9 @@ def _extract_truck_scale_points(
             break
 
     rows_points = _extract_points_from_rows(section)
+    media_block_points = _extract_points_from_media_blocks(section)
+    if len(media_block_points) > len(rows_points):
+        rows_points = media_block_points
     if len(rows_points) >= len(candidate_points) and len(rows_points) > 0:
         candidate_points = rows_points
         phase = 'ANTES'
