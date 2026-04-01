@@ -622,6 +622,34 @@ def _extract_truck_scale_points(
         seen_signatures: set[tuple[str, str, str, str]] = set()
         current_conventional_values: list[Decimal] = []
 
+        def _looks_like_media_row(candidate_line: str, next_line: str = '', next_line_2: str = '') -> bool:
+            if not candidate_line:
+                return False
+            if 'ERRO DE INDICACAO' in candidate_line:
+                return False
+            if 'INCERTEZA EXPANDIDA' in candidate_line:
+                return False
+            if 'ABRANGENCIA' in candidate_line:
+                return False
+            if 'LEITURAS SEM AJUSTE' in candidate_line or 'LEITURAS APOS AJUSTE' in candidate_line:
+                return False
+
+            values = _extract_kg_values(candidate_line)
+            if not values:
+                return False
+
+            if 'MEDIA' in candidate_line and 'LEITURA' in candidate_line:
+                return True
+            if 'DAS LEITURAS' in candidate_line:
+                return True
+
+            if 'ERRO DE INDICACAO' in next_line:
+                return True
+            if 'ERRO DE INDICACAO' in next_line_2:
+                return True
+
+            return False
+
         idx = 0
         while idx < len(lines):
             line = lines[idx]
@@ -632,7 +660,9 @@ def _extract_truck_scale_points(
                 idx += 1
                 continue
 
-            if 'MEDIA DAS LEITURAS' not in line:
+            next_line = lines[idx + 1] if idx + 1 < len(lines) else ''
+            next_line_2 = lines[idx + 2] if idx + 2 < len(lines) else ''
+            if not _looks_like_media_row(line, next_line, next_line_2):
                 idx += 1
                 continue
 
