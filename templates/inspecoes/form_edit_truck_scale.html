@@ -119,7 +119,6 @@
         <th>Erro de indicação (kg)</th>
         <th>|Erro| (kg)</th>
         <th>U(e) (kg)</th>
-        <th>k</th>
         <th>|Erro| + U(e) (kg)</th>
         <th>Status</th>
       </tr>
@@ -134,7 +133,6 @@
         <td>{{ row.error_field }}</td>
         <td><input id="truck_error_abs_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
         <td><input id="truck_u_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
-        <td><input id="truck_k_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
         <td><input id="truck_sum_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
         <td><span id="truck_status_{{ row.index }}" class="accept-pill pending">-</span></td>
       </tr>
@@ -290,7 +288,6 @@
       const reading = getNum('id_truck_reading_' + idx + '_kg');
       let error = getNum('id_truck_error_' + idx + '_kg');
       const pointUncertainty = getNum('id_truck_uncertainty_' + idx + '_kg');
-      const pointK = getNum('id_truck_k_' + idx);
       const uncertainty = pointUncertainty == null
         ? (globalUncertainty == null ? null : Math.abs(globalUncertainty))
         : Math.abs(pointUncertainty);
@@ -306,7 +303,6 @@
 
       setField('truck_error_abs_' + idx, errorAbs, 3, false);
       setField('truck_u_' + idx, uncertainty, 3, false);
-      setField('truck_k_' + idx, pointK, 3, false);
       setField('truck_sum_' + idx, combined, 3, false);
 
       if (ok == null) setPill('truck_status_' + idx, 'pending', '-');
