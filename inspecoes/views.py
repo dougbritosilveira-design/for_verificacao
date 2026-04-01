@@ -87,8 +87,11 @@ def _is_truck_form_type(form_type):
     title = (form_type.title or '').strip().upper()
     return (
         FormSubmission.FORM_CODE_TRUCK_CERT in code
+        or FormSubmission.FORM_CODE_HUMIDITY_CERT in code
         or 'BALANCA RODOVIARIA' in code
+        or 'BALANCA DE UMIDADE' in code
         or 'RODOVIARIA' in title
+        or 'UMIDADE' in title
     )
 
 
@@ -144,8 +147,11 @@ def _default_units_for_form(form_type, equipment=None):
             return EquipmentFormCriteria.Unit.PERCENT, EquipmentFormCriteria.Unit.PERCENT
         if (
             FormSubmission.FORM_CODE_TRUCK_CERT in code
+            or FormSubmission.FORM_CODE_HUMIDITY_CERT in code
             or 'BALANCA RODOVIARIA' in code
             or 'RODOVIARIA' in title
+            or 'BALANCA DE UMIDADE' in code
+            or 'UMIDADE' in title
         ):
             return EquipmentFormCriteria.Unit.KILOGRAM, EquipmentFormCriteria.Unit.KILOGRAM
     equipment_unit = (

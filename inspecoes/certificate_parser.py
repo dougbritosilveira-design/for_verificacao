@@ -469,13 +469,27 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
     data: dict = {}
     normalized = _normalize_ascii(text)
 
-    cert_match = re.search(r'\bN\S?\s*([A-Z0-9]+/[0-9-]+)', normalized)
+    cert_match = re.search(
+        r'CERTIFICADO[\s\S]{0,120}?N\S?\s*([A-Z0-9]+/[0-9-]+)',
+        normalized,
+    )
     if cert_match:
         data['truck_certificate_number'] = cert_match.group(1).strip()
     else:
-        cert_fallback_match = re.search(r'\b(P\d{2}/\d+(?:-\d+)?)\b', normalized)
-        if cert_fallback_match:
-            data['truck_certificate_number'] = cert_fallback_match.group(1).strip()
+        cert_match = re.search(
+            r'CERTIFICADO[\s\S]{0,120}?N\S?\s*([0-9]{3,})',
+            normalized,
+        )
+        if cert_match:
+            data['truck_certificate_number'] = cert_match.group(1).strip()
+        else:
+            cert_fallback_match = re.search(r'\b(P\d{2}/\d+(?:-\d+)?)\b', normalized)
+            if cert_fallback_match:
+                data['truck_certificate_number'] = cert_fallback_match.group(1).strip()
+            else:
+                cert_generic_match = re.search(r'\bN\S?\s*([0-9]{3,})\b', normalized)
+                if cert_generic_match:
+                    data['truck_certificate_number'] = cert_generic_match.group(1).strip()
 
     tag_match = re.search(
         r'PATRIMONIO\s+IDENT\.?\s*TECNICA\s*\(TAG\)\s*\|?\s*([A-Z0-9._/-]+?)(?=SERIE|ENDERECO|MODELO|FABRICANTE|CLIENTE|$)',
@@ -516,6 +530,15 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
             data['truck_measurement_date'] = parsed
             data.setdefault('truck_release_date', parsed)
 
+    release_date_match = re.search(
+        r'DATA\s+DE\s+EMISSAO\s*\|?\s*([0-9]{2}[-/][A-Z]{3}[-/][0-9]{4}|[0-9./-]{8,10})',
+        normalized,
+    )
+    if release_date_match:
+        parsed = _parse_date_flexible(release_date_match.group(1))
+        if parsed:
+            data['truck_release_date'] = parsed
+
     uncertainty_match = re.search(
         r'INCERTEZA\s+EXPANDIDA\s*:\s*[^0-9]{0,4}\s*([0-9.,]+)\s*KG',
         normalized,
@@ -537,49 +560,137 @@ def _extract_truck_scale_metadata(text: str, filename: str = '') -> dict:
     return data
 
 
-def _extract_truck_scale_points(text: str, points_limit: int = TRUCK_SCALE_POINTS_LIMIT) -> tuple[list[dict], str, int]:
+def _extract_truck_scale_points(
+    text: str,
+    points_limit: int = TRUCK_SCALE_POINTS_LIMIT,
+) -> tuple[list[dict], str, int, Decimal | None, Decimal | None]:
+    def _slice_phase_section(source: str, phase_label: str) -> str:
+        normalized_source = _normalize_ascii(source)
+        start_idx = normalized_source.find(phase_label)
+        if start_idx < 0:
+            return source
+        end_idx = len(source)
+        if phase_label == 'ANTES':
+            after_idx = normalized_source.find('DEPOIS')
+            if after_idx > start_idx:
+                end_idx = after_idx
+        return source[start_idx:end_idx]
+
+    def _extract_points_from_triplets(section_text: str) -> list[tuple[Decimal, Decimal, Decimal]]:
+        point_pattern = re.compile(
+            r'([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg',
+            re.IGNORECASE,
+        )
+        result: list[tuple[Decimal, Decimal, Decimal]] = []
+        for match in point_pattern.finditer(section_text):
+            load_kg = _to_decimal(match.group(1))
+            reading_kg = _to_decimal(match.group(2))
+            error_kg = _to_decimal(match.group(3))
+            if load_kg is None or reading_kg is None or error_kg is None:
+                continue
+            result.append((load_kg, reading_kg, error_kg))
+        return result
+
+    def _extract_kg_values(fragment: str) -> list[Decimal]:
+        values: list[Decimal] = []
+        for token in re.findall(r'([+-]?[0-9][0-9.,]*)\s*KG', fragment, flags=re.IGNORECASE):
+            value = _to_decimal(token)
+            if value is not None:
+                values.append(value)
+        return values
+
+    def _extract_k_candidates(section_text: str) -> list[Decimal]:
+        candidates: list[Decimal] = []
+        for line in section_text.splitlines():
+            normalized_line = _normalize_ascii(line)
+            if 'ABRANGENCIA' not in normalized_line or 'FAT' not in normalized_line:
+                continue
+            for token in re.findall(r'[+-]?[0-9]+(?:[.,][0-9]+)?', line):
+                value = _to_decimal(token)
+                if value is not None and Decimal('0') < value <= Decimal('20'):
+                    candidates.append(value)
+        return candidates
+
+    def _extract_points_from_rows(section_text: str) -> tuple[list[tuple[Decimal, Decimal, Decimal]], Decimal | None, Decimal | None]:
+        normalized_section = _normalize_ascii(section_text)
+        row_pattern = re.compile(
+            r'MEDIA\s+DAS\s+LEITURAS(?P<readings>(?:\s*[0-9.,+-]+\s*KG)+)\s*'
+            r'ERRO\s+DE\s+INDICACAO(?P<errors>(?:\s*[0-9.,+-]+\s*KG)+)\s*'
+            r'INCERTEZA\s+EXPANDIDA\s*\(U\)(?P<uncertainties>(?:\s*[0-9.,+-]+\s*KG)+)',
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+
+        best_rows: list[tuple[Decimal, Decimal, Decimal]] = []
+        best_uncertainty: Decimal | None = None
+        for match in row_pattern.finditer(normalized_section):
+            readings = _extract_kg_values(match.group('readings'))
+            errors = _extract_kg_values(match.group('errors'))
+            uncertainties = _extract_kg_values(match.group('uncertainties'))
+            row_count = min(len(readings), len(errors))
+            if row_count <= 0:
+                continue
+
+            rows: list[tuple[Decimal, Decimal, Decimal]] = []
+            for idx in range(row_count):
+                reading_kg = readings[idx]
+                error_kg = errors[idx]
+                load_kg = reading_kg - error_kg
+                rows.append((load_kg, reading_kg, error_kg))
+
+            if len(rows) > len(best_rows):
+                best_rows = rows
+                best_uncertainty = max(uncertainties) if uncertainties else None
+
+        k_candidates = _extract_k_candidates(section_text)
+        k_value = max(k_candidates) if k_candidates else None
+        return best_rows, best_uncertainty, k_value
+
     normalized = _normalize_ascii(text)
-    start_idx = normalized.find('TESTE DE PESAGEM')
+    start_markers = ['TESTE DE PESAGEM', 'MEDIA DAS LEITURAS', 'ERRO DE INDICACAO']
+    start_positions = [normalized.find(marker) for marker in start_markers if normalized.find(marker) >= 0]
+    start_idx = min(start_positions) if start_positions else -1
     section = text[start_idx:] if start_idx >= 0 else text
     section_normalized = _normalize_ascii(section)
-
-    phase = 'DEPOIS'
-    phase_idx = section_normalized.find('DEPOIS')
-    if phase_idx >= 0:
-        section = section[phase_idx:]
-        section_normalized = section_normalized[phase_idx:]
-    else:
-        phase = 'ANTES'
-        before_idx = section_normalized.find('ANTES')
-        if before_idx >= 0:
-            section = section[before_idx:]
-            section_normalized = section_normalized[before_idx:]
 
     end_markers = ['RESOLUCAO', 'TOLERANCIAS', 'INSTALACOES', 'METODO', 'INSTRUCAO DE TRABALHO']
     end_positions = [section_normalized.find(marker) for marker in end_markers if section_normalized.find(marker) >= 0]
     if end_positions:
         section = section[: min(end_positions)]
 
-    point_pattern = re.compile(
-        r'([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg\s+([+-]?[0-9][0-9.,]*)\s*kg',
-        re.IGNORECASE,
-    )
+    phase_sections = [('DEPOIS', _slice_phase_section(section, 'DEPOIS'))]
+    if _normalize_ascii(section).find('ANTES') >= 0:
+        phase_sections.append(('ANTES', _slice_phase_section(section, 'ANTES')))
+    else:
+        phase_sections.append(('ANTES', section))
 
-    raw_points: list[tuple[Decimal, Decimal, Decimal]] = []
-    for match in point_pattern.finditer(section):
-        load_kg = _to_decimal(match.group(1))
-        reading_kg = _to_decimal(match.group(2))
-        error_kg = _to_decimal(match.group(3))
-        if load_kg is None or reading_kg is None or error_kg is None:
-            continue
-        raw_points.append((load_kg, reading_kg, error_kg))
+    phase = 'ANTES'
+    candidate_points: list[tuple[Decimal, Decimal, Decimal]] = []
+    derived_uncertainty: Decimal | None = None
+    derived_k_factor: Decimal | None = None
+    for phase_candidate, phase_section in phase_sections:
+        raw_points = _extract_points_from_triplets(phase_section)
+        filtered_points = [
+            row
+            for row in raw_points
+            if not (row[0] == 0 and row[1] == 0 and row[2] == 0)
+        ]
+        candidate_points = filtered_points if filtered_points else raw_points
+        if candidate_points:
+            phase = phase_candidate
+            break
 
-    filtered_points = [
-        row
-        for row in raw_points
-        if not (row[0] == 0 and row[1] == 0 and row[2] == 0)
-    ]
-    candidate_points = filtered_points if filtered_points else raw_points
+    rows_points, rows_uncertainty, rows_k = _extract_points_from_rows(section)
+    if len(rows_points) > len(candidate_points):
+        candidate_points = rows_points
+        phase = 'ANTES'
+        derived_uncertainty = rows_uncertainty
+        derived_k_factor = rows_k
+    elif not candidate_points:
+        candidate_points = rows_points
+        if candidate_points:
+            phase = 'ANTES'
+            derived_uncertainty = rows_uncertainty
+            derived_k_factor = rows_k
 
     try:
         safe_limit = max(1, min(int(points_limit), TRUCK_SCALE_POINTS_LIMIT))
@@ -598,7 +709,7 @@ def _extract_truck_scale_points(text: str, points_limit: int = TRUCK_SCALE_POINT
         if len(points) >= safe_limit:
             break
 
-    return points, phase, len(candidate_points)
+    return points, phase, len(candidate_points), derived_uncertainty, derived_k_factor
 
 
 def parse_truck_scale_certificate(
@@ -608,10 +719,17 @@ def parse_truck_scale_certificate(
 ) -> dict:
     text = _extract_text_from_pdf_bytes(pdf_bytes)
     metadata = _extract_truck_scale_metadata(text, filename=filename)
-    points, phase, points_total = _extract_truck_scale_points(text, points_limit=points_limit)
+    points, phase, points_total, derived_uncertainty, derived_k_factor = _extract_truck_scale_points(
+        text,
+        points_limit=points_limit,
+    )
 
     values: dict = {}
     values.update(metadata)
+    if values.get('truck_uncertainty_declared_kg') is None and derived_uncertainty is not None:
+        values['truck_uncertainty_declared_kg'] = derived_uncertainty
+    if values.get('truck_k_factor') is None and derived_k_factor is not None:
+        values['truck_k_factor'] = derived_k_factor
     for index, point in enumerate(points, start=1):
         values[f'truck_point_label_{index}'] = f'Ponto {index}'
         values[f'truck_load_{index}_kg'] = point['load_kg']

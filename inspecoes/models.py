@@ -580,6 +580,7 @@ class FormSubmission(models.Model):
     FORM_CODE_FLOW_ADJUST_ALT = 'FOR 08.03.006'
     FORM_CODE_DENSITY = 'FOR 08.03.003'
     FORM_CODE_TRUCK_CERT = 'FOR RODOVIARIA'
+    FORM_CODE_HUMIDITY_CERT = 'FOR UMIDADE'
     TRUCK_POINTS_LIMIT = 12
 
     class Status(models.TextChoices):
@@ -1338,10 +1339,17 @@ class FormSubmission(models.Model):
             title = (self.form_type.title or '').strip().upper()
         return (
             self.FORM_CODE_TRUCK_CERT in code
+            or self.FORM_CODE_HUMIDITY_CERT in code
             or 'BALANCA RODOVIARIA' in code
+            or 'BALANCA DE UMIDADE' in code
             or (
                 'VALIDACAO DE CERTIFICADO' in title
-                and ('BALANCA RODOVIARIA' in title or 'RODOVIARIA' in title)
+                and (
+                    'BALANCA RODOVIARIA' in title
+                    or 'RODOVIARIA' in title
+                    or 'BALANCA DE UMIDADE' in title
+                    or 'UMIDADE' in title
+                )
             )
         )
 
