@@ -141,11 +141,21 @@
   </table>
 
   <h3>Resultados da verificação e ajuste</h3>
-  <div class="row truck-results-grid">
-    <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
-    <p>{{ form.truck_uncertainty_declared_kg.label_tag }} {{ form.truck_uncertainty_declared_kg }}</p>
-    <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
-  </div>
+  {% with form_code=submission.form_type.code|default:''|upper %}
+    {% if 'UMIDADE' in form_code %}
+      <div class="row" style="grid-template-columns:minmax(220px, 280px);">
+        <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+      </div>
+      {{ form.truck_uncertainty_declared_kg.as_hidden }}
+      {{ form.expanded_uncertainty_calc_pct.as_hidden }}
+    {% else %}
+      <div class="row truck-results-grid">
+        <p>{{ form.acceptance_criterion_pct.label_tag }} {{ form.acceptance_criterion_pct }}</p>
+        <p>{{ form.truck_uncertainty_declared_kg.label_tag }} {{ form.truck_uncertainty_declared_kg }}</p>
+        <p>{{ form.expanded_uncertainty_calc_pct.label_tag }} {{ form.expanded_uncertainty_calc_pct }}</p>
+      </div>
+    {% endif %}
+  {% endwith %}
 
   <div id="final-box" class="accept-box pending">
     <p style="margin:0 0 4px;"><strong>Critério final por ponto (|erro| + U(e) &lt;= limite em todos os pontos)</strong> <span id="final-pill" class="accept-pill pending">Pendente dados</span></p>
