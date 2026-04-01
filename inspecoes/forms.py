@@ -806,6 +806,8 @@ class TruckScaleTechnicalForm(forms.ModelForm):
                     f'truck_load_{index}_kg',
                     f'truck_reading_{index}_kg',
                     f'truck_error_{index}_kg',
+                    f'truck_uncertainty_{index}_kg',
+                    f'truck_k_{index}',
                 )
             ],
             'sector', 'sector_2', 'sector_3',
@@ -845,6 +847,14 @@ class TruckScaleTechnicalForm(forms.ModelForm):
             },
             **{
                 f'truck_error_{index}_kg': f'Erro {index} (kg)'
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            },
+            **{
+                f'truck_uncertainty_{index}_kg': f'U(e) {index} (kg)'
+                for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
+            },
+            **{
+                f'truck_k_{index}': f'k {index}'
                 for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1)
             },
             'sector': 'Setor 1',
@@ -892,6 +902,10 @@ class TruckScaleTechnicalForm(forms.ModelForm):
 
         if self.instance.truck_k_factor is None:
             self.initial.setdefault('truck_k_factor', Decimal('2.000'))
+
+        for index in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1):
+            self.fields[f'truck_uncertainty_{index}_kg'].widget = forms.HiddenInput()
+            self.fields[f'truck_k_{index}'].widget = forms.HiddenInput()
 
 
 class FlowAdjustTechnicalForm(forms.ModelForm):

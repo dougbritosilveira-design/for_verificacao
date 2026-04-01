@@ -119,6 +119,7 @@
         <th>Erro (kg)</th>
         <th>|Erro| (kg)</th>
         <th>U(e) (kg)</th>
+        <th>k</th>
         <th>|Erro| + U(e) (kg)</th>
         <th>Status</th>
       </tr>
@@ -127,12 +128,13 @@
       {% for row in truck_point_rows %}
       <tr>
         <td>{{ row.index }}</td>
-        <td>{{ row.label_field }}</td>
+        <td>{{ row.label_field }}{{ row.uncertainty_field }}{{ row.k_field }}</td>
         <td>{{ row.load_field }}</td>
         <td>{{ row.reading_field }}</td>
         <td>{{ row.error_field }}</td>
         <td><input id="truck_error_abs_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
         <td><input id="truck_u_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
+        <td><input id="truck_k_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
         <td><input id="truck_sum_{{ row.index }}" type="text" readonly disabled class="auto-locked"></td>
         <td><span id="truck_status_{{ row.index }}" class="accept-pill pending">-</span></td>
       </tr>
@@ -266,24 +268,32 @@
   function recalc() {
     const pointsLimit = Number('{{ truck_points_limit|default:12 }}');
     const criterion = getNum('id_acceptance_criterion_pct');
-    const uncertainty = getNum('id_truck_uncertainty_declared_kg');
+    const globalUncertainty = getNum('id_truck_uncertainty_declared_kg');
 
     if (criterion != null) {
       setField('id_acceptance_criterion_pct', criterion, 1, true);
     }
-    if (uncertainty != null) {
-      setField('id_expanded_uncertainty_calc_pct', uncertainty, 3, true);
+    if (globalUncertainty != null) {
+      setField('id_expanded_uncertainty_calc_pct', globalUncertainty, 3, true);
+    } else {
+      setField('id_expanded_uncertainty_calc_pct', null, 3, true);
     }
 
     let points = 0;
     let approvedPoints = 0;
     let maxError = null;
     let maxCombined = null;
+    let maxPointUncertainty = null;
 
     for (let idx = 1; idx <= pointsLimit; idx += 1) {
       const load = getNum('id_truck_load_' + idx + '_kg');
       const reading = getNum('id_truck_reading_' + idx + '_kg');
       let error = getNum('id_truck_error_' + idx + '_kg');
+      const pointUncertainty = getNum('id_truck_uncertainty_' + idx + '_kg');
+      const pointK = getNum('id_truck_k_' + idx);
+      const uncertainty = pointUncertainty == null
+        ? (globalUncertainty == null ? null : Math.abs(globalUncertainty))
+        : Math.abs(pointUncertainty);
 
       if (error == null && load != null && reading != null) {
         error = reading - load;
@@ -296,6 +306,7 @@
 
       setField('truck_error_abs_' + idx, errorAbs, 3, false);
       setField('truck_u_' + idx, uncertainty, 3, false);
+      setField('truck_k_' + idx, pointK, 3, false);
       setField('truck_sum_' + idx, combined, 3, false);
 
       if (ok == null) setPill('truck_status_' + idx, 'pending', '-');
@@ -305,16 +316,22 @@
         points += 1;
         maxError = maxError == null ? errorAbs : Math.max(maxError, errorAbs);
         maxCombined = maxCombined == null ? combined : Math.max(maxCombined, combined);
+        if (uncertainty != null) {
+          maxPointUncertainty = maxPointUncertainty == null ? uncertainty : Math.max(maxPointUncertainty, uncertainty);
+        }
         if (ok === true) approvedPoints += 1;
       }
     }
 
     const finalOk = (criterion == null || points === 0) ? null : (approvedPoints === points);
+    if (maxPointUncertainty != null) {
+      setField('id_expanded_uncertainty_calc_pct', maxPointUncertainty, 3, true);
+    }
 
     setText('sum-points', String(points));
     setText('sum-approved', String(approvedPoints));
     setText('sum-error-max', fmt(maxError, 3));
-    setText('sum-u', fmt(uncertainty, 3));
+    setText('sum-u', fmt(maxPointUncertainty, 3));
     setText('sum-combined', fmt(maxCombined, 3));
     setText('sum-status', finalOk == null ? 'Pendente dados' : (finalOk ? 'Aprovado' : 'Reprovado'));
 

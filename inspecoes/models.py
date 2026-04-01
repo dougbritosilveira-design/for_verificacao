@@ -798,61 +798,85 @@ class FormSubmission(models.Model):
     truck_load_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_1_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_1 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_2 = models.CharField(max_length=120, blank=True, default='Ponto 2')
     truck_load_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_2_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_2 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_3 = models.CharField(max_length=120, blank=True, default='Ponto 3')
     truck_load_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_3_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_3 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_4 = models.CharField(max_length=120, blank=True, default='Ponto 4')
     truck_load_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_4_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_4 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_5 = models.CharField(max_length=120, blank=True, default='Ponto 5')
     truck_load_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_5_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_5 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_6 = models.CharField(max_length=120, blank=True, default='Ponto 6')
     truck_load_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_6_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_6 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_7 = models.CharField(max_length=120, blank=True, default='Ponto 7')
     truck_load_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_7_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_7 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_8 = models.CharField(max_length=120, blank=True, default='Ponto 8')
     truck_load_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_8_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_8 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_9 = models.CharField(max_length=120, blank=True, default='Ponto 9')
     truck_load_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_9_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_9 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_10 = models.CharField(max_length=120, blank=True, default='Ponto 10')
     truck_load_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_10_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_10 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_11 = models.CharField(max_length=120, blank=True, default='Ponto 11')
     truck_load_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_11_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_11 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     truck_point_label_12 = models.CharField(max_length=120, blank=True, default='Ponto 12')
     truck_load_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_reading_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     truck_error_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_uncertainty_12_kg = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    truck_k_12 = models.DecimalField(max_digits=8, decimal_places=3, null=True, blank=True)
 
     flow_adjust_thickness_1_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     flow_adjust_thickness_2_mm = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
@@ -1659,28 +1683,38 @@ class FormSubmission(models.Model):
 
     @property
     def truck_u_expanded_kg(self):
-        if self.truck_uncertainty_declared_kg is None:
-            return None
-        return abs(self.truck_uncertainty_declared_kg)
+        if self.truck_uncertainty_declared_kg is not None:
+            return abs(self.truck_uncertainty_declared_kg)
+        values = []
+        for index in range(1, self.truck_points_limit_effective + 1):
+            uncertainty = getattr(self, f'truck_uncertainty_{index}_kg', None)
+            if uncertainty is not None:
+                values.append(abs(uncertainty))
+        return max(values) if values else None
 
     @property
     def truck_points(self):
         rows = []
-        uncertainty = self.truck_u_expanded_kg
         limit = self.acceptance_limit_pct
         for index in range(1, self.truck_points_limit_effective + 1):
             label = (getattr(self, f'truck_point_label_{index}', '') or '').strip() or f'Ponto {index}'
             load_kg = getattr(self, f'truck_load_{index}_kg', None)
             reading_kg = getattr(self, f'truck_reading_{index}_kg', None)
             error_kg = getattr(self, f'truck_error_{index}_kg', None)
+            uncertainty_kg = getattr(self, f'truck_uncertainty_{index}_kg', None)
+            k_factor = getattr(self, f'truck_k_{index}', None)
             if error_kg is None and load_kg is not None and reading_kg is not None:
                 error_kg = reading_kg - load_kg
+            if uncertainty_kg is None and self.truck_u_expanded_kg is not None:
+                uncertainty_kg = self.truck_u_expanded_kg
+            if k_factor is None and self.truck_k_factor is not None:
+                k_factor = self.truck_k_factor
 
             error_abs_kg = abs(error_kg) if error_kg is not None else None
             combined_kg = None
             ok = None
-            if error_abs_kg is not None and uncertainty is not None:
-                combined_kg = error_abs_kg + uncertainty
+            if error_abs_kg is not None and uncertainty_kg is not None:
+                combined_kg = error_abs_kg + abs(uncertainty_kg)
                 if limit is not None:
                     ok = combined_kg <= limit
 
@@ -1692,7 +1726,8 @@ class FormSubmission(models.Model):
                     'reading_kg': reading_kg,
                     'error_kg': error_kg,
                     'error_abs_kg': error_abs_kg,
-                    'uncertainty_kg': uncertainty,
+                    'uncertainty_kg': uncertainty_kg,
+                    'k_factor': k_factor,
                     'combined_kg': combined_kg,
                     'ok': ok,
                 }

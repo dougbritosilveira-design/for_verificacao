@@ -473,6 +473,8 @@ def _build_form_edit_context(form, submission):
                 'load_field': form[f'truck_load_{index}_kg'],
                 'reading_field': form[f'truck_reading_{index}_kg'],
                 'error_field': form[f'truck_error_{index}_kg'],
+                'uncertainty_field': form[f'truck_uncertainty_{index}_kg'],
+                'k_field': form[f'truck_k_{index}'],
             }
             for index in range(1, points_limit + 1)
         ]
@@ -715,6 +717,8 @@ def form_edit_view(request, pk):
                         or field_name.startswith('truck_load_')
                         or field_name.startswith('truck_reading_')
                         or field_name.startswith('truck_error_')
+                        or field_name.startswith('truck_uncertainty_')
+                        or field_name.startswith('truck_k_')
                     )
                     should_update = (
                         is_measurement_field
