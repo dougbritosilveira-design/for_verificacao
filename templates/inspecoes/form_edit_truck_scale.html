@@ -271,7 +271,7 @@
     const globalUncertainty = getNum('id_truck_uncertainty_declared_kg');
 
     if (criterion != null) {
-      setField('id_acceptance_criterion_pct', criterion, 1, true);
+      setField('id_acceptance_criterion_pct', criterion, 3, true);
     }
     if (globalUncertainty != null) {
       setField('id_expanded_uncertainty_calc_pct', globalUncertainty, 3, true);
@@ -338,9 +338,9 @@
     if (finalOk == null) {
       setBox('final', 'pending', 'Preencha os pontos com carga/leitura/erro.');
     } else if (finalOk) {
-      setBox('final', 'ok', 'Todos os pontos dentro do critério de aceitação (limite ' + fmt(criterion, 1) + 'kg).');
+      setBox('final', 'ok', 'Todos os pontos dentro do critério de aceitação (limite ' + fmt(criterion, 3) + 'kg).');
     } else {
-      setBox('final', 'fail', 'Há ponto(s) fora do critério de aceitação (limite ' + fmt(criterion, 1) + 'kg).');
+      setBox('final', 'fail', 'Há ponto(s) fora do critério de aceitação (limite ' + fmt(criterion, 3) + 'kg).');
     }
   }
 

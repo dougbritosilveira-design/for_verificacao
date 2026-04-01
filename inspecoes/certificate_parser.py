@@ -622,7 +622,12 @@ def _extract_truck_scale_points(
         seen_signatures: set[tuple[str, str, str, str]] = set()
         current_conventional_values: list[Decimal] = []
 
-        def _looks_like_media_row(candidate_line: str, next_line: str = '', next_line_2: str = '') -> bool:
+        def _looks_like_media_row(
+            candidate_line: str,
+            next_line: str = '',
+            next_line_2: str = '',
+            prev_line: str = '',
+        ) -> bool:
             if not candidate_line:
                 return False
             if 'ERRO DE INDICACAO' in candidate_line:
@@ -636,6 +641,8 @@ def _extract_truck_scale_points(
 
             values = _extract_kg_values(candidate_line)
             if not values:
+                if 'MEDIA' in prev_line and 'LEITURA' in prev_line:
+                    return True
                 return False
 
             if 'MEDIA' in candidate_line and 'LEITURA' in candidate_line:
@@ -650,6 +657,18 @@ def _extract_truck_scale_points(
 
             return False
 
+        def _extract_values_with_neighbor_support(base_idx: int, direct_line: str) -> list[Decimal]:
+            values = _extract_kg_values(direct_line)
+            if values:
+                return values
+            parts = [direct_line]
+            if base_idx + 1 < len(lines):
+                parts.append(lines[base_idx + 1])
+            if base_idx + 2 < len(lines):
+                parts.append(lines[base_idx + 2])
+            merged = ' '.join(part for part in parts if part)
+            return _extract_kg_values(merged)
+
         idx = 0
         while idx < len(lines):
             line = lines[idx]
@@ -662,11 +681,12 @@ def _extract_truck_scale_points(
 
             next_line = lines[idx + 1] if idx + 1 < len(lines) else ''
             next_line_2 = lines[idx + 2] if idx + 2 < len(lines) else ''
-            if not _looks_like_media_row(line, next_line, next_line_2):
+            prev_line = lines[idx - 1] if idx - 1 >= 0 else ''
+            if not _looks_like_media_row(line, next_line, next_line_2, prev_line):
                 idx += 1
                 continue
 
-            readings = _extract_kg_values(line)
+            readings = _extract_values_with_neighbor_support(idx, line)
             if not readings:
                 idx += 1
                 continue
@@ -691,7 +711,8 @@ def _extract_truck_scale_points(
                 idx += 1
                 continue
 
-            errors = _extract_kg_values(error_line)
+            error_idx = lines.index(error_line, idx + 1) if error_line in lines[idx + 1 :] else idx + 1
+            errors = _extract_values_with_neighbor_support(error_idx, error_line)
             conventional_values = list(current_conventional_values)
             if not conventional_values:
                 back_start = max(0, idx - 12)
@@ -700,10 +721,19 @@ def _extract_truck_scale_points(
                         conventional_values = _extract_kg_values(lines[back_idx])
                         if conventional_values:
                             break
-            uncertainties = _extract_kg_values(uncertainty_line) if uncertainty_line else []
+            uncertainty_idx = lines.index(uncertainty_line, idx + 1) if uncertainty_line and uncertainty_line in lines[idx + 1 :] else idx + 1
+            uncertainties = _extract_values_with_neighbor_support(uncertainty_idx, uncertainty_line) if uncertainty_line else []
             k_values = []
             if k_line:
-                for token in re.findall(r'[+-]?[0-9]+(?:[.,][0-9]+)?', k_line):
+                k_idx = lines.index(k_line, idx + 1) if k_line in lines[idx + 1 :] else idx + 1
+                k_fragment = ' '.join(
+                    part for part in [
+                        k_line,
+                        lines[k_idx + 1] if k_idx + 1 < len(lines) else '',
+                        lines[k_idx + 2] if k_idx + 2 < len(lines) else '',
+                    ] if part
+                )
+                for token in re.findall(r'[+-]?[0-9]+(?:[.,][0-9]+)?', k_fragment):
                     value = _to_decimal(token)
                     if value is not None and Decimal('0') < value <= Decimal('20'):
                         k_values.append(value)
