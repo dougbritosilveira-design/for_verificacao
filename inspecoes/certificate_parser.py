@@ -628,7 +628,17 @@ def _extract_truck_scale_points(
 
     def _extract_points_from_rows(section_text: str) -> list[dict]:
         normalized_section = _normalize_ascii(section_text)
-        lines = normalized_section.splitlines()
+        for marker in [
+            r'MASSA\s*CONVENCIONAL',
+            r'LEITURAS\s*SEM\s*AJUSTE',
+            r'LEITURAS\s*APOS\s*AJUSTE',
+            r'MEDIA\s*DAS\s*LEITURAS',
+            r'ERRO\s*DE\s*INDICACAO',
+            r'INCERTEZA\s*EXPANDIDA\s*\(U\)',
+            r'FAT\.?\s*ABRANGENCIA\s*\(K\)',
+        ]:
+            normalized_section = re.sub(marker, lambda m: f"\n{m.group(0)}", normalized_section, flags=re.IGNORECASE)
+        lines = [line.strip() for line in normalized_section.splitlines() if line.strip()]
         rows: list[dict] = []
         seen_signatures: set[tuple[str, str, str, str]] = set()
         current_conventional_values: list[Decimal] = []
@@ -720,12 +730,20 @@ def _extract_truck_scale_points(
             j = idx + 1
             while j < len(lines):
                 compact_j = _compact(lines[j])
+                compact_j_next = _compact(lines[j + 1]) if (j + 1) < len(lines) else ''
+                compact_pair = f'{compact_j}{compact_j_next}'
                 if not error_line and 'ERRODEINDICACAO' in compact_j:
                     error_line = lines[j]
+                elif not error_line and 'ERRODEINDICACAO' in compact_pair:
+                    error_line = f'{lines[j]} {lines[j + 1]}' if (j + 1) < len(lines) else lines[j]
                 elif not uncertainty_line and 'INCERTEZAEXPANDIDA' in compact_j and 'U' in compact_j:
                     uncertainty_line = lines[j]
+                elif not uncertainty_line and 'INCERTEZAEXPANDIDA' in compact_pair and 'U' in compact_pair:
+                    uncertainty_line = f'{lines[j]} {lines[j + 1]}' if (j + 1) < len(lines) else lines[j]
                 elif not k_line and 'ABRANGENCIA' in compact_j and 'K' in compact_j:
                     k_line = lines[j]
+                elif not k_line and 'ABRANGENCIA' in compact_pair and 'K' in compact_pair:
+                    k_line = f'{lines[j]} {lines[j + 1]}' if (j + 1) < len(lines) else lines[j]
                     break
                 if lines[j].strip() == '' and error_line and uncertainty_line:
                     break
