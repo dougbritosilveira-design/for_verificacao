@@ -695,6 +695,14 @@ def form_edit_view(request, pk):
                     return redirect('inspecoes:form-edit', pk=submission.pk)
 
                 parsed_values = parsed.get('values', {})
+                for idx in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1):
+                    setattr(submission, f'truck_point_label_{idx}', f'Ponto {idx}')
+                    setattr(submission, f'truck_load_{idx}_kg', None)
+                    setattr(submission, f'truck_reading_{idx}_kg', None)
+                    setattr(submission, f'truck_error_{idx}_kg', None)
+                    setattr(submission, f'truck_uncertainty_{idx}_kg', None)
+                    setattr(submission, f'truck_k_{idx}', None)
+
                 always_update_fields = {
                     'acceptance_criterion_unit',
                     'expanded_uncertainty_unit',
