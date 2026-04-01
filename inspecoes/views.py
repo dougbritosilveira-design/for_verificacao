@@ -539,6 +539,103 @@ def form_edit_view(request, pk):
             form = form_class(request.POST, request.FILES, instance=submission)
         else:
             form = form_class(request.POST, instance=submission)
+
+        if submission.is_truck_scale_form and 'parse_certificate' in request.POST:
+            uploaded_certificate = (
+                request.FILES.get(form.add_prefix('truck_certificate_file'))
+                or request.FILES.get('truck_certificate_file')
+            )
+            clear_flag = bool(request.POST.get(f"{form.add_prefix('truck_certificate_file')}-clear"))
+
+            if clear_flag:
+                submission.truck_certificate_file = None
+                submission.save()
+            elif uploaded_certificate is not None:
+                submission.truck_certificate_file = uploaded_certificate
+                submission.save()
+
+            if not submission.truck_certificate_file:
+                messages.warning(request, 'Anexe o certificado em PDF para fazer a leitura automática.')
+                return redirect('inspecoes:form-edit', pk=submission.pk)
+
+            try:
+                with submission.truck_certificate_file.open('rb') as certificate_file:
+                    parsed = parse_truck_scale_certificate(
+                        certificate_file.read(),
+                        filename=Path(submission.truck_certificate_file.name).name,
+                        points_limit=submission.truck_points_limit_effective,
+                    )
+            except Exception as exc:
+                messages.error(request, f'Não foi possível ler o certificado: {exc}')
+                return redirect('inspecoes:form-edit', pk=submission.pk)
+
+            parsed_values = parsed.get('values', {})
+            for idx in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1):
+                setattr(submission, f'truck_point_label_{idx}', f'Ponto {idx}')
+                setattr(submission, f'truck_load_{idx}_kg', None)
+                setattr(submission, f'truck_reading_{idx}_kg', None)
+                setattr(submission, f'truck_error_{idx}_kg', None)
+                setattr(submission, f'truck_uncertainty_{idx}_kg', None)
+                setattr(submission, f'truck_k_{idx}', None)
+
+            always_update_fields = {
+                'acceptance_criterion_unit',
+                'expanded_uncertainty_unit',
+                'truck_certificate_number',
+                'truck_provider',
+                'truck_tag_on_certificate',
+                'truck_model',
+                'truck_serial_number',
+                'truck_measurement_date',
+                'truck_release_date',
+                'truck_uncertainty_declared_kg',
+                'truck_k_factor',
+            }
+            for field_name, value in parsed_values.items():
+                if not hasattr(submission, field_name):
+                    continue
+                current_value = getattr(submission, field_name)
+                is_measurement_field = (
+                    field_name.startswith('truck_point_label_')
+                    or field_name.startswith('truck_load_')
+                    or field_name.startswith('truck_reading_')
+                    or field_name.startswith('truck_error_')
+                    or field_name.startswith('truck_uncertainty_')
+                    or field_name.startswith('truck_k_')
+                )
+                should_update = (
+                    is_measurement_field
+                    or field_name in always_update_fields
+                    or current_value in (None, '')
+                )
+                if should_update:
+                    setattr(submission, field_name, value)
+
+            submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.KILOGRAM
+            submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.KILOGRAM
+            submission.save()
+
+            points_found = parsed.get('points_found', 0)
+            points_total = parsed.get('points_total', points_found)
+            if points_found:
+                if points_total > points_found:
+                    messages.success(
+                        request,
+                        f'Certificado lido com sucesso. {points_total} ponto(s) encontrados; {points_found} foram preenchidos automaticamente (limite do formulário).',
+                    )
+                else:
+                    messages.success(
+                        request,
+                        f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
+                    )
+            else:
+                messages.warning(
+                    request,
+                    'Certificado lido, mas não foram encontrados pontos de medição automáticos. '
+                    'Preencha os pontos manualmente.',
+                )
+            return redirect('inspecoes:form-edit', pk=submission.pk)
+
         if form.is_valid():
             previous_status = submission.status
             submission = form.save(commit=False)
@@ -669,90 +766,6 @@ def form_edit_view(request, pk):
                         request,
                         f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
                     )
-                else:
-                    messages.warning(
-                        request,
-                        'Certificado lido, mas não foram encontrados pontos de medição automáticos. '
-                        'Preencha os pontos manualmente.',
-                    )
-                return redirect('inspecoes:form-edit', pk=submission.pk)
-
-            if submission.is_truck_scale_form and 'parse_certificate' in request.POST:
-                submission.save()
-                if not submission.truck_certificate_file:
-                    messages.warning(request, 'Anexe o certificado em PDF para fazer a leitura automática.')
-                    return redirect('inspecoes:form-edit', pk=submission.pk)
-
-                try:
-                    with submission.truck_certificate_file.open('rb') as certificate_file:
-                        parsed = parse_truck_scale_certificate(
-                            certificate_file.read(),
-                            filename=Path(submission.truck_certificate_file.name).name,
-                            points_limit=submission.truck_points_limit_effective,
-                        )
-                except Exception as exc:
-                    messages.error(request, f'Não foi possível ler o certificado: {exc}')
-                    return redirect('inspecoes:form-edit', pk=submission.pk)
-
-                parsed_values = parsed.get('values', {})
-                for idx in range(1, FormSubmission.TRUCK_POINTS_LIMIT + 1):
-                    setattr(submission, f'truck_point_label_{idx}', f'Ponto {idx}')
-                    setattr(submission, f'truck_load_{idx}_kg', None)
-                    setattr(submission, f'truck_reading_{idx}_kg', None)
-                    setattr(submission, f'truck_error_{idx}_kg', None)
-                    setattr(submission, f'truck_uncertainty_{idx}_kg', None)
-                    setattr(submission, f'truck_k_{idx}', None)
-
-                always_update_fields = {
-                    'acceptance_criterion_unit',
-                    'expanded_uncertainty_unit',
-                    'truck_certificate_number',
-                    'truck_provider',
-                    'truck_tag_on_certificate',
-                    'truck_model',
-                    'truck_serial_number',
-                    'truck_measurement_date',
-                    'truck_release_date',
-                    'truck_uncertainty_declared_kg',
-                    'truck_k_factor',
-                }
-                for field_name, value in parsed_values.items():
-                    if not hasattr(submission, field_name):
-                        continue
-                    current_value = getattr(submission, field_name)
-                    is_measurement_field = (
-                        field_name.startswith('truck_point_label_')
-                        or field_name.startswith('truck_load_')
-                        or field_name.startswith('truck_reading_')
-                        or field_name.startswith('truck_error_')
-                        or field_name.startswith('truck_uncertainty_')
-                        or field_name.startswith('truck_k_')
-                    )
-                    should_update = (
-                        is_measurement_field
-                        or field_name in always_update_fields
-                        or current_value in (None, '')
-                    )
-                    if should_update:
-                        setattr(submission, field_name, value)
-
-                submission.acceptance_criterion_unit = EquipmentFormCriteria.Unit.KILOGRAM
-                submission.expanded_uncertainty_unit = EquipmentFormCriteria.Unit.KILOGRAM
-                submission.save()
-
-                points_found = parsed.get('points_found', 0)
-                points_total = parsed.get('points_total', points_found)
-                if points_found:
-                    if points_total > points_found:
-                        messages.success(
-                            request,
-                            f'Certificado lido com sucesso. {points_total} ponto(s) encontrados; {points_found} foram preenchidos automaticamente (limite do formulário).',
-                        )
-                    else:
-                        messages.success(
-                            request,
-                            f'Certificado lido com sucesso. {points_found} ponto(s) de medição foram preenchidos automaticamente.',
-                        )
                 else:
                     messages.warning(
                         request,

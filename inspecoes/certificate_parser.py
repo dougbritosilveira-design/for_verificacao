@@ -620,10 +620,18 @@ def _extract_truck_scale_points(
         lines = normalized_section.splitlines()
         rows: list[dict] = []
         seen_signatures: set[tuple[str, str, str, str]] = set()
+        current_conventional_values: list[Decimal] = []
 
         idx = 0
         while idx < len(lines):
             line = lines[idx]
+            if 'MASSA CONVENCIONAL' in line:
+                conventional_values = _extract_kg_values(line)
+                if conventional_values:
+                    current_conventional_values = conventional_values
+                idx += 1
+                continue
+
             if 'MEDIA DAS LEITURAS' not in line:
                 idx += 1
                 continue
@@ -654,6 +662,14 @@ def _extract_truck_scale_points(
                 continue
 
             errors = _extract_kg_values(error_line)
+            conventional_values = list(current_conventional_values)
+            if not conventional_values:
+                back_start = max(0, idx - 12)
+                for back_idx in range(idx - 1, back_start - 1, -1):
+                    if 'MASSA CONVENCIONAL' in lines[back_idx]:
+                        conventional_values = _extract_kg_values(lines[back_idx])
+                        if conventional_values:
+                            break
             uncertainties = _extract_kg_values(uncertainty_line) if uncertainty_line else []
             k_values = []
             if k_line:
@@ -679,9 +695,14 @@ def _extract_truck_scale_points(
             for point_idx in range(point_count):
                 reading_kg = readings[point_idx]
                 error_kg = errors[point_idx]
+                conventional_kg = (
+                    conventional_values[point_idx]
+                    if point_idx < len(conventional_values)
+                    else reading_kg - error_kg
+                )
                 rows.append(
                     {
-                        'load_kg': reading_kg - error_kg,
+                        'load_kg': conventional_kg,
                         'reading_kg': reading_kg,
                         'error_kg': error_kg,
                         'uncertainty_kg': uncertainties[point_idx] if point_idx < len(uncertainties) else None,
