@@ -283,7 +283,7 @@
 
   function calcUncertainty(il, ic, md, mValues) {
     if (il == null || ic == null || ic === 0 || md == null || md === 0) return null;
-    const resolutionR = 0.001;
+    const resolutionR = 0.01;
     const deltaTMinutes = 5;
     const kFactor = 2;
     const sT = stdevSample(mValues);
